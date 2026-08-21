@@ -2,24 +2,20 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Report;
+use App\Models\Analysis;
+use App\Models\CtiLookup;
+use App\Models\Investigation;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        Report::factory(15)->create()->each(function (Report $report) {
+            Analysis::factory()->create(['report_id' => $report->id]);
+            CtiLookup::factory()->create(['report_id' => $report->id]);
+            Investigation::factory()->create(['report_id' => $report->id]);
+        });
     }
 }

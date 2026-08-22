@@ -1,52 +1,129 @@
 <x-guest-layout>
-    <form method="POST" action="{{ route('register') }}">
-        @csrf
 
-        <!-- Name -->
-        <div>
-            <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
-            <x-input-error :messages="$errors->get('name')" class="mt-2" />
+    <x-slot:rightPanel>
+        <div class="w-20 h-20 mx-auto mb-8 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
+            <svg class="w-10 h-10 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
+            </svg>
         </div>
 
-        <!-- Email Address -->
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+        <h2 class="text-2xl font-bold text-white mb-4">Join the PhishCore Platform</h2>
+        <p class="text-slate-400 mb-10">
+            Help protect Politeknik Brunei's digital environment by detecting and reporting suspicious websites.
+        </p>
+
+        <div class="space-y-4 text-left">
+            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
+                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🔍</span>
+                <span class="text-sm text-slate-200">Scan suspicious website links</span>
+            </div>
+            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
+                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🛡️</span>
+                <span class="text-sm text-slate-200">Access detailed detection results</span>
+            </div>
+            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
+                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">📄</span>
+                <span class="text-sm text-slate-200">Monitor previous scans and security reports</span>
+            </div>
         </div>
+    </x-slot:rightPanel>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
+    <div x-data="{ showPassword: false, showConfirm: false, agreed: false }">
 
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="new-password" />
+        <h1 class="text-3xl font-bold text-white mb-1">Create your account</h1>
+        <p class="text-slate-400 mb-8">Register to access the PhishCore security platform.</p>
 
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
+        <form method="POST" action="{{ route('register') }}" class="space-y-5">
+            @csrf
 
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
+            {{-- Full Name --}}
+            <div>
+                <label for="name" class="block text-xs tracking-wide text-slate-400 mb-2">FULL NAME</label>
+                <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name"
+                       placeholder="e.g. Ahmad Razif bin Haji Rosli"
+                       class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                @error('name')
+                    <p class="mt-1 text-xs text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
 
-            <x-text-input id="password_confirmation" class="block mt-1 w-full"
-                            type="password"
-                            name="password_confirmation" required autocomplete="new-password" />
+            {{-- Email --}}
+            <div>
+                               <label for="email" class="block text-xs tracking-wide text-slate-400 mb-2">EMAIL ADDRESS</label>
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username"
+                       placeholder="yourname@example.com"
+                       class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                @error('email')
+                    <p class="mt-1 text-xs text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
 
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-        </div>
+           
 
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
-                {{ __('Already registered?') }}
-            </a>
+            {{-- Password --}}
+            <div>
+                <label for="password" class="block text-xs tracking-wide text-slate-400 mb-2">PASSWORD</label>
+                <div class="relative">
+                    <input :type="showPassword ? 'text' : 'password'" id="password" name="password" required autocomplete="new-password"
+                           placeholder="••••••••"
+                           class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                    <button type="button" @click="showPassword = !showPassword"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+                @error('password')
+                    <p class="mt-1 text-xs text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
 
-            <x-primary-button class="ms-4">
-                {{ __('Register') }}
-            </x-primary-button>
-        </div>
-    </form>
+            {{-- Confirm Password --}}
+            <div>
+                <label for="password_confirmation" class="block text-xs tracking-wide text-slate-400 mb-2">CONFIRM PASSWORD</label>
+                <div class="relative">
+                    <input :type="showConfirm ? 'text' : 'password'" id="password_confirmation" name="password_confirmation" required autocomplete="new-password"
+                           placeholder="••••••••"
+                           class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                    <button type="button" @click="showConfirm = !showConfirm"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+                @error('password_confirmation')
+                    <p class="mt-1 text-xs text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Terms checkbox --}}
+            <label class="flex items-start gap-3 text-sm text-slate-400">
+                <input type="checkbox" x-model="agreed" required
+                       class="mt-0.5 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500">
+                <span>
+                    I agree to the
+                    <a href="#" class="text-sky-400 hover:text-sky-300">Terms of Use</a>
+                    and
+                    <a href="#" class="text-sky-400 hover:text-sky-300">Privacy Policy</a>
+                </span>
+            </label>
+
+            {{-- Submit --}}
+            <button type="submit" :disabled="!agreed"
+                    :class="agreed ? 'bg-gradient-to-r from-sky-400 to-blue-600 hover:opacity-90 cursor-pointer' : 'bg-slate-800 cursor-not-allowed'"
+                    class="w-full py-3 rounded-lg text-white font-medium transition">
+                Create Account
+            </button>
+
+            <p class="text-center text-sm text-slate-400">
+                Already have an account?
+                <a href="{{ route('login') }}" class="text-sky-400 hover:text-sky-300">Sign in</a>
+            </p>
+        </form>
+    </div>
+
 </x-guest-layout>

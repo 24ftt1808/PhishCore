@@ -10,21 +10,24 @@ class Analysis extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'report_id',
-        'whois_data',
-        'domain_age_days',
-        'url_syntax_score',
-        'ip_address',
-        'ip_reputation',
-        'redirect_chain',
-        'verdict',
-    ];
+  protected $fillable = [
+    'report_id',
+    'whois_data',
+    'domain_age_days',
+    'url_syntax_score',
+    'ip_address',
+    'ip_reputation',
+    'redirect_chain',
+    'verdict',
+    'flags',
+    'risk_score',
+];
 
-    protected $casts = [
-        'whois_data' => 'array',
-        'redirect_chain' => 'array',
-    ];
+protected $casts = [
+    'whois_data' => 'array',
+    'redirect_chain' => 'array',
+    'flags' => 'array',
+];
 
     public function report(): BelongsTo
     {

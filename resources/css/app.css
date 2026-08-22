@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Fix browser autofill forcing white bg + black text on dark inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #f1f5f9; /* slate-100 */
+    -webkit-box-shadow: 0 0 0px 1000px #0f172a inset; /* slate-900 */
+    box-shadow: 0 0 0px 1000px #0f172a inset;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+input {
+    color-scheme: dark;
+}

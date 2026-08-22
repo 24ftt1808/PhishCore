@@ -10,6 +10,8 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "doctrine/dbal": "^4.4",
+        "io-developer/php-whois": "^4.1",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0"
     },

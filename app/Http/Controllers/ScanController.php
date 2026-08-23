@@ -13,7 +13,17 @@ class ScanController extends Controller
 {
     public function index(): View
     {
-        return view('scan.index');
+        $recentScans = [];
+
+        if (auth()->check()) {
+            $recentScans = Report::where('user_id', auth()->id())
+                ->latest()
+                ->take(3)
+                ->with('analyses')
+                ->get();
+        }
+
+        return view('scan.index', ['recentScans' => $recentScans]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -31,12 +41,12 @@ class ScanController extends Controller
             'status' => 'completed',
         ]);
 
-               Analysis::create([
+        Analysis::create([
             'report_id' => $report->id,
-            'domain_age_days' => $result['domain_age_days'] !== null ? round($result['domain_age_days']) : null,
+            'domain_age_days' => $result['domain_age_days'],
             'url_syntax_score' => $result['url_syntax_score'],
             'verdict' => $result['verdict'],
-            'flags' => $result['reasons'],
+            'flags' => $result['checks'],
             'risk_score' => $result['risk_score'],
         ]);
 

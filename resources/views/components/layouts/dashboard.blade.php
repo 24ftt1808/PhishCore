@@ -34,22 +34,30 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
                         @endif
                     </a>
-                    <a href="{{ route('scan.index') }}"
-                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('scan.*') ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-                        Scan Website
-                        @if (request()->routeIs('scan.*'))
+                   <a href="{{ route('scan.index') }}"
+   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs(['scan.index', 'scan.show']) ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+    Scan Website
+    @if (request()->routeIs(['scan.index', 'scan.show']))
+        <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
+    @endif
+</a>
+                                       <a href="{{ route('scan.history') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('scan.history') ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Scan History
+                        @if (request()->routeIs('scan.history'))
                             <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
                         @endif
                     </a>
-                    <span class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 cursor-not-allowed">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Scan History <span class="text-[9px] ml-auto bg-slate-800 px-1.5 py-0.5 rounded">SOON</span>
-                    </span>
-                    <span class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 cursor-not-allowed">
+                                        <a href="{{ route('analytics') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('analytics') ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5l3.75-3.75 3 3 4.5-4.5M3 19.5h18" /></svg>
-                        Analytics <span class="text-[9px] ml-auto bg-slate-800 px-1.5 py-0.5 rounded">SOON</span>
-                    </span>
+                        Analytics
+                        @if (request()->routeIs('analytics'))
+                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
+                        @endif
+                    </a>
                     <span class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 cursor-not-allowed">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25" /></svg>
                         Reports <span class="text-[9px] ml-auto bg-slate-800 px-1.5 py-0.5 rounded">SOON</span>
@@ -95,8 +103,10 @@
         {{-- MAIN CONTENT --}}
         <main class="flex-1 p-8 overflow-y-auto">
             {{ $slot }}
-        </main>
+               </main>
 
     </div>
+
+    @stack('scripts')
 </body>
 </html>

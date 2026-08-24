@@ -21,6 +21,7 @@ class Analysis extends Model
     'verdict',
     'flags',
     'risk_score',
+    'duration_ms'
 ];
 
 protected $casts = [

@@ -201,16 +201,17 @@ class AnalysisEngine
     /**
      * Build a structured check result for the UI (name, status, message).
      */
-    private function buildCheck(string $name, array $result, string $flaggedStatus = 'SUSPICIOUS'): array
-    {
-        return [
-            'name' => $name,
-            'status' => $result['flagged'] ? $flaggedStatus : 'SAFE',
-            'message' => !empty($result['reasons'])
-                ? implode(' ', $result['reasons'])
-                : 'No issues detected for this check.',
-        ];
-    }
+   private function buildCheck(string $name, array $result, string $flaggedStatus = 'SUSPICIOUS'): array
+{
+    return [
+        'name' => $name,
+        'status' => $result['flagged'] ? $flaggedStatus : 'SAFE',
+        'message' => !empty($result['reasons'])
+            ? implode(' ', $result['reasons'])
+            : 'No issues detected for this check.',
+        'points' => $result['points'],
+    ];
+}
 
     public function analyze(string $url): array
     {

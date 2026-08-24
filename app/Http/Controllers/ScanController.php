@@ -32,8 +32,10 @@ class ScanController extends Controller
             'url' => ['required', 'url', 'max:2048'],
         ]);
 
-        $engine = new AnalysisEngine();
-        $result = $engine->analyze($request->url);
+       $engine = new AnalysisEngine();
+$startTime = microtime(true);
+$result = $engine->analyze($request->url);
+$durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
         $report = Report::create([
             'user_id' => auth()->id(), // null for guests
@@ -41,14 +43,15 @@ class ScanController extends Controller
             'status' => 'completed',
         ]);
 
-        Analysis::create([
-            'report_id' => $report->id,
-            'domain_age_days' => $result['domain_age_days'],
-            'url_syntax_score' => $result['url_syntax_score'],
-            'verdict' => $result['verdict'],
-            'flags' => $result['checks'],
-            'risk_score' => $result['risk_score'],
-        ]);
+      Analysis::create([
+    'report_id' => $report->id,
+    'domain_age_days' => $result['domain_age_days'],
+    'url_syntax_score' => $result['url_syntax_score'],
+    'verdict' => $result['verdict'],
+    'flags' => $result['checks'],
+    'risk_score' => $result['risk_score'],
+    'duration_ms' => $durationMs,
+]);
 
         return redirect()->route('scan.show', $report);
     }

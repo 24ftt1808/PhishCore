@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ScanHistoryController;
+use App\Http\Controllers\AnalyticsController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,6 +21,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/scan-history', [ScanHistoryController::class, 'index'])->name('scan.history');
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
 });
 
 require __DIR__.'/auth.php';

@@ -96,6 +96,61 @@
     </div>
 </div>
 
+@if ($ctiLookup)
+    @php
+        $vtStats = $ctiLookup->raw_response['data']['attributes']['last_analysis_stats'] ?? null;
+        $vtMalicious = $vtStats['malicious'] ?? 0;
+        $vtSuspicious = $vtStats['suspicious'] ?? 0;
+        $vtHarmless = $vtStats['harmless'] ?? 0;
+        $vtUndetected = $vtStats['undetected'] ?? 0;
+        $vtTotal = $vtMalicious + $vtSuspicious + $vtHarmless + $vtUndetected;
+        $vtFlagged = $vtMalicious + $vtSuspicious;
+        $vtColor = $vtFlagged > 0 ? 'text-red-400' : 'text-emerald-400';
+        $vtBadge = $vtFlagged > 0 ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+    @endphp
+    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-10">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
+            <div class="flex items-center gap-3">
+                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
+                    <svg width="18" height="18" class="text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="text-lg font-bold text-white">{{ $ctiLookup->source }} / CTI Lookup</h2>
+                    <p class="text-sm text-slate-500">Cross-referenced against {{ $vtTotal }} independent security vendors</p>
+                </div>
+            </div>
+            <span class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $vtBadge }}">
+                {{ $vtFlagged }} / {{ $vtTotal }} FLAGGED
+            </span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-slate-950/50 border border-slate-800 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold {{ $vtColor }}">{{ $vtMalicious }}</p>
+                <p class="text-xs text-slate-500 mt-1">Malicious</p>
+            </div>
+            <div class="bg-slate-950/50 border border-slate-800 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-orange-400">{{ $vtSuspicious }}</p>
+                <p class="text-xs text-slate-500 mt-1">Suspicious</p>
+            </div>
+            <div class="bg-slate-950/50 border border-slate-800 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-emerald-400">{{ $vtHarmless }}</p>
+                <p class="text-xs text-slate-500 mt-1">Harmless</p>
+            </div>
+            <div class="bg-slate-950/50 border border-slate-800 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-slate-400">{{ $vtUndetected }}</p>
+                <p class="text-xs text-slate-500 mt-1">Undetected</p>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-600 mt-4">
+            Threat score: {{ $ctiLookup->threat_score }}% &middot; Looked up {{ $ctiLookup->created_at->diffForHumans() }} via VirusTotal's public API (70+ integrated antivirus and security engines).
+        </p>
+    </div>
+@endif
+
 @if ($report->screenshot_path)
     <div class="mb-10">
         <h2 class="text-lg font-bold text-white mb-1">
@@ -248,13 +303,21 @@
                 <dt class="text-xs text-slate-500 mb-1">VERDICT</dt>
                 <dd class="text-slate-300 uppercase">{{ $analysis->verdict }}</dd>
             </div>
-            <div>
+                       <div>
                 <dt class="text-xs text-slate-500 mb-1">RISK SCORE</dt>
                 <dd class="text-slate-300">{{ $analysis->risk_score }} / 100</dd>
             </div>
             <div>
                 <dt class="text-xs text-slate-500 mb-1">DOMAIN AGE</dt>
                 <dd class="text-slate-300">{{ $analysis->domain_age_days !== null ? $analysis->domain_age_days . ' days' : 'Unavailable' }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-500 mb-1">IP ADDRESS</dt>
+                <dd class="text-slate-300 font-mono">{{ $analysis->ip_address ?? 'Unavailable' }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-500 mb-1">IP REPUTATION</dt>
+                <dd class="text-slate-300">{{ $analysis->ip_reputation ?? 'Unavailable' }}</dd>
             </div>
             <div>
                 <dt class="text-xs text-slate-500 mb-1">SCANNED BY</dt>
@@ -265,6 +328,20 @@
                 <dd class="text-slate-300">{{ $analysis->duration_ms !== null ? round($analysis->duration_ms / 1000, 2) . 's' : 'Not recorded' }}</dd>
             </div>
         </dl>
+        @if (!empty($analysis->redirect_chain) && count($analysis->redirect_chain) > 1)
+            <p class="text-xs text-slate-500 mt-5 mb-2">REDIRECT CHAIN</p>
+            <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2">
+                @foreach ($analysis->redirect_chain as $i => $hop)
+                    <div class="flex items-start gap-2 text-xs font-mono">
+                        <span class="text-slate-600 shrink-0">{{ $i + 1 }}.</span>
+                        <span class="{{ $i === count($analysis->redirect_chain) - 1 ? 'text-orange-400' : 'text-slate-400' }} break-all">{{ $hop }}</span>
+                        @if ($i === count($analysis->redirect_chain) - 1 && count($analysis->redirect_chain) > 1)
+                            <span class="text-[10px] text-orange-500 shrink-0">(final)</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
 
         <p class="text-xs text-slate-500 mt-5 mb-2">RAW CHECK RESULTS</p>
         <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2">

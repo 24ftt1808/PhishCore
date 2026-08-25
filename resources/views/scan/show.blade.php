@@ -39,6 +39,7 @@
     $content = View::make('scan._result-content', [
         'report' => $report,
         'analysis' => $analysis,
+        'ctiLookup' => $ctiLookup,
         'style' => $style,
         'severityLabel' => $severityLabel,
         'statusColors' => $statusColors,

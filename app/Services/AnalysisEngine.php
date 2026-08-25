@@ -205,6 +205,258 @@ class AnalysisEngine
     }
 
     /**
+     * Checks a URL against VirusTotal's multi-vendor threat database.
+     * Tries a fast cached lookup first; only submits + polls for a fresh
+     * scan if VT has no existing record for this URL.
+     */
+    public function checkVirusTotal(string $url): array
+    {
+        $apiKey = config('services.virustotal.key');
+
+        $empty = [
+            'flagged' => false,
+            'points' => 0,
+            'reasons' => [],
+            'malicious' => null,
+            'total' => null,
+            'raw' => null,
+        ];
+
+        if (!$apiKey) {
+            $empty['reasons'][] = 'VirusTotal check skipped: no API key configured';
+            return $empty;
+        }
+
+        try {
+            $urlId = rtrim(strtr(base64_encode($url), '+/', '-_'), '=');
+
+            $lookup = Http::withHeaders(['x-apikey' => $apiKey])
+                ->timeout(15)
+                ->get("https://www.virustotal.com/api/v3/urls/{$urlId}");
+
+            $stats = null;
+            $raw = null;
+
+            if ($lookup->successful()) {
+                $stats = $lookup->json('data.attributes.last_analysis_stats');
+                $raw = $lookup->json();
+            } elseif ($lookup->status() === 404) {
+                $submit = Http::withHeaders(['x-apikey' => $apiKey])
+                    ->timeout(15)
+                    ->asForm()
+                    ->post('https://www.virustotal.com/api/v3/urls', ['url' => $url]);
+
+                if (!$submit->successful()) {
+                    $empty['reasons'][] = 'Could not submit URL to VirusTotal for scanning';
+                    return $empty;
+                }
+
+                $analysisId = $submit->json('data.id');
+
+                for ($attempt = 0; $attempt < 4; $attempt++) {
+                    sleep(2);
+                    $analysisResp = Http::withHeaders(['x-apikey' => $apiKey])
+                        ->timeout(15)
+                        ->get("https://www.virustotal.com/api/v3/analyses/{$analysisId}");
+
+                    if ($analysisResp->json('data.attributes.status') === 'completed') {
+                        $stats = $analysisResp->json('data.attributes.stats');
+                        $raw = $analysisResp->json();
+                        break;
+                    }
+                }
+
+                if (!$stats) {
+                    $empty['reasons'][] = 'VirusTotal analysis is still processing for this new URL — try scanning again shortly';
+                    return $empty;
+                }
+            } else {
+                $empty['reasons'][] = 'VirusTotal lookup failed';
+                return $empty;
+            }
+
+            $malicious = $stats['malicious'] ?? 0;
+            $suspicious = $stats['suspicious'] ?? 0;
+            $harmless = $stats['harmless'] ?? 0;
+            $undetected = $stats['undetected'] ?? 0;
+            $total = $malicious + $suspicious + $harmless + $undetected;
+            $flaggedCount = $malicious + $suspicious;
+
+            $points = 0;
+            $reasons = [];
+
+            if ($flaggedCount > 0) {
+                $points = min(50, $flaggedCount * 5);
+                $reasons[] = "{$flaggedCount} out of {$total} security vendors on VirusTotal flagged this URL as malicious or suspicious";
+            } else {
+                $reasons[] = "0 out of {$total} security vendors on VirusTotal flagged this URL";
+            }
+
+            return [
+                'flagged' => $flaggedCount > 0,
+                'points' => $points,
+                'reasons' => $reasons,
+                'malicious' => $flaggedCount,
+                'total' => $total,
+                'raw' => $raw,
+            ];
+        } catch (\Exception $e) {
+            $empty['reasons'][] = 'Could not reach VirusTotal';
+            return $empty;
+        }
+    }
+
+    /**
+     * Resolves the URL's domain to an IP address and checks its geolocation,
+     * ISP, and whether it's a proxy/VPN or generic hosting provider — common
+     * traits of rapidly-deployed phishing infrastructure.
+     */
+    public function checkIpReputation(string $url): array
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        $empty = [
+            'flagged' => false,
+            'points' => 0,
+            'reasons' => [],
+            'ip' => null,
+            'country' => null,
+            'summary' => null,
+        ];
+
+        if (!$host) {
+            $empty['reasons'][] = 'Could not determine host from URL';
+            return $empty;
+        }
+
+        $ip = @gethostbyname($host);
+        if (!$ip || $ip === $host) {
+            $empty['reasons'][] = 'Could not resolve domain to an IP address';
+            return $empty;
+        }
+
+        try {
+            $response = Http::timeout(10)->get("http://ip-api.com/json/{$ip}", [
+                'fields' => 'status,message,country,countryCode,isp,org,proxy,hosting,query',
+            ]);
+
+            if (!$response->successful() || $response->json('status') !== 'success') {
+                $empty['ip'] = $ip;
+                $empty['reasons'][] = 'IP reputation lookup unavailable';
+                return $empty;
+            }
+
+            $data = $response->json();
+            $country = $data['country'] ?? 'Unknown';
+            $isp = $data['isp'] ?? 'Unknown ISP';
+            $isProxy = $data['proxy'] ?? false;
+            $isHosting = $data['hosting'] ?? false;
+
+            $reasons = [];
+            $points = 0;
+
+            if ($isProxy) {
+                $reasons[] = 'IP address is associated with a known proxy or VPN service, often used to mask phishing infrastructure';
+                $points += 20;
+            }
+
+            if ($isHosting) {
+                $reasons[] = 'IP address belongs to a datacenter/hosting provider rather than a residential ISP, common for rapidly-deployed phishing sites';
+                $points += 15;
+            }
+
+            if (empty($reasons)) {
+                $reasons[] = "Hosted in {$country} via {$isp}, no proxy or datacenter flags";
+            }
+
+            $summary = "{$ip} — {$country} ({$isp})"
+                . ($isProxy ? ' · Proxy/VPN' : '')
+                . ($isHosting ? ' · Hosting/Datacenter' : '');
+
+            return [
+                'flagged' => $points > 0,
+                'points' => $points,
+                'reasons' => $reasons,
+                'ip' => $ip,
+                'country' => $country,
+                'summary' => $summary,
+            ];
+        } catch (\Exception $e) {
+            $empty['ip'] = $ip;
+            $empty['reasons'][] = 'Could not reach IP reputation service';
+            return $empty;
+        }
+    }
+
+    /**
+     * Manually follows the URL's redirect chain (without auto-following)
+     * to detect domain-hopping and excessive redirect counts.
+     */
+       public function checkRedirectChain(string $url): array
+    {
+        $chain = [$url];
+        $originalHost = parse_url($url, PHP_URL_HOST);
+        $current = $url;
+
+        for ($hop = 0; $hop < 5; $hop++) {
+            try {
+                $response = Http::withOptions(['allow_redirects' => false])
+                    ->timeout(8)
+                    ->get($current);
+            } catch (\Exception $e) {
+                break;
+            }
+
+            $status = $response->status();
+
+            if (!in_array($status, [301, 302, 303, 307, 308])) {
+                break;
+            }
+
+            $location = $response->header('Location');
+            if (!$location) {
+                break;
+            }
+
+            if (!str_starts_with($location, 'http')) {
+                $parsed = parse_url($current);
+                $location = ($parsed['scheme'] ?? 'https') . '://' . ($parsed['host'] ?? '') . $location;
+            }
+
+            $chain[] = $location;
+            $current = $location;
+        }
+
+        $hopCount = count($chain) - 1;
+        $finalHost = parse_url(end($chain), PHP_URL_HOST);
+
+        $reasons = [];
+        $points = 0;
+
+        if ($hopCount >= 3) {
+            $reasons[] = "URL redirects through {$hopCount} hops before reaching its final destination, an unusually long chain";
+            $points += 15;
+        }
+
+        if ($finalHost && $originalHost && $finalHost !== $originalHost) {
+            $reasons[] = "URL ultimately redirects to a different domain ({$finalHost}) than the one submitted ({$originalHost})";
+            $points += 20;
+        }
+
+        if (empty($reasons)) {
+            $reasons[] = $hopCount > 0
+                ? "Redirects {$hopCount} time(s) but stays on the same domain"
+                : 'No redirects detected';
+        }
+
+        return [
+            'flagged' => $points > 0,
+            'points' => $points,
+            'reasons' => $reasons,
+            'chain' => $chain,
+        ];
+    }
+    /**
      * Extracts the domain after "@" and flags brand-impersonation / suspicious patterns.
      */
     public function checkEmailDomain(string $email): array
@@ -417,10 +669,14 @@ class AnalysisEngine
         $ageResult = $this->checkDomainAge($url);
         $sslResult = $this->checkSslCertificate($url);
         $blacklistResult = $this->checkBlacklist($url);
+        $vtResult = $this->checkVirusTotal($url);
+        $ipResult = $this->checkIpReputation($url);
+        $redirectResult = $this->checkRedirectChain($url);
 
         $totalPoints = min(
             100,
-            $syntaxResult['points'] + $ageResult['points'] + $sslResult['points'] + $blacklistResult['points']
+            $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
+                + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
         );
 
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
@@ -430,15 +686,35 @@ class AnalysisEngine
             $this->buildCheck('Domain Age', $ageResult, $ageResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS'),
             $this->buildCheck('URL Structure', $syntaxResult, 'SUSPICIOUS'),
             $this->buildCheck('Blacklist Database', $blacklistResult, 'DETECTED'),
+            $this->buildCheck('VirusTotal / CTI Check', $vtResult, 'DETECTED'),
+            $this->buildCheck('IP Reputation & Location', $ipResult, 'SUSPICIOUS'),
+            $this->buildCheck('Redirect Chain', $redirectResult, 'SUSPICIOUS'),
         ];
 
-        return [
+        $result = [
             'risk_score' => $totalPoints,
             'verdict' => $verdict,
             'domain_age_days' => $ageResult['domain_age_days'],
             'url_syntax_score' => $syntaxResult['points'],
+            'ip_address' => $ipResult['ip'],
+            'ip_reputation' => $ipResult['summary'],
+            'redirect_chain' => $redirectResult['chain'],
             'checks' => $checks,
         ];
+
+        if ($vtResult['raw'] !== null) {
+            $threatScore = $vtResult['total'] > 0
+                ? round(($vtResult['malicious'] / $vtResult['total']) * 100, 1)
+                : 0.0;
+
+            $result['cti'] = [
+                'source' => 'VirusTotal',
+                'raw_response' => $vtResult['raw'],
+                'threat_score' => $threatScore,
+            ];
+        }
+
+        return $result;
     }
 
     private function analyzeEmail(string $email): array

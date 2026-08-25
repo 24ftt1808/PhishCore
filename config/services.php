@@ -43,4 +43,8 @@ return [
     'key' => env('OCR_SPACE_API_KEY'),
 ],
 
+    'virustotal' => [
+        'key' => env('VIRUSTOTAL_API_KEY'),
+    ],
+
 ];

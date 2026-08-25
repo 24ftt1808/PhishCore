@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Analysis;
+use App\Models\CtiLookup;
 use App\Models\Report;
 use App\Services\AnalysisEngine;
 use Illuminate\Http\Request;
@@ -32,9 +33,6 @@ class ScanController extends Controller
 
         $request->validate($this->rulesFor($type));
 
-        $engine = new AnalysisEngine();
-        $startTime = microtime(true);
-
         $screenshotPath = null;
         $screenshotStoragePath = null;
 
@@ -44,6 +42,20 @@ class ScanController extends Controller
             $screenshotStoragePath = storage_path('app/public/' . $storedPath);
             $screenshotPath = asset('storage/' . $storedPath);
         }
+
+        // Create the report first so we have a report_id to attach CTI lookups to.
+        $report = Report::create([
+            'user_id' => auth()->id(), // null for guests
+            'type' => $type,
+            'url' => $request->input('url'),
+            'sender_email' => $request->input('email'),
+            'phone_number' => $request->input('phone'),
+            'screenshot_path' => $screenshotPath,
+            'status' => 'processing',
+        ]);
+
+        $engine = new AnalysisEngine();
+        $startTime = microtime(true);
 
         $result = $engine->analyze(
             type: $type,
@@ -55,33 +67,41 @@ class ScanController extends Controller
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
-        $report = Report::create([
-            'user_id' => auth()->id(), // null for guests
-            'type' => $type,
-            'url' => $request->input('url'),
-            'sender_email' => $request->input('email'),
-            'phone_number' => $request->input('phone'),
-            'screenshot_path' => $screenshotPath,
-            'status' => 'completed',
-        ]);
+        if (!empty($result['cti'])) {
+            CtiLookup::create([
+                'report_id' => $report->id,
+                'source' => $result['cti']['source'],
+                'raw_response' => $result['cti']['raw_response'],
+                'threat_score' => $result['cti']['threat_score'],
+            ]);
+        }
 
-        Analysis::create([
+               Analysis::create([
             'report_id' => $report->id,
             'domain_age_days' => $result['domain_age_days'],
             'url_syntax_score' => $result['url_syntax_score'],
+            'ip_address' => $result['ip_address'] ?? null,
+            'ip_reputation' => $result['ip_reputation'] ?? null,
+            'redirect_chain' => $result['redirect_chain'] ?? null,
             'verdict' => $result['verdict'],
             'flags' => $result['checks'],
             'risk_score' => $result['risk_score'],
             'duration_ms' => $durationMs,
         ]);
 
+        $report->update(['status' => 'completed']);
+
         return redirect()->route('scan.show', $report);
     }
 
     public function show(Report $report): View
     {
-        $report->load('analyses');
-        return view('scan.show', ['report' => $report, 'analysis' => $report->analyses->first()]);
+        $report->load(['analyses', 'ctiLookups']);
+        return view('scan.show', [
+            'report' => $report,
+            'analysis' => $report->analyses->first(),
+            'ctiLookup' => $report->ctiLookups->first(),
+        ]);
     }
 
     /**

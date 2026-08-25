@@ -18,7 +18,7 @@
     <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
         <div>
             <h1 class="text-2xl font-bold text-white mb-1">Detection Analytics</h1>
-            <p class="text-slate-400 text-sm">Monitor phishing trends, scan activity and detection performance.</p>
+            <p class="text-slate-400 text-sm">Monitor phishing trends, report activity and detection performance.</p>
         </div>
         <span class="px-4 py-2.5 rounded-lg border border-slate-800 text-slate-600 text-sm cursor-not-allowed" title="Coming soon">
             ⬇ Export Analytics
@@ -41,7 +41,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
             <div class="flex items-start justify-between mb-3">
-                <p class="text-xs tracking-wide text-slate-500">TOTAL SCANS</p>
+                <p class="text-xs tracking-wide text-slate-500">TOTAL REPORTS</p>
                 <span class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
                     <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
                 </span>
@@ -85,10 +85,10 @@
     <div class="grid lg:grid-cols-3 gap-4 mb-4">
         <div class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
             <div class="flex items-center justify-between mb-1">
-                <h2 class="text-white font-semibold">Scan Activity Over Time</h2>
+                <h2 class="text-white font-semibold">Report Activity Over Time</h2>
                 <span class="text-xs text-slate-500">{{ $periods[$period] ?? '' }}</span>
             </div>
-            <p class="text-sm text-slate-500 mb-4">Daily scan totals for the selected period</p>
+            <p class="text-sm text-slate-500 mb-4">Daily report totals for the selected period</p>
             <canvas id="activityChart" height="90"></canvas>
         </div>
 
@@ -123,13 +123,13 @@
     <div class="grid lg:grid-cols-2 gap-4 mb-4">
         <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
             <h2 class="text-white font-semibold mb-1">Risk-Level Distribution</h2>
-            <p class="text-sm text-slate-500 mb-5">Number of scans in each risk bracket</p>
+            <p class="text-sm text-slate-500 mb-5">Number of reports in each risk bracket</p>
             <div class="space-y-4">
                 @foreach ($riskBuckets as $bucket)
                     <div>
                         <div class="flex items-center justify-between text-sm mb-1.5">
                             <span class="text-slate-300">{{ $bucket['label'] }}</span>
-                            <span class="text-{{ $bucket['color'] }}-400 font-medium">{{ $bucket['count'] }} <span class="text-slate-500 font-normal">scans</span></span>
+                            <span class="text-{{ $bucket['color'] }}-400 font-medium">{{ $bucket['count'] }} <span class="text-slate-500 font-normal">reports</span></span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
@@ -144,7 +144,7 @@
 
         <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
             <h2 class="text-white font-semibold mb-1">Most Common Phishing Indicators</h2>
-            <p class="text-sm text-slate-500 mb-5">Top triggers across your flagged scans (4 real detection layers)</p>
+            <p class="text-sm text-slate-500 mb-5">Top triggers across your flagged reports, across all detection types (URL, email, phone, screenshot)</p>
             @if (count($indicatorCounts) > 0)
                 <div class="space-y-4">
                     @foreach ($indicatorCounts as $name => $count)
@@ -200,7 +200,7 @@
 
         <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
             <h2 class="text-white font-semibold mb-1">Scanning Performance</h2>
-            <p class="text-sm text-slate-500 mb-5">Engine response times across your scans</p>
+            <p class="text-sm text-slate-500 mb-5">Engine response times across your reports</p>
             @if ($performance)
                 <div class="space-y-4">
                     <div>
@@ -208,21 +208,21 @@
                             <span class="text-slate-300">Average Scan Time</span>
                             <span class="text-sky-400 font-medium">{{ msLabel($performance['avg_ms']) }}</span>
                         </div>
-                        <p class="text-xs text-slate-600">Across {{ $performance['count'] }} timed scans</p>
+                        <p class="text-xs text-slate-600">Across {{ $performance['count'] }} timed reports</p>
                     </div>
                     <div>
                         <div class="flex items-center justify-between text-sm mb-1">
                             <span class="text-slate-300">Fastest Scan</span>
                             <span class="text-emerald-400 font-medium">{{ msLabel($performance['fastest_ms']) }}</span>
                         </div>
-                        <p class="text-xs text-slate-600 truncate">{{ $performance['fastest_url'] }}</p>
+                        <p class="text-xs text-slate-600 truncate">{{ $performance['fastest_label'] }}</p>
                     </div>
                     <div>
                         <div class="flex items-center justify-between text-sm mb-1">
                             <span class="text-slate-300">Slowest Scan</span>
                             <span class="text-orange-400 font-medium">{{ msLabel($performance['slowest_ms']) }}</span>
                         </div>
-                        <p class="text-xs text-slate-600 truncate">{{ $performance['slowest_url'] }}</p>
+                        <p class="text-xs text-slate-600 truncate">{{ $performance['slowest_label'] }}</p>
                     </div>
                     <div>
                         <div class="flex items-center justify-between text-sm mb-1">
@@ -233,22 +233,23 @@
                     </div>
                 </div>
             @else
-                <p class="text-sm text-slate-500">No timing data yet — this started being recorded with your most recent scans. Scan a few more URLs to populate this.</p>
+                <p class="text-sm text-slate-500">No timing data yet — this started being recorded with your most recent reports. Submit a few more scans to populate this.</p>
             @endif
         </div>
     </div>
 
-    {{-- TOP THREAT DOMAINS --}}
+    {{-- TOP THREAT SOURCES --}}
     <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-        <h2 class="text-white font-semibold mb-1">Top Threat Domains</h2>
-        <p class="text-sm text-slate-500 mb-5">Your most frequently detected phishing domains in this period</p>
+        <h2 class="text-white font-semibold mb-1">Top Threat Sources</h2>
+        <p class="text-sm text-slate-500 mb-5">Your most frequently detected phishing sources in this period — URLs, sender domains, phone numbers, or screenshots</p>
 
-        @if ($topDomains->count() > 0)
-            <table class="w-full text-sm">
+                @if ($topDomains->count() > 0)
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[600px]">
                 <thead>
                     <tr class="text-left text-xs tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="pb-3 pr-4">#</th>
-                        <th class="pb-3 pr-4">DOMAIN</th>
+                        <th class="pb-3 pr-4">SOURCE</th>
                         <th class="pb-3 pr-4">DETECTIONS</th>
                         <th class="pb-3 pr-4">AVG RISK SCORE</th>
                         <th class="pb-3">LATEST DETECTION</th>
@@ -276,14 +277,15 @@
                         </tr>
                     @endforeach
                 </tbody>
-            </table>
+                        </table>
+        </div>
         @else
             <p class="text-sm text-slate-500">No phishing detections in this period yet.</p>
         @endif
     </div>
 
     @if ($breakdown['total'] === 0)
-        <p class="text-center text-sm text-slate-500 mt-6">No scans found in this period yet — try a wider date range or scan a few URLs first.</p>
+        <p class="text-center text-sm text-slate-500 mt-6">No reports found in this period yet — try a wider date range or submit a few scans first.</p>
     @endif
 
     @push('scripts')
@@ -295,7 +297,7 @@
             data: {
                 labels: @json($chartLabels),
                 datasets: [{
-                    label: 'Scans',
+                    label: 'Reports',
                     data: @json($chartCounts),
                     borderColor: '#38bdf8',
                     backgroundColor: 'rgba(56, 189, 248, 0.15)',

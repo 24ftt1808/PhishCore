@@ -4,8 +4,8 @@
 
 @auth
     <x-layouts.dashboard>
-        <p class="text-sm text-slate-500 mb-1">Scan Website</p>
-        <h1 class="text-2xl font-bold text-white mb-6">Scan Website</h1>
+        <p class="text-sm text-slate-500 mb-1">Scan</p>
+        <h1 class="text-2xl font-bold text-white mb-6">Scan</h1>
         {!! $inner !!}
     </x-layouts.dashboard>
 @else
@@ -16,8 +16,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-white mb-2">Scan a Website</h1>
-            <p class="text-slate-400">Analyse a website URL for phishing threats and suspicious activity.</p>
+            <h1 class="text-3xl font-bold text-white mb-2">Report a Threat</h1>
+            <p class="text-slate-400">Analyse a website URL, sender email, phone number, or screenshot for phishing threats.</p>
         </div>
         {!! $inner !!}
     </x-layouts.public>

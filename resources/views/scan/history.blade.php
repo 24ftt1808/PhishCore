@@ -3,11 +3,19 @@
         'clean' => ['bg' => 'bg-emerald-500/10', 'text' => 'text-emerald-400', 'label' => 'SAFE'],
         'suspicious' => ['bg' => 'bg-orange-500/10', 'text' => 'text-orange-400', 'label' => 'SUSPICIOUS'],
         'phishing' => ['bg' => 'bg-red-500/10', 'text' => 'text-red-400', 'label' => 'PHISHING'],
+        'review' => ['bg' => 'bg-sky-500/10', 'text' => 'text-sky-400', 'label' => 'REVIEW'],
     ];
     $scoreBarColor = [
         'clean' => 'bg-emerald-400',
         'suspicious' => 'bg-orange-400',
         'phishing' => 'bg-red-400',
+        'review' => 'bg-sky-400',
+    ];
+    $typeIcons = [
+        'url' => '🔗',
+        'email' => '✉️',
+        'phone' => '📱',
+        'screenshot' => '🖼️',
     ];
 @endphp
 
@@ -16,7 +24,7 @@
     <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
         <div>
             <h1 class="text-2xl font-bold text-white mb-1">Scan History</h1>
-            <p class="text-slate-400 text-sm">Review and manage all websites previously analysed by PhishCore.</p>
+            <p class="text-slate-400 text-sm">Review and manage all reports previously analysed by PhishCore.</p>
         </div>
         <span class="px-4 py-2.5 rounded-lg border border-slate-800 text-slate-600 text-sm cursor-not-allowed" title="Coming soon">
             ⬇ Export History
@@ -26,25 +34,25 @@
            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
             <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-sky-500/20 blur-2xl"></div>
-            <p class="relative text-xs tracking-wide text-slate-500 mb-3">TOTAL SCANS</p>
+            <p class="relative text-xs tracking-wide text-slate-500 mb-3">TOTAL REPORTS</p>
             <p class="relative text-3xl font-bold text-white">{{ $stats['total'] }}</p>
             <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-sky-400 shadow-[0_0_14px_3px_rgba(56,189,248,0.5)]"></span>
         </div>
         <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
             <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-emerald-500/20 blur-2xl"></div>
-            <p class="relative text-xs tracking-wide text-slate-500 mb-3">SAFE WEBSITES</p>
+            <p class="relative text-xs tracking-wide text-slate-500 mb-3">SAFE REPORTS</p>
             <p class="relative text-3xl font-bold text-emerald-400">{{ $stats['safe'] }}</p>
             <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-emerald-400 shadow-[0_0_14px_3px_rgba(52,211,153,0.5)]"></span>
         </div>
         <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
             <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-orange-500/20 blur-2xl"></div>
-            <p class="relative text-xs tracking-wide text-slate-500 mb-3">SUSPICIOUS WEBSITES</p>
+            <p class="relative text-xs tracking-wide text-slate-500 mb-3">SUSPICIOUS REPORTS</p>
             <p class="relative text-3xl font-bold text-orange-400">{{ $stats['suspicious'] }}</p>
             <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-orange-400 shadow-[0_0_14px_3px_rgba(251,146,60,0.5)]"></span>
         </div>
         <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
             <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-red-500/20 blur-2xl"></div>
-            <p class="relative text-xs tracking-wide text-slate-500 mb-3">PHISHING WEBSITES</p>
+            <p class="relative text-xs tracking-wide text-slate-500 mb-3">PHISHING REPORTS</p>
             <p class="relative text-3xl font-bold text-red-400">{{ $stats['phishing'] }}</p>
             <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-red-400 shadow-[0_0_14px_3px_rgba(248,113,113,0.5)]"></span>
         </div>
@@ -54,7 +62,7 @@
     <form method="GET" action="{{ route('scan.history') }}" class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 mb-6">
         <div class="flex flex-wrap gap-3 mb-4">
             <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
-                   placeholder="Search by website URL or scan reference ID"
+                   placeholder="Search by URL, email, phone number, or scan reference ID"
                    class="flex-1 min-w-[240px] bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
 
             @php $currentStatus = $filters['status'] ?? 'all'; @endphp
@@ -101,7 +109,7 @@
     </form>
 
     <div class="flex items-center justify-between mb-3 text-sm text-slate-500">
-        <span>Showing {{ $reports->firstItem() ?? 0 }}–{{ $reports->lastItem() ?? 0 }} of {{ $reports->total() }} total scans</span>
+        <span>Showing {{ $reports->firstItem() ?? 0 }}–{{ $reports->lastItem() ?? 0 }} of {{ $reports->total() }} total reports</span>
         <form method="GET" action="{{ route('scan.history') }}" class="flex items-center gap-2">
             @foreach ($filters as $key => $value)
                 @if ($key !== 'rows' && $value !== null)
@@ -123,12 +131,12 @@
         </form>
     </div>
 
-    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-        <table class="w-full text-sm">
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-x-auto">
+        <table class="w-full text-sm min-w-[720px]">
             <thead>
                 <tr class="border-b border-slate-800 text-left text-xs tracking-wide text-slate-500">
                     <th class="px-5 py-3 w-8"><input type="checkbox" class="rounded border-slate-700 bg-slate-900"></th>
-                    <th class="px-5 py-3">WEBSITE URL</th>
+                    <th class="px-5 py-3">REPORTED ITEM</th>
                     <th class="px-5 py-3">SCAN RESULT</th>
                     <th class="px-5 py-3">RISK SCORE</th>
                     <th class="px-5 py-3">DATE &amp; TIME</th>
@@ -144,11 +152,20 @@
                         $badge = $verdictBadge[$verdict] ?? $verdictBadge['clean'];
                         $barColor = $scoreBarColor[$verdict] ?? $scoreBarColor['clean'];
                         $refId = 'PG-' . $report->created_at->format('Y-md') . '-' . strtoupper(substr(md5($report->id), 0, 5));
+                        $itemLabel = match ($report->type) {
+                            'email' => $report->sender_email,
+                            'phone' => $report->phone_number,
+                            'screenshot' => 'Uploaded screenshot',
+                            default => $report->url,
+                        };
+                        $icon = $typeIcons[$report->type] ?? '🔗';
                     @endphp
                     <tr class="hover:bg-slate-900/40 transition">
                         <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-700 bg-slate-900"></td>
                         <td class="px-5 py-4">
-                            <p class="text-slate-200 truncate max-w-[220px]">{{ $report->url }}</p>
+                            <p class="text-slate-200 truncate max-w-[220px] flex items-center gap-1.5">
+                                <span class="shrink-0">{{ $icon }}</span> {{ $itemLabel }}
+                            </p>
                             <p class="text-xs text-slate-600">{{ $refId }}</p>
                         </td>
                         <td class="px-5 py-4">
@@ -183,7 +200,7 @@
                 @empty
                     <tr>
                         <td colspan="7" class="px-5 py-10 text-center text-slate-500">
-                            No scans found. Try adjusting your filters, or <a href="{{ route('scan.index') }}" class="text-sky-400">scan your first URL</a>.
+                            No reports found. Try adjusting your filters, or <a href="{{ route('scan.index') }}" class="text-sky-400">submit your first scan</a>.
                         </td>
                     </tr>
                 @endforelse

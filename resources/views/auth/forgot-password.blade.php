@@ -55,7 +55,7 @@
         @csrf
 
         <div>
-            <label for="email" class="block text-xs tracking-wide text-slate-400 mb-2">POLITEKNIK EMAIL ADDRESS</label>
+            <label for="email" class="block text-xs tracking-wide text-slate-400 mb-2">EMAIL ADDRESS</label>
             <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
                    placeholder="yourname@example.com"
                    class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">

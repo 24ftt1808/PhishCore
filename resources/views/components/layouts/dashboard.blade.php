@@ -7,22 +7,56 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased">
-    <div class="flex min-h-screen">
+    <div class="flex min-h-screen" x-data="{ sidebarOpen: false }">
+
+        {{-- MOBILE TOP BAR --}}
+        <div class="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800/60">
+            <a href="{{ route('welcome') }}" class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
+                    <svg width="16" height="16" class="text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
+                    </svg>
+                </span>
+                <span class="font-bold text-white">PhishCore</span>
+            </a>
+            <button @click="sidebarOpen = true" class="p-2 text-slate-300">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                </svg>
+            </button>
+        </div>
+
+        {{-- MOBILE BACKDROP --}}
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+             class="lg:hidden fixed inset-0 bg-black/60 z-40"
+             x-transition:enter="transition-opacity ease-linear duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
         {{-- SIDEBAR --}}
-        <aside class="w-64 shrink-0 bg-slate-950 border-r border-slate-800/60 flex flex-col justify-between">
+        <aside
+            class="w-64 shrink-0 bg-slate-950 border-r border-slate-800/60 flex flex-col justify-between
+                   fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out
+                   lg:static lg:translate-x-0"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
             <div>
-                <a href="{{ route('welcome') }}" class="flex items-center gap-2 px-6 py-6">
-                    <span class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
+                <div class="flex items-center justify-between px-6 py-6">
+                    <a href="{{ route('welcome') }}" class="flex items-center gap-2">
+                        <span class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
+                            <svg width="20" height="20" class="text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
+                            </svg>
+                        </span>
+                        <span class="leading-tight">
+                            <span class="block font-bold text-white">PhishCore</span>
+                            <span class="block text-[10px] tracking-wide text-sky-400">DETECTION PLATFORM</span>
+                        </span>
+                    </a>
+                    <button @click="sidebarOpen = false" class="lg:hidden p-1 text-slate-500 hover:text-slate-300">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                    </span>
-                    <span class="leading-tight">
-                        <span class="block font-bold text-white">PhishCore</span>
-                        <span class="block text-[10px] tracking-wide text-sky-400">DETECTION PLATFORM</span>
-                    </span>
-                </a>
+                    </button>
+                </div>
 
                 <p class="px-6 text-[10px] tracking-wider text-slate-600 mt-2 mb-2">MAIN MENU</p>
                 <nav class="px-3 space-y-1">
@@ -34,15 +68,15 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
                         @endif
                     </a>
-                   <a href="{{ route('scan.index') }}"
-   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs(['scan.index', 'scan.show']) ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
-    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-    Scan Website
-    @if (request()->routeIs(['scan.index', 'scan.show']))
-        <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
-    @endif
-</a>
-                                       <a href="{{ route('scan.history') }}"
+                    <a href="{{ route('scan.index') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs(['scan.index', 'scan.show']) ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                        Scan
+                        @if (request()->routeIs(['scan.index', 'scan.show']))
+                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
+                        @endif
+                    </a>
+                    <a href="{{ route('scan.history') }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('scan.history') ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Scan History
@@ -50,7 +84,7 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
                         @endif
                     </a>
-                                        <a href="{{ route('analytics') }}"
+                    <a href="{{ route('analytics') }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('analytics') ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5l3.75-3.75 3 3 4.5-4.5M3 19.5h18" /></svg>
                         Analytics
@@ -101,9 +135,9 @@
         </aside>
 
         {{-- MAIN CONTENT --}}
-        <main class="flex-1 p-8 overflow-y-auto">
+        <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 overflow-y-auto min-w-0">
             {{ $slot }}
-               </main>
+        </main>
 
     </div>
 

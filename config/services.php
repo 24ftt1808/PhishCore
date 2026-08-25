@@ -39,4 +39,8 @@ return [
         'key' => env('GOOGLE_SAFE_BROWSING_API_KEY'),
     ],
 
+    'ocr_space' => [
+    'key' => env('OCR_SPACE_API_KEY'),
+],
+
 ];

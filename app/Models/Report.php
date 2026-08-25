@@ -14,9 +14,11 @@ class Report extends Model
 
     protected $fillable = [
         'user_id',
+        'type',
         'url',
         'screenshot_path',
         'sender_email',
+        'phone_number',
         'description',
         'status',
     ];

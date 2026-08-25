@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Analysis;
+use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -122,14 +123,15 @@ class AnalyticsController extends Controller
         arsort($indicatorCounts);
         $maxIndicatorCount = !empty($indicatorCounts) ? max($indicatorCounts) : 1;
 
-        // Top Threat Domains — group phishing-flagged scans by host
+        // Top Threat Sources — group phishing-flagged scans by a type-aware label
+        // (URL host, email domain, phone number, or "Uploaded screenshot")
         $phishingScans = $current->where('verdict', 'phishing');
-        $domainGroups = $phishingScans->groupBy(function ($a) {
-            return parse_url($a->report->url ?? '', PHP_URL_HOST) ?: $a->report->url;
+        $sourceGroups = $phishingScans->groupBy(function ($a) {
+            return $this->reportLabel($a->report);
         });
-        $topDomains = $domainGroups->map(function ($group, $domain) {
+        $topDomains = $sourceGroups->map(function ($group, $source) {
             return [
-                'domain' => $domain,
+                'domain' => $source,
                 'detections' => $group->count(),
                 'avg_score' => round($group->avg('risk_score')),
                 'latest' => $group->max('created_at'),
@@ -149,9 +151,9 @@ class AnalyticsController extends Controller
             $performance = [
                 'avg_ms' => round($durations->avg()),
                 'fastest_ms' => $fastest->duration_ms,
-                'fastest_url' => $fastest->report->url ?? '',
+                'fastest_label' => $this->reportLabel($fastest->report),
                 'slowest_ms' => $slowest->duration_ms,
-                'slowest_url' => $slowest->report->url ?? '',
+                'slowest_label' => $this->reportLabel($slowest->report),
                 'median_ms' => $median,
                 'count' => $timedScans->count(),
             ];
@@ -171,5 +173,26 @@ class AnalyticsController extends Controller
             'maxDetections' => $maxDetections,
             'performance' => $performance,
         ]);
+    }
+
+    /**
+     * Type-aware display label for a report — used anywhere a "domain" or
+     * "URL" would previously have been shown, so email/phone/screenshot
+     * reports display meaningfully instead of a blank string.
+     */
+    private function reportLabel(?Report $report): string
+    {
+        if (!$report) {
+            return 'Unknown';
+        }
+
+        return match ($report->type) {
+            'email' => $report->sender_email
+                ? (strtolower(substr(strrchr($report->sender_email, '@'), 1)) ?: $report->sender_email)
+                : 'Unknown sender',
+            'phone' => $report->phone_number ?? 'Unknown number',
+            'screenshot' => 'Uploaded screenshot',
+            default => parse_url($report->url ?? '', PHP_URL_HOST) ?: ($report->url ?: 'Unknown URL'),
+        };
     }
 }

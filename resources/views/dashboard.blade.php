@@ -3,11 +3,19 @@
         'clean' => ['bg' => 'bg-emerald-500/10', 'text' => 'text-emerald-400', 'label' => 'SAFE'],
         'suspicious' => ['bg' => 'bg-orange-500/10', 'text' => 'text-orange-400', 'label' => 'SUSPICIOUS'],
         'phishing' => ['bg' => 'bg-red-500/10', 'text' => 'text-red-400', 'label' => 'PHISHING'],
+        'review' => ['bg' => 'bg-sky-500/10', 'text' => 'text-sky-400', 'label' => 'REVIEW'],
     ];
     $scoreColor = [
         'clean' => 'text-emerald-400',
         'suspicious' => 'text-orange-400',
         'phishing' => 'text-red-400',
+        'review' => 'text-sky-400',
+    ];
+    $typeIcons = [
+        'url' => '🔗',
+        'email' => '✉️',
+        'phone' => '📱',
+        'screenshot' => '🖼️',
     ];
 @endphp
 
@@ -43,13 +51,13 @@
                         </svg>
                     </span>
                     <div>
-                        <p class="text-xs font-medium text-slate-300">TOTAL URLS</p>
-                        <p class="text-[10px] text-slate-600 uppercase tracking-wider">SCANNED</p>
+                        <p class="text-xs font-medium text-slate-300">TOTAL REPORTS</p>
+                        <p class="text-[10px] text-slate-600 uppercase tracking-wider">SUBMITTED</p>
                     </div>
                 </div>
 
                 <p class="text-3xl font-bold text-white">{{ $stats['total'] }}</p>
-                <p class="text-xs text-slate-600 mt-1">All website scans</p>
+                <p class="text-xs text-slate-600 mt-1">URLs, emails, phone numbers &amp; screenshots</p>
             </div>
         </div>
 
@@ -65,7 +73,7 @@
                         </svg>
                     </span>
                     <div>
-                        <p class="text-xs font-medium text-slate-300">SAFE WEBSITES</p>
+                        <p class="text-xs font-medium text-slate-300">SAFE REPORTS</p>
                         <p class="text-[10px] text-slate-600 uppercase tracking-wider">VERIFIED</p>
                     </div>
                 </div>
@@ -87,7 +95,7 @@
                         </svg>
                     </span>
                     <div>
-                        <p class="text-xs font-medium text-slate-300">SUSPICIOUS WEBSITES</p>
+                        <p class="text-xs font-medium text-slate-300">SUSPICIOUS REPORTS</p>
                         <p class="text-[10px] text-slate-600 uppercase tracking-wider">NEEDS REVIEW</p>
                     </div>
                 </div>
@@ -109,19 +117,19 @@
                         </svg>
                     </span>
                     <div>
-                        <p class="text-xs font-medium text-slate-300">PHISHING WEBSITES</p>
+                        <p class="text-xs font-medium text-slate-300">PHISHING REPORTS</p>
                         <p class="text-[10px] text-slate-600 uppercase tracking-wider">THREATS DETECTED</p>
                     </div>
                 </div>
 
                 <p class="text-3xl font-bold text-red-400">{{ $stats['phishing'] }}</p>
-                <p class="text-xs text-slate-600 mt-1">Malicious websites</p>
+                <p class="text-xs text-slate-600 mt-1">Confirmed malicious</p>
             </div>
         </div>
 
     </div>
 
-    {{-- REDESIGNED SCAN WEBSITE --}}
+    {{-- QUICK URL CHECK --}}
     <div class="relative bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden mb-8">
 
         <div class="absolute -left-16 -top-16 w-56 h-56 rounded-full bg-sky-500/10 blur-3xl pointer-events-none"></div>
@@ -136,8 +144,8 @@
                 </span>
 
                 <div>
-                    <p class="text-white font-semibold text-sm">Scan a Website</p>
-                    <p class="text-xs text-slate-500 mt-0.5">Check a URL for potential security threats</p>
+                    <p class="text-white font-semibold text-sm">Quick URL Check</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Paste a link for an instant security check</p>
                 </div>
             </div>
 
@@ -198,6 +206,11 @@
                     Blacklist verification
                 </span>
             </div>
+
+            <p class="text-xs text-slate-500 mt-4">
+                Need to report a sender email, phone number, or screenshot instead?
+                <a href="{{ route('scan.index') }}" class="text-sky-400 hover:text-sky-300">Go to the full Scan page →</a>
+            </p>
         </div>
     </div>
 
@@ -237,19 +250,20 @@
     <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-8">
         <div class="flex items-center justify-between mb-5">
             <div>
-                <h2 class="text-white font-semibold">Recent Scans</h2>
-                <p class="text-sm text-slate-500">Latest {{ $recentScans->count() }} URL scan results</p>
+                <h2 class="text-white font-semibold">Recent Reports</h2>
+                <p class="text-sm text-slate-500">Latest {{ $recentScans->count() }} scan results</p>
             </div>
             <a href="{{ route('scan.history') }}" class="text-sky-400 text-sm font-medium hover:text-sky-300 flex items-center gap-1">
                 View All Scans →
             </a>
         </div>
 
-        @if ($recentScans->count() > 0)
-            <table class="w-full text-sm">
+              @if ($recentScans->count() > 0)
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[600px]">
                 <thead>
                     <tr class="text-left text-xs tracking-wide text-slate-500 border-b border-slate-800">
-                        <th class="pb-3 pr-4">WEBSITE URL</th>
+                        <th class="pb-3 pr-4">REPORTED ITEM</th>
                         <th class="pb-3 pr-4">SCAN RESULT</th>
                         <th class="pb-3 pr-4">RISK SCORE</th>
                         <th class="pb-3 pr-4">DATE &amp; TIME</th>
@@ -262,12 +276,19 @@
                             $verdict = $scan->analyses->first()->verdict ?? 'clean';
                             $score = $scan->analyses->first()->risk_score ?? 0;
                             $badge = $verdictBadge[$verdict] ?? $verdictBadge['clean'];
+                            $itemLabel = match ($scan->type) {
+                                'email' => $scan->sender_email,
+                                'phone' => $scan->phone_number,
+                                'screenshot' => 'Uploaded screenshot',
+                                default => $scan->url,
+                            };
+                            $icon = $typeIcons[$scan->type] ?? '🔗';
                         @endphp
                         <tr>
                             <td class="py-3 pr-4">
                                 <span class="flex items-center gap-2 text-slate-300 truncate max-w-[220px]">
-                                    <svg class="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" /></svg>
-                                    {{ $scan->url }}
+                                    <span class="shrink-0">{{ $icon }}</span>
+                                    {{ $itemLabel }}
                                 </span>
                             </td>
                             <td class="py-3 pr-4">
@@ -289,6 +310,7 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
 
             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
                 <p class="text-xs text-slate-500">Showing {{ $recentScans->count() }} of {{ $totalScansCount }} total records</p>
@@ -299,7 +321,7 @@
             </div>
         @else
             <p class="text-sm text-slate-500 text-center py-6">
-                No scans yet — <a href="{{ route('scan.index') }}" class="text-sky-400">scan your first URL</a> to see it here.
+                No reports yet — <a href="{{ route('scan.index') }}" class="text-sky-400">submit your first scan</a> to see it here.
             </p>
         @endif
     </div>
@@ -311,7 +333,7 @@
                 <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
             </span>
             <p class="text-white font-medium text-sm mb-0.5">Run New Scan</p>
-            <p class="text-xs text-slate-500">Analyse a URL</p>
+            <p class="text-xs text-slate-500">URL, email, phone, or screenshot</p>
         </a>
         <a href="{{ route('scan.history') }}" class="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-sky-500/40 transition">
             <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-3">

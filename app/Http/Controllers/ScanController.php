@@ -54,42 +54,63 @@ class ScanController extends Controller
             'status' => 'processing',
         ]);
 
-        $engine = new AnalysisEngine();
-        $startTime = microtime(true);
+        // A single scan can chain several sequential external API calls
+        // (WHOIS, SSL, Google Safe Browsing, VirusTotal submit+poll, IP
+        // reputation, redirect-chain following, and — for screenshots —
+        // OCR before any of that even starts). This can legitimately take
+        // longer than PHP's default 30s execution limit, so we raise it
+        // specifically for this request rather than for the whole app.
+        set_time_limit(120);
 
-        $result = $engine->analyze(
-            type: $type,
-            url: $request->input('url'),
-            email: $request->input('email'),
-            phone: $request->input('phone'),
-            screenshotPath: $screenshotStoragePath,
-        );
+        try {
+            $engine = new AnalysisEngine();
+            $startTime = microtime(true);
 
-        $durationMs = (int) round((microtime(true) - $startTime) * 1000);
+            $result = $engine->analyze(
+                type: $type,
+                url: $request->input('url'),
+                email: $request->input('email'),
+                phone: $request->input('phone'),
+                screenshotPath: $screenshotStoragePath,
+                reportId: $report->id,
+            );
 
-        if (!empty($result['cti'])) {
-            CtiLookup::create([
+            $durationMs = (int) round((microtime(true) - $startTime) * 1000);
+
+            if (!empty($result['cti'])) {
+                CtiLookup::create([
+                    'report_id' => $report->id,
+                    'source' => $result['cti']['source'],
+                    'raw_response' => $result['cti']['raw_response'],
+                    'threat_score' => $result['cti']['threat_score'],
+                ]);
+            }
+
+            Analysis::create([
                 'report_id' => $report->id,
-                'source' => $result['cti']['source'],
-                'raw_response' => $result['cti']['raw_response'],
-                'threat_score' => $result['cti']['threat_score'],
+                'domain_age_days' => $result['domain_age_days'],
+                'url_syntax_score' => $result['url_syntax_score'],
+                'ip_address' => $result['ip_address'] ?? null,
+                'ip_reputation' => $result['ip_reputation'] ?? null,
+                'redirect_chain' => $result['redirect_chain'] ?? null,
+                'verdict' => $result['verdict'],
+                'flags' => $result['checks'],
+                'risk_score' => $result['risk_score'],
+                'duration_ms' => $durationMs,
             ]);
+
+            $report->update(['status' => 'completed']);
+        } catch (\Throwable $e) {
+            // Don't leave a "processing" report with no Analysis row behind —
+            // that's what was causing scan.show to crash on a null verdict.
+            // Mark it as failed so the results page can show a clear message
+            // instead of a fatal error.
+            report($e);
+            $report->update(['status' => 'failed']);
+
+            return redirect()->route('scan.show', $report)
+                ->with('error', 'The scan took too long or ran into a problem partway through. You can try scanning again.');
         }
-
-               Analysis::create([
-            'report_id' => $report->id,
-            'domain_age_days' => $result['domain_age_days'],
-            'url_syntax_score' => $result['url_syntax_score'],
-            'ip_address' => $result['ip_address'] ?? null,
-            'ip_reputation' => $result['ip_reputation'] ?? null,
-            'redirect_chain' => $result['redirect_chain'] ?? null,
-            'verdict' => $result['verdict'],
-            'flags' => $result['checks'],
-            'risk_score' => $result['risk_score'],
-            'duration_ms' => $durationMs,
-        ]);
-
-        $report->update(['status' => 'completed']);
 
         return redirect()->route('scan.show', $report);
     }

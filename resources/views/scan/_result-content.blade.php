@@ -159,9 +159,9 @@
         <p class="text-sm text-slate-500 mb-4">
             {{ $report->type === 'screenshot' ? 'The image submitted for this report, analyzed via OCR text extraction.' : 'A live capture of the scanned page at the time of analysis.' }}
         </p>
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center">
             <img src="{{ $report->screenshot_path }}" alt="Submitted screenshot" loading="lazy"
-                 class="w-full h-auto block" onerror="this.closest('div.mb-10').style.display='none'">
+                 class="w-full max-h-[500px] object-contain block" onerror="this.closest('div.mb-10').style.display='none'">
         </div>
     </div>
 @endif

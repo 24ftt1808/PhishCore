@@ -6,9 +6,19 @@ use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ScanHistoryController;
 use App\Http\Controllers\AnalyticsController;
+use App\Models\Analysis;
+use App\Models\Report;
 
 Route::get('/', function () {
-    return view('welcome');
+    $totalScans = Report::where('status', 'completed')->count();
+    $threatsDetected = Analysis::whereIn('verdict', ['phishing', 'suspicious'])->count();
+    $avgScanSeconds = round((Analysis::avg('duration_ms') ?? 0) / 1000, 1);
+
+    return view('welcome', [
+        'totalScans' => $totalScans,
+        'threatsDetected' => $threatsDetected,
+        'avgScanSeconds' => $avgScanSeconds,
+    ]);
 })->name('welcome');
 
 Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');

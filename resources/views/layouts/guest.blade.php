@@ -10,9 +10,9 @@
 <body class="bg-slate-950 text-slate-100 antialiased">
     <div class="min-h-screen flex">
 
-        {{-- LEFT: form panel --}}
-        <div class="w-full lg:w-2/5 flex flex-col px-10 py-10 lg:px-16 lg:pt-14">
-            <a href="{{ route('welcome') }}" class="flex items-center gap-2 mb-14">
+               {{-- LEFT: form panel --}}
+        <div class="w-full lg:w-2/5 flex flex-col px-10 py-10 lg:px-16">
+            <a href="{{ route('welcome') }}" class="flex items-center gap-2">
                 <span class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
                     <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
@@ -24,8 +24,10 @@
                 </span>
             </a>
 
-            <div class="max-w-md">
-                {{ $slot }}
+            <div class="flex-1 flex items-center">
+                <div class="max-w-md w-full">
+                    {{ $slot }}
+                </div>
             </div>
         </div>
 

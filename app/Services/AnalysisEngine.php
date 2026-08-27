@@ -692,6 +692,186 @@ class AnalysisEngine
         }
     }
 
+    private function checkContentPatterns(string $text): array
+{
+    $text = strtolower($text);
+    $reasons = [];
+    $points = 0;
+    $matchedCategories = 0;
+
+    $patterns = [
+        'urgency' => [
+            'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|act now|act immediately|urgent|final notice|immediately)\b/',
+            'points' => 15,
+            'label' => 'Urgency language detected (e.g. "urgent", "24 hours", "act now")',
+        ],
+        'account_threat' => [
+            'regex' => '/(account will be suspended|account (is|has been) (locked|suspended|deactivated)|temporary suspension|avoid deactivation)/',
+            'points' => 15,
+            'label' => 'Account threat language detected (suspension/deactivation)',
+        ],
+        'credential_request' => [
+            'regex' => '/(verify your account|verify my|confirm your password|enter your login|verification code|verify now)/',
+            'points' => 20,
+            'label' => 'Credential/verification request detected',
+        ],
+        'financial_request' => [
+            'regex' => '/(transfer (of )?funds|payment required|invoice|bank account|refund)/',
+            'points' => 15,
+            'label' => 'Financial request or invoice language detected',
+        ],
+        'call_to_action' => [
+            'regex' => '/(click here|click the button|click below|follow the link)/',
+            'points' => 10,
+            'label' => 'Suspicious call-to-action phrasing detected (click/follow link)',
+        ],
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern['regex'], $text)) {
+            $reasons[] = $pattern['label'];
+            $points += $pattern['points'];
+            $matchedCategories++;
+        }
+    }
+
+    if ($matchedCategories >= 3) {
+        $reasons[] = "{$matchedCategories} distinct phishing behavior patterns found together — a coordinated social-engineering pattern, not an isolated keyword";
+        $points += 15;
+    }
+
+    return [
+        'flagged' => $points > 0,
+        'points' => min(90, $points),
+        'reasons' => $reasons,
+        'matched_categories' => $matchedCategories,
+    ];
+}
+
+private function detectBrandInText(string $text): array
+{
+    $knownBrands = ['dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
+        'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd'];
+
+    $lowerText = strtolower($text);
+
+    // Exact match first — cheapest and most reliable when the brand name
+    // is spelled correctly in the message.
+    foreach ($knownBrands as $brand) {
+        if (preg_match('/\b' . preg_quote($brand, '/') . '\b/', $lowerText)) {
+            return ['brand' => $brand, 'surface' => $brand];
+        }
+    }
+
+    // Fuzzy fallback — catches cases where the VISIBLE brand text itself is
+    // a typosquat (e.g. "DHI" instead of "DHL"), not just the sender domain.
+    // Length-difference guard keeps short/common words from false-matching
+    // against short brand names.
+    preg_match_all('/\b[A-Za-z]{2,12}\b/', $text, $m);
+    $words = array_unique(array_map('strtolower', $m[0] ?? []));
+
+    $bestBrand = null;
+    $bestSurface = null;
+    $bestPercent = 0;
+
+    foreach ($words as $word) {
+        foreach ($knownBrands as $brand) {
+            if ($word === $brand || abs(strlen($word) - strlen($brand)) > 2) {
+                continue;
+            }
+            similar_text($word, $brand, $percent);
+            if ($percent >= 65 && $percent > $bestPercent) {
+                $bestPercent = $percent;
+                $bestBrand = $brand;
+                $bestSurface = $word;
+            }
+        }
+    }
+
+    return ['brand' => $bestBrand, 'surface' => $bestSurface];
+}
+
+private function checkBrandSenderMismatch(?string $brand, ?string $surfaceText, ?string $senderEmail): array
+{
+    if (!$brand || !$senderEmail || !str_contains($senderEmail, '@')) {
+        return ['flagged' => false, 'points' => 0, 'reasons' => []];
+    }
+
+    [$localPart, $domain] = explode('@', $senderEmail, 2);
+    $domain = strtolower($domain);
+    $localPart = strtolower($localPart);
+    $displayBrand = $surfaceText && $surfaceText !== $brand
+        ? strtoupper($surfaceText) . '" (a lookalike of "' . ucfirst($brand)
+        : ucfirst($brand);
+
+    $brandDomains = [
+        'dhl' => ['dhl.com'],
+        'fedex' => ['fedex.com'],
+        'ups' => ['ups.com'],
+        'paypal' => ['paypal.com'],
+        'google' => ['google.com', 'gmail.com'],
+        'facebook' => ['facebook.com', 'fb.com'],
+        'apple' => ['apple.com', 'icloud.com'],
+        'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com'],
+        'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
+        'amazon' => ['amazon.com'],
+        'netflix' => ['netflix.com'],
+        'maybank' => ['maybank2u.com.my', 'maybank.com'],
+        'bibd' => ['bibd.com.bn'],
+    ];
+
+    $allowed = $brandDomains[$brand] ?? [$brand . '.com'];
+    $isOfficial = false;
+    foreach ($allowed as $officialDomain) {
+        if ($domain === $officialDomain || str_ends_with($domain, '.' . $officialDomain)) {
+            $isOfficial = true;
+            break;
+        }
+    }
+
+    if ($isOfficial) {
+        return ['flagged' => false, 'points' => 0, 'reasons' => []];
+    }
+
+    $reasons = ["\"" . $displayBrand . "\" branding was detected in the message, but the sender domain (\"{$domain}\") does not belong to {$brand}"];
+    $points = 25;
+
+    $cleanedLocal = preg_replace('/^(no-?reply|support|info|admin|service|notification|alert|team|contact)[-_.]?/i', '', $localPart);
+    if ($cleanedLocal === '') {
+        $cleanedLocal = $localPart;
+    }
+    $domainRoot = explode('.', $domain)[0] ?? $domain;
+
+    similar_text($cleanedLocal, $brand, $localPercent);
+    similar_text($domainRoot, $brand, $domainPercent);
+    $bestPercent = max($localPercent, $domainPercent);
+    $comparedAgainst = $localPercent >= $domainPercent ? $cleanedLocal : $domainRoot;
+
+    if ($bestPercent >= 45 && $comparedAgainst !== $brand) {
+        $reasons[] = "\"{$comparedAgainst}\" is " . round($bestPercent) . "% similar to \"{$brand}\", suggesting a lookalike/typosquat attempt";
+        $points += 15;
+    }
+
+    return ['flagged' => true, 'points' => $points, 'reasons' => $reasons];
+}
+
+private function detectAttachment(string $text): array
+{
+    if (preg_match('/([\w\-]+\.(exe|scr|js|bat|vbs))\b/i', $text, $m)) {
+        return ['flagged' => true, 'points' => 25, 'reasons' => ["Executable/script attachment detected: {$m[1]} — high risk file type"]];
+    }
+    if (preg_match('/([\w\-]+\.(zip|rar|7z))\b/i', $text, $m)) {
+        return ['flagged' => true, 'points' => 15, 'reasons' => ["Compressed archive attachment detected: {$m[1]}"]];
+    }
+    if (preg_match('/([\w\-]+\.(docm|xlsm))\b/i', $text, $m)) {
+        return ['flagged' => true, 'points' => 15, 'reasons' => ["Macro-enabled Office document attachment detected: {$m[1]} — can execute code when opened"]];
+    }
+    if (preg_match('/([\w\-]+\.(doc|docx|xls|xlsx))\b/i', $text, $m)) {
+        return ['flagged' => true, 'points' => 10, 'reasons' => ["Office document attachment detected: {$m[1]}"]];
+    }
+    return ['flagged' => false, 'points' => 0, 'reasons' => []];
+}
+
     private function isSequentialDigits(string $digits): bool
     {
         $ascending = true;
@@ -849,19 +1029,21 @@ class AnalysisEngine
         ];
     }
 
-    public function analyze(string $type, ?string $url = null, ?string $email = null, ?string $phone = null, ?string $screenshotPath = null, ?int $reportId = null): array
+            public function analyze(string $type, ?string $url = null, ?string $email = null, ?string $phone = null, ?string $screenshotPath = null, ?int $reportId = null, ?string $emailSubject = null, ?string $emailBody = null): array
     {
         return match ($type) {
-            'email' => $this->analyzeEmail($email ?? ''),
+            'email' => $this->analyzeEmail($email ?? '', $reportId, $emailSubject, $emailBody),
             'phone' => $this->analyzePhone($phone ?? '', $reportId),
-            'screenshot' => $this->analyzeScreenshot($screenshotPath ?? ''),
-            default => $this->analyzeUrl($url ?? ''),
+            'screenshot' => $this->analyzeScreenshot($screenshotPath ?? '', $reportId),
+            default => $this->analyzeUrl($url ?? '', $reportId),
         };
     }
 
-    private function analyzeUrl(string $url): array
+        private function analyzeUrl(string $url, ?int $reportId = null): array
     {
         $syntaxResult = $this->checkUrlSyntax($url);
+        $host = parse_url($url, PHP_URL_HOST);
+        $domainHistoryResult = $this->checkPreviousDomainReports($host, $reportId);
         $ageResult = $this->checkDomainAge($url);
         $sslResult = $this->checkSslCertificate($url);
         $blacklistResult = $this->checkBlacklist($url);
@@ -870,14 +1052,14 @@ class AnalysisEngine
         $redirectResult = $this->checkRedirectChain($url);
 
         $totalPoints = min(
-            100,
-            $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
-                + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
-        );
+    100,
+    $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
+        + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
+);
 
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
-        $checks = [
+              $checks = [
             $this->buildCheck('SSL Certificate', $sslResult, 'SUSPICIOUS'),
             $this->buildCheck('Domain Age', $ageResult, $ageResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS'),
             $this->buildCheck('URL Structure', $syntaxResult, 'SUSPICIOUS'),
@@ -885,6 +1067,7 @@ class AnalysisEngine
             $this->buildCheck('VirusTotal / CTI Check', $vtResult, 'DETECTED'),
             $this->buildCheck('IP Reputation & Location', $ipResult, 'SUSPICIOUS'),
             $this->buildCheck('Redirect Chain', $redirectResult, 'SUSPICIOUS'),
+            $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
 
         $result = [
@@ -913,7 +1096,7 @@ class AnalysisEngine
         return $result;
     }
 
-    private function analyzeEmail(string $email): array
+              private function analyzeEmail(string $email, ?int $reportId = null, ?string $subject = null, ?string $body = null): array
     {
         $emailResult = $this->checkEmailDomain($email);
         $domain = $emailResult['domain'];
@@ -922,13 +1105,46 @@ class AnalysisEngine
             ? $this->checkDomainAge($domain)
             : ['flagged' => false, 'points' => 0, 'domain_age_days' => null, 'reasons' => ['Could not extract a domain from this email']];
 
-        $totalPoints = min(100, $emailResult['points'] + $ageResult['points']);
+        $domainHistoryResult = $this->checkPreviousDomainReports($domain, $reportId);
+
+        $combinedText = trim(($subject ?? '') . ' ' . ($body ?? ''));
+        $hasContentText = $combinedText !== '';
+
+        $contentResult = $hasContentText
+            ? $this->checkContentPatterns($combinedText)
+            : ['flagged' => false, 'points' => 0, 'reasons' => [], 'matched_categories' => 0];
+
+        $brandDetection = $hasContentText
+            ? $this->detectBrandInText($combinedText)
+            : ['brand' => null, 'surface' => null];
+
+        $brandResult = $this->checkBrandSenderMismatch($brandDetection['brand'], $brandDetection['surface'], $email);
+
+        $totalPoints = min(
+            100,
+            $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
+        );
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
         $checks = [
             $this->buildCheck('Sender Domain Analysis', $emailResult, 'SUSPICIOUS'),
             $this->buildCheck('Domain Age', $ageResult, $ageResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS'),
+            $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
+
+        if ($hasContentText) {
+            $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
+            if ($brandDetection['brand']) {
+                $checks[] = $this->buildCheck('Brand / Sender Correlation', $brandResult, 'HIGH RISK');
+            }
+        } else {
+            $checks[] = [
+                'name' => 'Message Content / Behavior Patterns',
+                'status' => 'REVIEW',
+                'message' => 'No subject or body text was provided — content analysis skipped. Add the subject/body for a more accurate result.',
+                'points' => 0,
+            ];
+        }
 
         return [
             'risk_score' => $totalPoints,
@@ -939,44 +1155,142 @@ class AnalysisEngine
         ];
     }
 
-    private function analyzePhone(string $phone, ?int $reportId = null): array
-    {
-        $phoneResult = $this->checkPhoneNumber($phone);
+   private function analyzePhone(string $phone, ?int $reportId = null): array
+{
+    $phoneResult = $this->checkPhoneNumber($phone);
 
-        // Genuinely unparseable input isn't a phone number report at all —
-        // treat it like a screenshot with no extractable content: honest
-        // "needs review" rather than a confident suspicious score, and skip
-        // the Previous Reports lookup since there's no real number to match.
-        if ($phoneResult['unparseable'] ?? false) {
-            return [
-                'risk_score' => 0,
-                'verdict' => 'review',
-                'domain_age_days' => null,
-                'url_syntax_score' => null,
-                'checks' => [
-                    $this->buildCheck('Phone Number Analysis', $phoneResult, 'REVIEW'),
-                ],
-            ];
-        }
-
-        $historyResult = $this->checkPreviousReports($phone, $reportId);
-
-        $totalPoints = min(100, $phoneResult['points'] + $historyResult['points']);
-        $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
-
-        $checks = [
-            $this->buildCheck('Phone Number Analysis', $phoneResult, 'SUSPICIOUS'),
-            $this->buildCheck('Previous Reports', $historyResult, $historyResult['points'] >= 45 ? 'HIGH RISK' : 'SUSPICIOUS'),
-        ];
-
+    if ($phoneResult['unparseable'] ?? false) {
         return [
-            'risk_score' => $totalPoints,
-            'verdict' => $verdict,
+            'risk_score' => 0,
+            'verdict' => 'review',
             'domain_age_days' => null,
             'url_syntax_score' => null,
-            'checks' => $checks,
+            'checks' => [
+                $this->buildCheck('Phone Number Analysis', $phoneResult, 'REVIEW'),
+            ],
         ];
     }
+
+    $historyResult = $this->checkPreviousReports($phone, $reportId);
+
+    $totalPoints = min(100, $phoneResult['points'] + $historyResult['points']);
+    $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
+
+    $checks = [
+        $this->buildCheck('Phone Number Analysis', $phoneResult, 'SUSPICIOUS'),
+        $this->buildCheck('Previous Reports', $historyResult, $historyResult['points'] >= 45 ? 'HIGH RISK' : 'SUSPICIOUS'),
+    ];
+
+    return [
+        'risk_score' => $totalPoints,
+        'verdict' => $verdict,
+        'domain_age_days' => null,
+        'url_syntax_score' => null,
+        'checks' => $checks,
+    ];
+}
+
+        /**
+ * Checks how many times a domain (from a URL host or an email's
+ * sender domain) has already appeared in OTHER completed reports on
+ * PhishCore — across url, email, AND screenshot scans — regardless of
+ * how each one individually scored. The same phishing infrastructure
+ * is frequently reused across multiple different pretexts (a fake DHL
+ * email today, a fake Outlook email tomorrow, all from the same
+ * domain), and a domain surfacing repeatedly is strong evidence even
+ * when a single report in isolation looks unremarkable.
+ *
+ * Uses a LIKE match against the raw url/sender_email columns rather
+ * than an exact host comparison, since those columns store full
+ * submitted values (e.g. "https://sub.domain.com/path") not bare
+ * hosts. This can over-match in rare edge cases (e.g. a domain name
+ * appearing as a substring of an unrelated longer domain), a known
+ * limitation acceptable for this project's scope.
+ */
+private function checkPreviousDomainReports(?string $domain, ?int $excludeReportId = null): array
+{
+    $domain = strtolower(trim((string) $domain));
+    $domain = preg_replace('/^www\./', '', $domain);
+
+    if ($domain === '') {
+        return ['flagged' => false, 'points' => 0, 'reasons' => []];
+    }
+
+    $query = Report::where('status', 'completed')
+        ->whereHas('analyses', function ($q) {
+            $q->whereIn('verdict', ['suspicious', 'phishing']);
+        })
+        ->where(function ($q) use ($domain) {
+            $q->where('url', 'like', "%{$domain}%")
+                ->orWhere('sender_email', 'like', "%{$domain}%");
+        });
+
+    if ($excludeReportId) {
+        $query->where('id', '!=', $excludeReportId);
+    }
+
+    $candidateReports = $query->get(['id', 'user_id', 'url', 'sender_email']);
+
+    // The LIKE query above is only a cheap first pass to shrink the result
+    // set. It matches SUBSTRINGS, so a phishing lookalike domain like
+    // "google.com.verify-account.tk" would incorrectly match "google.com"
+    // — which is backwards: that domain is impersonating Google, not
+    // evidence against the real one. Re-check precisely here by parsing
+    // out the ACTUAL host/domain from each candidate and requiring an
+    // exact match (or genuine subdomain), not just a substring.
+    $matchingReports = $candidateReports->filter(function ($report) use ($domain) {
+        $reportDomain = null;
+
+        if ($report->url) {
+            $host = parse_url($report->url, PHP_URL_HOST);
+            $reportDomain = $host ? strtolower(preg_replace('/^www\./', '', $host)) : null;
+        }
+
+        if (!$reportDomain && $report->sender_email && str_contains($report->sender_email, '@')) {
+            $reportDomain = strtolower(substr(strrchr($report->sender_email, '@'), 1));
+        }
+
+        if (!$reportDomain) {
+            return false;
+        }
+
+        return $reportDomain === $domain || str_ends_with($reportDomain, '.' . $domain);
+    });
+
+    $distinctLoggedInReporters = $matchingReports->pluck('user_id')->filter()->unique()->count();
+    $guestReportCount = $matchingReports->whereNull('user_id')->count();
+    $reporterCount = $distinctLoggedInReporters + $guestReportCount;
+
+    if ($reporterCount === 0) {
+        return [
+            'flagged' => false,
+            'points' => 0,
+            'reasons' => ["No prior reports found for \"{$domain}\" on PhishCore"],
+        ];
+    }
+
+   if ($reporterCount === 1) {
+    return [
+        'flagged' => true,
+        'points' => 10,
+        'reasons' => ["This domain has appeared in 1 other report on PhishCore"],
+    ];
+}
+
+if ($reporterCount <= 4) {
+    return [
+        'flagged' => true,
+        'points' => 18,
+        'reasons' => ["This domain has appeared in {$reporterCount} other reports on PhishCore — reused across multiple submissions"],
+    ];
+}
+
+return [
+    'flagged' => true,
+    'points' => 25,
+    'reasons' => ["This domain has appeared in {$reporterCount} other reports on PhishCore — repeatedly reused phishing infrastructure"],
+];
+}
 
     /**
      * Checks how many times this exact phone number has already been
@@ -1052,109 +1366,131 @@ class AnalysisEngine
         ];
     }
 
-    private function analyzeScreenshot(string $imagePath): array
-    {
-        $ocr = $this->checkScreenshotOcr($imagePath);
+     private function analyzeScreenshot(string $imagePath, ?int $reportId = null): array
+{
+    $ocr = $this->checkScreenshotOcr($imagePath);
 
-        if (!$ocr['success']) {
-            return [
-                'risk_score' => 0,
-                'verdict' => 'review',
-                'domain_age_days' => null,
-                'url_syntax_score' => null,
-                'checks' => [[
-                    'name' => 'Screenshot Text Extraction',
-                    'status' => 'REVIEW',
-                    'message' => 'Could not read text from this image (' . ($ocr['error'] ?? 'unknown error') . '). Manual review recommended.',
-                    'points' => 0,
-                ]],
-            ];
-        }
-
-        $candidateUrlsRaw = $this->extractAllUrlsFromText($ocr['text']);
-        // OCR-matched text can look URL-ish (starts with http://) without
-        // being a genuinely valid URL. Normal URL submissions go through
-        // Laravel's 'url' validation rule in the controller; this path
-        // bypassed that entirely, so garbled OCR text could trigger a full
-        // WHOIS/SSL/VirusTotal/IP pipeline on nonsense input. Validate here.
-        $candidateUrls = array_values(array_filter(
-            $candidateUrlsRaw,
-            fn ($u) => filter_var($u, FILTER_VALIDATE_URL)
-        ));
-
-        $extractedUrl = null;
-        if (!empty($candidateUrls)) {
-            // A screenshot can contain more than one link. Rank candidates
-            // using the free, no-network syntax check before running the
-            // expensive full pipeline (WHOIS/SSL/VirusTotal/etc.) on only
-            // the single most suspicious one — checking every candidate in
-            // full would multiply scan time per extra link found.
-            usort(
-                $candidateUrls,
-                fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']
-            );
-            $extractedUrl = $candidateUrls[0];
-        }
-
-        $extractedEmail = null;
-        if (!$extractedUrl) {
-            $candidateEmails = $this->extractAllEmailsFromText($ocr['text']);
-            if (!empty($candidateEmails)) {
-                // Same reasoning as above: a phishing screenshot can list
-                // more than one sender address. Rank by the free
-                // checkEmailDomain heuristic and analyze the worst one.
-                usort(
-                    $candidateEmails,
-                    fn ($a, $b) => $this->checkEmailDomain($b)['points'] <=> $this->checkEmailDomain($a)['points']
-                );
-                $extractedEmail = $candidateEmails[0];
-            }
-        }
-
-        // If nothing matched, surface what OCR actually returned so it's clear
-        // whether this was an OCR miss (no readable text), a genuinely
-        // unrelated image (game screenshot, photo, etc.), or actual phishing
-        // language that just didn't happen to contain a link/email — using
-        // only the OCR text already extracted, at no extra API cost.
-        if ($ocr['text'] === '') {
-            $noMatchDetail = ' No text was extracted from the image at all.';
-        } elseif (!empty($candidateUrlsRaw) && !$extractedUrl) {
-            $noMatchDetail = ' OCR found text resembling a URL ("' . $candidateUrlsRaw[0] . '") but it was not a validly formatted URL, so it was not scanned.';
-        } elseif ($this->containsPhishingLureLanguage($ocr['text'])) {
-            $noMatchDetail = ' OCR extracted text containing common scam/phishing language (e.g. urgency, account warnings, requests to verify or click), but no URL or email address was found in it. Manual review recommended. Extracted text: "' . Str::limit($ocr['text'], 200) . '"';
-        } else {
-            $noMatchDetail = ' This does not appear to be a phishing-related screenshot — no URL, email address, or common scam language was detected in the extracted text. Extracted text: "' . Str::limit($ocr['text'], 200) . '"';
-        }
-
-        $extractionCheck = [
-            'name' => 'Screenshot Text Extraction',
-            'status' => $extractedUrl || $extractedEmail ? 'SAFE' : 'REVIEW',
-            'message' => $extractedUrl
-                ? "Extracted a URL from the image text: {$extractedUrl}"
-                : ($extractedEmail
-                    ? "Extracted a sender email from the image text: {$extractedEmail}"
-                    : 'No URL or email address was found in the image text.' . $noMatchDetail),
-            'points' => 0,
-        ];
-
-        if ($extractedUrl) {
-            $result = $this->analyzeUrl($extractedUrl);
-            $result['checks'] = array_merge([$extractionCheck], $result['checks']);
-            return $result;
-        }
-
-        if ($extractedEmail) {
-            $result = $this->analyzeEmail($extractedEmail);
-            $result['checks'] = array_merge([$extractionCheck], $result['checks']);
-            return $result;
-        }
-
+    if (!$ocr['success']) {
         return [
             'risk_score' => 0,
             'verdict' => 'review',
             'domain_age_days' => null,
             'url_syntax_score' => null,
-            'checks' => [$extractionCheck],
+            'checks' => [[
+                'name' => 'Screenshot Text Extraction',
+                'status' => 'REVIEW',
+                'message' => 'Could not read text from this image (' . ($ocr['error'] ?? 'unknown error') . '). Manual review recommended.',
+                'points' => 0,
+            ]],
         ];
     }
+
+    $text = $ocr['text'];
+
+    $candidateUrlsRaw = $this->extractAllUrlsFromText($text);
+    $candidateUrls = array_values(array_filter($candidateUrlsRaw, fn ($u) => filter_var($u, FILTER_VALIDATE_URL)));
+    $extractedUrl = null;
+    if (!empty($candidateUrls)) {
+        usort($candidateUrls, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
+        $extractedUrl = $candidateUrls[0];
+    }
+
+    $candidateEmails = $this->extractAllEmailsFromText($text);
+    $extractedEmail = null;
+    if (!empty($candidateEmails)) {
+        usort($candidateEmails, fn ($a, $b) => $this->checkEmailDomain($b)['points'] <=> $this->checkEmailDomain($a)['points']);
+        $extractedEmail = $candidateEmails[0];
+    }
+
+     $brandDetection = $this->detectBrandInText($text);
+    $detectedBrand = $brandDetection['brand'];
+    $brandSurfaceText = $brandDetection['surface'];
+    $contentResult = $this->checkContentPatterns($text);
+    $attachmentResult = $this->detectAttachment($text);
+    $brandResult = $this->checkBrandSenderMismatch($detectedBrand, $brandSurfaceText, $extractedEmail);
+    $hasAnyEvidence = $extractedUrl || $extractedEmail || $detectedBrand || $contentResult['flagged'] || $attachmentResult['flagged'];
+
+    $checks = [];
+    $totalPoints = 0;
+    $signalCategories = 0;
+    $ageResult = ['domain_age_days' => null];
+
+    $extractionParts = [];
+    if ($extractedUrl) $extractionParts[] = "URL: {$extractedUrl}";
+    if ($extractedEmail) $extractionParts[] = "Sender: {$extractedEmail}";
+    if ($detectedBrand) $extractionParts[] = 'Brand referenced: ' . ucfirst($detectedBrand);
+
+    $checks[] = [
+        'name' => 'Screenshot Text Extraction',
+        'status' => $hasAnyEvidence ? 'SAFE' : 'REVIEW',
+        'message' => $hasAnyEvidence
+            ? ('Extracted from image: ' . implode(' | ', $extractionParts ?: ['phishing-style language']))
+            : 'No URL, email address, brand reference, or phishing-style language was found in the image text. Extracted text: "' . Str::limit($text, 200) . '"',
+        'points' => 0,
+    ];
+
+    if ($extractedEmail) {
+        $emailResult = $this->checkEmailDomain($extractedEmail);
+        $domain = $emailResult['domain'];
+        $ageResult = $domain
+            ? $this->checkDomainAge($domain)
+            : ['flagged' => false, 'points' => 0, 'domain_age_days' => null, 'reasons' => []];
+
+        $totalPoints += $emailResult['points'] + $ageResult['points'];
+        if ($emailResult['points'] > 0 || $ageResult['points'] > 0) $signalCategories++;
+
+        $checks[] = $this->buildCheck('Sender Domain Analysis', $emailResult, 'SUSPICIOUS');
+        if ($domain) {
+            $checks[] = $this->buildCheck('Domain Age', $ageResult, $ageResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
+        }
+    }
+
+    if ($detectedBrand) {
+        if ($brandResult['flagged']) {
+            $totalPoints += $brandResult['points'];
+            $signalCategories++;
+        }
+        $checks[] = $this->buildCheck('Brand / Sender Correlation', $brandResult, 'HIGH RISK');
+    }
+
+    if ($contentResult['flagged']) {
+        $totalPoints += $contentResult['points'];
+        $signalCategories++;
+    }
+    $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
+
+    if ($attachmentResult['flagged']) {
+        $totalPoints += $attachmentResult['points'];
+        $signalCategories++;
+        $checks[] = $this->buildCheck('Attachment', $attachmentResult, 'SUSPICIOUS');
+    }
+
+        if ($extractedUrl) {
+        $urlAnalysis = $this->analyzeUrl($extractedUrl, $reportId);
+        $totalPoints += (int) round($urlAnalysis['risk_score'] * 0.6);
+        $signalCategories++;
+        $checks = array_merge($checks, $urlAnalysis['checks']);
+    }
+
+    if ($extractedEmail) {
+    $emailDomain = $this->checkEmailDomain($extractedEmail)['domain'];
+    $domainHistoryResult = $this->checkPreviousDomainReports($emailDomain, $reportId);
+    $checks[] = $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS');
+}
+
+    $riskScore = min(100, $totalPoints);
+    $verdict = !$hasAnyEvidence ? 'review' : ($riskScore >= 60 ? 'phishing' : ($riskScore >= 25 ? 'suspicious' : 'clean'));
+    $confidence = $hasAnyEvidence ? min(95, 40 + $signalCategories * 13) : 20;
+
+    return [
+        'risk_score' => $riskScore,
+        'confidence' => $confidence,
+        'verdict' => $verdict,
+        'domain_age_days' => $ageResult['domain_age_days'] ?? null,
+        'url_syntax_score' => null,
+        'checks' => $checks,
+        'extracted_url' => $extractedUrl,
+        'extracted_email' => $extractedEmail,
+    ];
+}
 }

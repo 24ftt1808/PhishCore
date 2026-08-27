@@ -66,13 +66,15 @@ class ScanController extends Controller
             $engine = new AnalysisEngine();
             $startTime = microtime(true);
 
-            $result = $engine->analyze(
+                     $result = $engine->analyze(
                 type: $type,
                 url: $request->input('url'),
                 email: $request->input('email'),
                 phone: $request->input('phone'),
                 screenshotPath: $screenshotStoragePath,
                 reportId: $report->id,
+                emailSubject: $request->input('subject'),
+                emailBody: $request->input('body'),
             );
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
@@ -86,7 +88,7 @@ class ScanController extends Controller
                 ]);
             }
 
-            Analysis::create([
+                     Analysis::create([
                 'report_id' => $report->id,
                 'domain_age_days' => $result['domain_age_days'],
                 'url_syntax_score' => $result['url_syntax_score'],
@@ -98,6 +100,18 @@ class ScanController extends Controller
                 'risk_score' => $result['risk_score'],
                 'duration_ms' => $durationMs,
             ]);
+
+            // For screenshot scans, persist whatever URL/email OCR extracted
+            // back onto the report row — otherwise this evidence only ever
+            // lived in-memory during this one scan, and future scans of the
+            // same phishing domain (via a different screenshot, or a direct
+            // URL/email submission) would have nothing to correlate against.
+            if ($type === 'screenshot') {
+                $report->update(array_filter([
+                    'url' => $result['extracted_url'] ?? null,
+                    'sender_email' => $result['extracted_email'] ?? null,
+                ]));
+            }
 
             $report->update(['status' => 'completed']);
         } catch (\Throwable $e) {
@@ -128,27 +142,28 @@ class ScanController extends Controller
     /**
      * Determine which scan type was submitted based on which field is filled.
      */
-    private function resolveType(Request $request): string
-    {
-        if ($request->hasFile('screenshot')) {
-            return 'screenshot';
-        }
-
-        if ($request->filled('email')) {
-            return 'email';
-        }
-
-        if ($request->filled('phone')) {
-            return 'phone';
-        }
-
-        return 'url';
+   private function resolveType(Request $request): string
+{
+    if ($request->hasFile('screenshot')) {
+        return 'screenshot';
     }
+    if ($request->filled('email') || $request->filled('subject') || $request->filled('body')) {
+        return 'email';
+    }
+    if ($request->filled('phone')) {
+        return 'phone';
+    }
+    return 'url';
+}
 
     private function rulesFor(string $type): array
     {
         return match ($type) {
-            'email' => ['email' => ['required', 'email', 'max:255']],
+            'email' => [
+                'email' => ['required', 'email', 'max:255'],
+                'subject' => ['nullable', 'string', 'max:255'],
+                'body' => ['nullable', 'string', 'max:5000'],
+            ],
             'phone' => ['phone' => ['required', 'string', 'max:30']],
             'screenshot' => ['screenshot' => ['required', 'image', 'max:5120']], // 5MB max
             default => ['url' => ['required', 'url', 'max:2048']],

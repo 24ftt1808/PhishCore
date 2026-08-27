@@ -126,7 +126,7 @@
             </span>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div class="bg-slate-950/50 border border-slate-800 rounded-lg p-4 text-center">
                 <p class="text-2xl font-bold {{ $vtColor }}">{{ $vtMalicious }}</p>
                 <p class="text-xs text-slate-500 mt-1">Malicious</p>
@@ -148,6 +148,63 @@
         <p class="text-xs text-slate-600 mt-4">
             Threat score: {{ $ctiLookup->threat_score }}% &middot; Looked up {{ $ctiLookup->created_at->diffForHumans() }} via VirusTotal's public API (70+ integrated antivirus and security engines).
         </p>
+
+        @php
+            $vendorResults = collect($ctiLookup->raw_response['data']['attributes']['last_analysis_results'] ?? [])
+                ->map(function ($result, $vendor) {
+                    return [
+                        'vendor' => $vendor,
+                        'category' => $result['category'] ?? 'undetected',
+                        'result' => $result['result'] ?? null,
+                    ];
+                })
+                ->values()
+                ->sortBy(function ($row) {
+                    // Show the interesting ones first: malicious, then suspicious,
+                    // then everything else, alphabetically within each group.
+                    $rank = match ($row['category']) {
+                        'malicious' => 0,
+                        'suspicious' => 1,
+                        default => 2,
+                    };
+                    return [$rank, $row['vendor']];
+                })
+                ->values();
+
+            $categoryStyles = [
+                'malicious' => 'bg-red-500/10 text-red-400 border-red-500/20',
+                'suspicious' => 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                'harmless' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                'undetected' => 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+            ];
+        @endphp
+
+        @if ($vendorResults->isNotEmpty())
+            <div class="mt-5 border-t border-slate-800 pt-4" x-data="{ open: false }">
+                <button @click="open = !open" class="w-full flex items-center justify-between text-left">
+                    <span class="text-sm font-medium text-slate-300">View all {{ $vendorResults->count() }} security vendor results</span>
+                    <span class="flex items-center gap-2">
+                        <span class="text-xs text-slate-500">Click to expand</span>
+                        <svg class="w-4 h-4 text-slate-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </span>
+                </button>
+                <div x-show="open" x-collapse class="mt-4">
+                    <div class="grid sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-1">
+                        @foreach ($vendorResults as $row)
+                            @php
+                                $badgeClass = $categoryStyles[$row['category']] ?? $categoryStyles['undetected'];
+                            @endphp
+                            <div class="flex items-center justify-between gap-3 bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2">
+                                <span class="text-sm text-slate-300 truncate">{{ $row['vendor'] }}</span>
+                                <span class="text-[10px] font-medium px-2 py-1 rounded-full border shrink-0 {{ $badgeClass }}">
+                                    {{ $row['result'] ? Str::limit($row['result'], 20) : ucfirst($row['category']) }}
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 @endif
 

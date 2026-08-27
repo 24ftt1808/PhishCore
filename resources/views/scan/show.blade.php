@@ -73,7 +73,11 @@
                 @default Detailed security analysis of the submitted website.
             @endswitch
         </p>
-        {!! $content !!}
+                {!! $content !!}
+
+                        @if ($hasAnalysis)
+            @include('scan._investigation-panel', ['report' => $report])
+        @endif
     </x-layouts.dashboard>
 @else
     <x-layouts.public>

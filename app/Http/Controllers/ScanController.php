@@ -94,6 +94,7 @@ class ScanController extends Controller
                 'url_syntax_score' => $result['url_syntax_score'],
                 'ip_address' => $result['ip_address'] ?? null,
                 'ip_reputation' => $result['ip_reputation'] ?? null,
+                'country' => $result['country'] ?? null,
                 'redirect_chain' => $result['redirect_chain'] ?? null,
                 'verdict' => $result['verdict'],
                 'flags' => $result['checks'],

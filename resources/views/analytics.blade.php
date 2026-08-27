@@ -238,9 +238,33 @@
         </div>
     </div>
 
-    {{-- TOP THREAT SOURCES --}}
-    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6">
-        <h2 class="text-white font-semibold mb-1">Top Threat Sources</h2>
+    {{-- TOP SOURCE COUNTRIES --}}
+    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-4">
+        <h2 class="text-white font-semibold mb-1">Top Source Countries</h2>
+        <p class="text-sm text-slate-500 mb-5">Countries your scanned URLs were hosted in, based on IP geolocation</p>
+        @if ($topCountries->count() > 0)
+            <div class="space-y-4">
+                @foreach ($topCountries as $c)
+                    <div>
+                        <div class="flex items-center justify-between text-sm mb-1.5">
+                            <span class="text-slate-300">{{ $loop->iteration }}. {{ $c['country'] }}</span>
+                            <span class="flex items-center gap-2">
+                                <span class="text-sky-400 font-medium">{{ $c['count'] }}</span>
+                                @if ($c['phishing_count'] > 0)
+                                    <span class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">{{ $c['phishing_count'] }} phishing</span>
+                                @endif
+                            </span>
+                        </div>
+                        <span class="block h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <span class="block h-full bg-gradient-to-r from-sky-400 to-blue-500" style="width: {{ round($c['count'] / $maxCountryCount * 100) }}%"></span>
+                        </span>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <p class="text-sm text-slate-500">No country data available yet — this is captured for URL scans going forward.</p>
+        @endif
+    </div>
         <p class="text-sm text-slate-500 mb-5">Your most frequently detected phishing sources in this period — URLs, sender domains, phone numbers, or screenshots</p>
 
                 @if ($topDomains->count() > 0)

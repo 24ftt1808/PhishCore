@@ -1,6 +1,7 @@
 @php
     $totalScore = max($analysis->risk_score, 1);
-    $breakdownRows = collect($analysis->flags ?? [])
+        $breakdownRows = collect($analysis->flags ?? [])
+        ->filter(fn ($check) => is_array($check))
         ->map(function ($check) use ($totalScore) {
             $pct = round((($check['points'] ?? 0) / $totalScore) * 100);
             return array_merge($check, ['pct' => $pct]);
@@ -29,7 +30,7 @@
         default => 'Scan Another URL',
     };
 
-    $topReason = collect($analysis->flags ?? [])->sortByDesc('points')->first();
+        $topReason = collect($analysis->flags ?? [])->filter(fn ($check) => is_array($check))->sortByDesc('points')->first();
 @endphp
 
 @php
@@ -246,7 +247,7 @@
 <p class="text-sm text-slate-500 mb-5">Results from each detection layer relevant to this report.</p>
 
 <div class="grid md:grid-cols-2 gap-4 mb-10">
-    @foreach ($analysis->flags ?? [] as $check)
+    @foreach (collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c)) as $check)
         @php
             $colorClass = $statusColors[$check['status']] ?? $statusColors['SAFE'];
             $checkIconPaths = [
@@ -401,8 +402,8 @@
         @endif
 
         <p class="text-xs text-slate-500 mt-5 mb-2">RAW CHECK RESULTS</p>
-        <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2">
-            @foreach ($analysis->flags ?? [] as $check)
+<div class="bg-slate-950/60 border border-slate-800 rounded-lg p-4 space-y-2">
+    @foreach (collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c)) as $check)
                 <p class="text-xs text-slate-400 font-mono">
                     <span class="text-slate-200">{{ $check['name'] }}:</span>
                     {{ $check['status'] }} ({{ $check['points'] ?? 0 }} pts) &mdash; {{ $check['message'] }}

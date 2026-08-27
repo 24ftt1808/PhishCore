@@ -139,6 +139,18 @@ class AnalyticsController extends Controller
         })->sortByDesc('detections')->take(5)->values();
         $maxDetections = $topDomains->max('detections') ?: 1;
 
+                // Top Source Countries — group URL scans by the country their IP
+        // resolved to, from ip-api.com geolocation captured on each Analysis.
+        $countryGroups = $current->whereNotNull('country')->groupBy('country');
+        $topCountries = $countryGroups->map(function ($group, $country) {
+            return [
+                'country' => $country,
+                'count' => $group->count(),
+                'phishing_count' => $group->where('verdict', 'phishing')->count(),
+            ];
+        })->sortByDesc('count')->take(5)->values();
+        $maxCountryCount = $topCountries->max('count') ?: 1;
+
         // Scanning Performance — only scans that have duration_ms recorded
         $timedScans = $current->whereNotNull('duration_ms');
         $performance = null;
@@ -159,7 +171,7 @@ class AnalyticsController extends Controller
             ];
         }
 
-        return view('analytics', [
+                return view('analytics', [
             'stats' => $stats,
             'period' => $period,
             'chartLabels' => $labels,
@@ -171,6 +183,8 @@ class AnalyticsController extends Controller
             'maxIndicatorCount' => $maxIndicatorCount,
             'topDomains' => $topDomains,
             'maxDetections' => $maxDetections,
+            'topCountries' => $topCountries,
+            'maxCountryCount' => $maxCountryCount,
             'performance' => $performance,
         ]);
     }

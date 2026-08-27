@@ -92,11 +92,25 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto"></span>
                         @endif
                     </a>
-                    @if (auth()->user()->role === 'admin')
-                        <span class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 cursor-not-allowed">
+                                      @if (auth()->user()->is_team_member)
+                        <a href="{{ route('investigations.index') }}"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('investigations.index') ? 'bg-violet-500/10 text-violet-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                            Investigations
+                            @if (request()->routeIs('investigations.index'))
+                                <span class="w-1.5 h-1.5 rounded-full bg-violet-400 ml-auto"></span>
+                            @endif
+                        </a>
+                        <a href="{{ route('reports.index') }}"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ request()->routeIs('reports.index') ? 'bg-violet-500/10 text-violet-400' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200' }} transition">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25" /></svg>
-                            Reports <span class="text-[9px] ml-auto bg-slate-800 px-1.5 py-0.5 rounded">SOON</span>
-                        </span>
+                            Reports
+                            @if (request()->routeIs('reports.index'))
+                                <span class="w-1.5 h-1.5 rounded-full bg-violet-400 ml-auto"></span>
+                            @endif
+                        </a>
+                    @endif
+                    @if (auth()->user()->role === 'admin')
                         <span class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 cursor-not-allowed">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>
                             User Management <span class="text-[9px] ml-auto bg-slate-800 px-1.5 py-0.5 rounded">SOON</span>
@@ -123,7 +137,14 @@
                     </span>
                     <span class="leading-tight overflow-hidden">
                         <span class="block text-sm text-white truncate">{{ auth()->user()->name }}</span>
-                        <span class="block text-xs text-slate-500">{{ auth()->user()->role === 'admin' ? 'Admin' : 'Member' }}</span>
+     @php
+    $roleLabel = match (true) {
+        auth()->user()->role === 'admin' => 'Admin',
+        (bool) auth()->user()->is_team_member => 'Team Member',
+        default => 'Member',
+    };
+@endphp
+<span class="block text-xs text-slate-500">{{ $roleLabel }}</span>
                     </span>
                 </div>
                 <form method="POST" action="{{ route('logout') }}" class="mt-1">

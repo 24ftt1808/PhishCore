@@ -8,6 +8,8 @@ use App\Http\Controllers\ScanHistoryController;
 use App\Http\Controllers\AnalyticsController;
 use App\Models\Analysis;
 use App\Models\Report;
+use App\Http\Controllers\InvestigationController;
+use App\Http\Controllers\ReportsController;
 
 Route::get('/', function () {
     $totalScans = Report::where('status', 'completed')->count();
@@ -33,6 +35,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/scan-history', [ScanHistoryController::class, 'index'])->name('scan.history');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
+    Route::post('/investigations/{report}', [InvestigationController::class, 'store'])->name('investigations.store');
+    Route::post('/investigations/{report}/request', [InvestigationController::class, 'request'])->name('investigations.request');
+    Route::patch('/investigations/{investigation}', [InvestigationController::class, 'update'])->name('investigations.update');
+    Route::get('/investigations', [InvestigationController::class, 'index'])->name('investigations.index');
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
 });
+
 
 require __DIR__.'/auth.php';

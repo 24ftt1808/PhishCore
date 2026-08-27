@@ -1070,13 +1070,14 @@ private function detectAttachment(string $text): array
             $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
 
-        $result = [
+                $result = [
             'risk_score' => $totalPoints,
             'verdict' => $verdict,
             'domain_age_days' => $ageResult['domain_age_days'],
             'url_syntax_score' => $syntaxResult['points'],
             'ip_address' => $ipResult['ip'],
             'ip_reputation' => $ipResult['summary'],
+            'country' => $ipResult['country'],
             'redirect_chain' => $redirectResult['chain'],
             'checks' => $checks,
         ];

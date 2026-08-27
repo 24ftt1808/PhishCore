@@ -182,11 +182,15 @@
                             </div>
                         </td>
                         <td class="px-5 py-4 text-slate-400">{{ $report->created_at->format('Y-m-d H:i') }}</td>
-                        <td class="px-5 py-4">
+                                              <td class="px-5 py-4">
                             <span class="flex items-center gap-2 text-slate-400">
-                                <span class="w-6 h-6 rounded-full bg-sky-500 text-white text-[10px] font-bold flex items-center justify-center">
-                                    {{ collect(explode(' ', auth()->user()->name))->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('') }}
-                                </span>
+                                @if (auth()->user()->photoUrl())
+                                    <img src="{{ auth()->user()->photoUrl() }}" class="w-6 h-6 rounded-full object-cover">
+                                @else
+                                    <span class="w-6 h-6 rounded-full bg-sky-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                        {{ collect(explode(' ', auth()->user()->name))->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('') }}
+                                    </span>
+                                @endif
                                 {{ auth()->user()->name }}
                             </span>
                         </td>

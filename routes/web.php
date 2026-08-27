@@ -10,6 +10,7 @@ use App\Models\Analysis;
 use App\Models\Report;
 use App\Http\Controllers\InvestigationController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\UserManagementController;
 
 Route::get('/', function () {
     $totalScans = Report::where('status', 'completed')->count();
@@ -40,6 +41,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/investigations/{investigation}', [InvestigationController::class, 'update'])->name('investigations.update');
     Route::get('/investigations', [InvestigationController::class, 'index'])->name('investigations.index');
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+    Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+Route::patch('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');
+Route::post('/user-management/{user}/toggle-suspend', [UserManagementController::class, 'toggleSuspend'])->name('user-management.toggle-suspend');
+Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
+Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.destroy');
 });
 
 

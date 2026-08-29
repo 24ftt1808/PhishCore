@@ -88,12 +88,13 @@ class AnalysisEngine
             $whois = Factory::get()->createWhois($loader);
             $info = $whois->loadDomainInfo($host);
 
-            if (!$info || !$info->creationDate) {
+                       if (!$info || !$info->creationDate) {
                 return [
                     'flagged' => false,
                     'points' => 0,
                     'domain_age_days' => null,
                     'reasons' => ['WHOIS data unavailable for this domain'],
+                    'unavailable' => true,
                 ];
             }
 
@@ -120,12 +121,13 @@ class AnalysisEngine
                 'domain_age_days' => $ageDays,
                 'reasons' => $reasons,
             ];
-        } catch (\Throwable $e) {
+              } catch (\Throwable $e) {
             return [
                 'flagged' => false,
                 'points' => 0,
                 'domain_age_days' => null,
                 'reasons' => ['Could not retrieve WHOIS data'],
+                'unavailable' => true,
             ];
         }
     }
@@ -170,13 +172,13 @@ class AnalysisEngine
                 return ['flagged' => true, 'points' => 25, 'reasons' => ['Could not verify a valid, trusted SSL certificate for this domain']];
             }
 
-            // A connection-level failure that isn't SSL-specific (DNS
+                     // A connection-level failure that isn't SSL-specific (DNS
             // failure, connection refused, timeout) shouldn't count against
             // the SSL check specifically — other checks (redirect chain, IP
             // reputation) already surface general connectivity problems.
-            return ['flagged' => false, 'points' => 0, 'reasons' => ['Could not connect to verify SSL (unrelated to certificate validity)']];
+            return ['flagged' => false, 'points' => 0, 'reasons' => ['Could not connect to verify SSL (unrelated to certificate validity)'], 'unavailable' => true];
         } catch (\Throwable $e) {
-            return ['flagged' => false, 'points' => 0, 'reasons' => ['Could not verify SSL certificate due to an unexpected error']];
+            return ['flagged' => false, 'points' => 0, 'reasons' => ['Could not verify SSL certificate due to an unexpected error'], 'unavailable' => true];
         }
     }
 
@@ -184,8 +186,8 @@ class AnalysisEngine
     {
         $apiKey = config('services.google_safe_browsing.key');
 
-        if (!$apiKey) {
-            return ['flagged' => false, 'points' => 0, 'reasons' => ['Blacklist check skipped: no API key configured']];
+               if (!$apiKey) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => ['Blacklist check skipped: no API key configured'], 'unavailable' => true];
         }
 
         try {
@@ -214,9 +216,9 @@ class AnalysisEngine
                 ];
             }
 
-            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+                     return ['flagged' => false, 'points' => 0, 'reasons' => []];
         } catch (\Throwable $e) {
-            return ['flagged' => false, 'points' => 0, 'reasons' => ['Blacklist check unavailable']];
+            return ['flagged' => false, 'points' => 0, 'reasons' => ['Blacklist check unavailable'], 'unavailable' => true];
         }
     }
 
@@ -236,6 +238,7 @@ class AnalysisEngine
             'malicious' => null,
             'total' => null,
             'raw' => null,
+            'unavailable' => true,
         ];
 
         if (!$apiKey) {
@@ -340,13 +343,14 @@ class AnalysisEngine
     {
         $host = parse_url($url, PHP_URL_HOST);
 
-        $empty = [
+              $empty = [
             'flagged' => false,
             'points' => 0,
             'reasons' => [],
             'ip' => null,
             'country' => null,
             'summary' => null,
+            'unavailable' => true,
         ];
 
         if (!$host) {
@@ -1017,8 +1021,19 @@ private function detectAttachment(string $text): array
     /**
      * Build a structured check result for the UI (name, status, message).
      */
-    private function buildCheck(string $name, array $result, string $flaggedStatus = 'SUSPICIOUS'): array
+        private function buildCheck(string $name, array $result, string $flaggedStatus = 'SUSPICIOUS'): array
     {
+        if ($result['unavailable'] ?? false) {
+            return [
+                'name' => $name,
+                'status' => 'UNKNOWN',
+                'message' => !empty($result['reasons'])
+                    ? implode(' ', $result['reasons'])
+                    : 'This check could not be completed.',
+                'points' => $result['points'],
+            ];
+        }
+
         return [
             'name' => $name,
             'status' => $result['flagged'] ? $flaggedStatus : 'SAFE',

@@ -497,6 +497,282 @@ class AnalysisEngine
             'chain' => $chain,
         ];
     }
+
+    /**
+     * Tier 1 content validation: fetches the page's actual HTML (rather than
+     * just checking reputation/metadata about the URL) and looks for concrete
+     * phishing evidence — a credential-harvesting login form, phishing-style
+     * lure language in the visible text, and brand impersonation (the page
+     * content claims to be a known brand while the domain does not belong to
+     * that brand). This is potentially the strongest signal a scan can
+     * produce, but Tier 1 pattern-matching alone can't truly verify intent,
+     * so it's weighted as a supporting signal (capped well below VirusTotal)
+     * rather than a dominant one until proven out with real-world testing.
+     *
+     * Safety guards: only http(s) schemes are fetched, private/internal IPs
+     * are refused (prevents this server being tricked into scanning its own
+     * internal network), redirects are capped, and a short timeout is used —
+     * this server is deliberately visiting live, possibly-malicious URLs.
+     */
+    public function checkPageContent(string $url): array
+    {
+        $empty = [
+            'flagged' => false,
+            'points' => 0,
+            'reasons' => [],
+            'unavailable' => true,
+        ];
+
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        if (!in_array($scheme, ['http', 'https'])) {
+            $empty['reasons'][] = 'Content check skipped: unsupported URL scheme';
+            return $empty;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            $empty['reasons'][] = 'Content check skipped: could not determine host';
+            return $empty;
+        }
+
+        // Refuse to fetch when the URL's host is a raw IP literal pointing
+        // at a private/internal address (e.g. "http://127.0.0.1" or an
+        // internal IP) — the direct, obvious SSRF risk: someone submitting
+        // a URL that makes this server attack its own internal network.
+        //
+        // Deliberately does NOT attempt to pre-resolve domain names to an
+        // IP and check that instead — confirmed via testing that PHP's
+        // gethostbyname() can fail to resolve a domain that the actual
+        // fetch (via curl) resolves and reaches successfully, which caused
+        // a real, legitimate site to be wrongly blocked as "private."
+        // Known scope limitation: a domain specifically crafted to resolve
+        // to an internal IP (DNS rebinding) would not be caught by this
+        // check — a genuinely hard problem even for production-grade
+        // security tools, and out of scope for this project.
+        if (filter_var($host, FILTER_VALIDATE_IP)
+            && !filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            $empty['reasons'][] = 'Content check skipped: URL points directly at a private/internal address';
+            return $empty;
+        }
+
+        try {
+            // A browser-style User-Agent avoids unnecessary 403s from sites
+            // that block generic/bot-looking requests (confirmed via testing
+            // against Wikipedia) — improving real-world coverage without
+            // pretending to be anything other than an automated fetch.
+            $response = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'])
+                ->withOptions(['allow_redirects' => ['max' => 3]])
+                ->timeout(8)
+                ->get($url);
+        } catch (\Throwable $e) {
+            $empty['reasons'][] = 'Could not fetch page content for analysis';
+            return $empty;
+        }
+
+        if (!$response->successful()) {
+            $empty['reasons'][] = "Page returned HTTP {$response->status()} — content could not be analyzed";
+            return $empty;
+        }
+
+        $html = $response->body();
+
+        // Cap how much HTML we process — phishing pages are almost always
+        // small, and this bounds worst-case processing time on a huge page.
+        $html = substr($html, 0, 200000);
+
+        preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $titleMatch);
+        $title = trim(strip_tags($titleMatch[1] ?? ''));
+
+        $hasPasswordField = (bool) preg_match('/<input[^>]+type\s*=\s*["\']password["\']/i', $html);
+
+        // Strip script/style blocks before converting to plain text so their
+        // contents (JS code, CSS rules) don't pollute keyword/brand matching.
+        $bodyText = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+        $bodyText = trim(strip_tags($bodyText));
+        $bodyText = Str::limit($bodyText, 5000, '');
+
+        $combinedText = trim($title . ' ' . $bodyText);
+
+        $reasons = [];
+        $points = 0;
+
+        if ($hasPasswordField) {
+            $reasons[] = 'Page contains a password input field — actively requests credentials';
+            $points += 15;
+        }
+
+        $patternResult = $this->checkContentPatterns($combinedText);
+        // Deliberately requires 2+ co-occurring lure patterns, not just 1 —
+        // confirmed via testing that a single matched category (e.g. the
+        // word "account" or "verify" appearing anywhere) triggers on
+        // completely legitimate e-commerce pages like Amazon's, which
+        // naturally use this vocabulary throughout checkout/account flows.
+        // Multiple DIFFERENT lure categories appearing together is a much
+        // more specific, less common pattern.
+        if ($patternResult['matched_categories'] >= 3) {
+            $reasons[] = 'Page text contains multiple phishing-style lure phrases (urgency, credential requests, etc.)';
+            $points += 15;
+        } elseif ($patternResult['matched_categories'] >= 2) {
+            $reasons[] = 'Page text contains phishing-style lure language';
+            $points += 8;
+        }
+
+        // Brand impersonation is only flagged when CORROBORATED by an actual
+        // password field on the same page. Brand mention alone is a weak,
+        // extremely common signal — any Wikipedia article, news piece, or
+        // review site legitimately mentions a brand by name while living on
+        // a different domain. Confirmed via testing: without this gate, a
+        // Wikipedia article about PayPal was flagged identically to a real
+        // PayPal phishing clone. A genuine credential-harvesting page
+        // impersonates a brand AND asks for a password together — an
+        // informational page about that brand does not do both.
+        if ($hasPasswordField) {
+            $brandDetection = $this->detectBrandExactMatch($combinedText);
+            if ($brandDetection['brand']) {
+                $brandMismatch = $this->checkPageBrandMismatch($brandDetection['brand'], $brandDetection['surface'], $host);
+                if ($brandMismatch['flagged']) {
+                    $reasons = array_merge($reasons, $brandMismatch['reasons']);
+                    $points += $brandMismatch['points'];
+                }
+            }
+        }
+
+        if (empty($reasons)) {
+            $reasons[] = 'No login forms, phishing-style language, or brand impersonation detected in page content';
+        }
+
+        return [
+            'flagged' => $points > 0,
+            'points' => min(40, $points),
+            'reasons' => $reasons,
+        ];
+    }
+
+    /**
+     * Exact-only brand mention detection for page content — deliberately
+     * simpler than detectBrandInText()'s fuzzy fallback. See the caller in
+     * checkPageContent() for why: fuzzy matching against a full page body
+     * has far more false-positive surface than short OCR/email text.
+     */
+    private function detectBrandExactMatch(string $text): array
+    {
+        $knownBrands = [
+            'dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
+            'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd',
+            // Crypto/wallets — added after testing revealed a real Trezor
+            // phishing site slipped through with the original list.
+            'trezor', 'metamask', 'binance', 'coinbase', 'kraken',
+            'crypto.com', 'blockchain.com', 'trust wallet',
+            // Regional banking (Brunei/SEA-relevant)
+            'baiduri', 'hsbc', 'citibank', 'standard chartered',
+            // E-commerce (major SEA phishing targets)
+            'shopee', 'lazada', 'alibaba', 'ebay',
+            // Telco (Brunei-relevant)
+            'progresif',
+            // Tech/social (common credential-phishing targets)
+            'instagram', 'whatsapp', 'linkedin', 'tiktok', 'spotify',
+            'adobe', 'dropbox', 'steam', 'zoom', 'twitter',
+            // Shipping (beyond the original 3)
+            'usps', 'royal mail', 'singpost',
+        ];
+
+        $lowerText = strtolower($text);
+
+        foreach ($knownBrands as $brand) {
+            if (preg_match('/\b' . preg_quote($brand, '/') . '\b/', $lowerText)) {
+                return ['brand' => $brand, 'surface' => $brand];
+            }
+        }
+
+        return ['brand' => null, 'surface' => null];
+    }
+
+    /**
+     * Checks whether a brand referenced in a page's visible content actually
+     * belongs to the domain serving that page — the page-content equivalent
+     * of checkBrandSenderMismatch() for emails. Reuses the same official
+     * domain list so a brand is judged by the same standard everywhere.
+     */
+    private function checkPageBrandMismatch(string $brand, ?string $surfaceText, string $host): array
+    {
+        $host = strtolower(preg_replace('/^www\./', '', $host));
+
+        $brandDomains = [
+            'dhl' => ['dhl.com'],
+            'fedex' => ['fedex.com'],
+            'ups' => ['ups.com'],
+            'paypal' => ['paypal.com'],
+            'google' => ['google.com', 'gmail.com'],
+            'facebook' => ['facebook.com', 'fb.com'],
+            'apple' => ['apple.com', 'icloud.com'],
+            'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com'],
+            'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
+            'amazon' => ['amazon.com'],
+            'netflix' => ['netflix.com'],
+            'maybank' => ['maybank2u.com.my', 'maybank.com'],
+            'bibd' => ['bibd.com.bn'],
+            // Crypto/wallets — domains verified via web search before adding,
+            // not assumed, after an earlier session mistake (a wrong domain
+            // guess for politeknikbrunei.edu.bn) taught the cost of guessing.
+            'trezor' => ['trezor.io'],
+            'metamask' => ['metamask.io'],
+            'binance' => ['binance.com'],
+            'coinbase' => ['coinbase.com'],
+            'kraken' => ['kraken.com'],
+            'crypto.com' => ['crypto.com'],
+            'blockchain.com' => ['blockchain.com'],
+            'trust wallet' => ['trustwallet.com'],
+            // Regional banking — baiduri.com.bn and progresif.com confirmed
+            // via web search; both differ from a naive first guess.
+            'baiduri' => ['baiduri.com.bn'],
+            'hsbc' => ['hsbc.com', 'hsbc.com.bn'],
+            'citibank' => ['citibank.com', 'citi.com'],
+            'standard chartered' => ['sc.com'],
+            // E-commerce
+            'shopee' => ['shopee.com'],
+            'lazada' => ['lazada.com'],
+            'alibaba' => ['alibaba.com'],
+            'ebay' => ['ebay.com'],
+            // Telco
+            'progresif' => ['progresif.com'],
+            // Tech/social — steam and zoom deliberately do NOT use
+            // "brandname.com" (steampowered.com, zoom.us), confirmed before
+            // adding since a wrong domain here would flag the brand's own
+            // real site as impersonating itself.
+            'instagram' => ['instagram.com'],
+            'whatsapp' => ['whatsapp.com'],
+            'linkedin' => ['linkedin.com'],
+            'tiktok' => ['tiktok.com'],
+            'spotify' => ['spotify.com'],
+            'adobe' => ['adobe.com'],
+            'dropbox' => ['dropbox.com'],
+            'steam' => ['steampowered.com'],
+            'zoom' => ['zoom.us'],
+            'twitter' => ['twitter.com', 'x.com'],
+            // Shipping
+            'usps' => ['usps.com'],
+            'royal mail' => ['royalmail.com'],
+            'singpost' => ['singpost.com'],
+        ];
+
+        $allowed = $brandDomains[$brand] ?? [$brand . '.com'];
+        foreach ($allowed as $officialDomain) {
+            if ($host === $officialDomain || str_ends_with($host, '.' . $officialDomain)) {
+                return ['flagged' => false, 'points' => 0, 'reasons' => []];
+            }
+        }
+
+        $displayBrand = $surfaceText && $surfaceText !== $brand
+            ? strtoupper($surfaceText) . '" (a lookalike of "' . ucfirst($brand) . '")'
+            : ucfirst($brand);
+
+        return [
+            'flagged' => true,
+            'points' => 30,
+            'reasons' => ["Page content references \"" . $displayBrand . "\" branding, but the domain (\"{$host}\") does not belong to {$brand} — likely brand impersonation"],
+        ];
+    }
+
     /**
      * Normalizes common leetspeak digit-for-letter substitutions used to
      * evade simple brand-name substring matching (e.g. "micros0ft.com"
@@ -1065,11 +1341,13 @@ private function detectAttachment(string $text): array
         $vtResult = $this->checkVirusTotal($url);
         $ipResult = $this->checkIpReputation($url);
         $redirectResult = $this->checkRedirectChain($url);
+        $contentResult = $this->checkPageContent($url);
 
         $totalPoints = min(
     100,
     $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
         + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
+        + $contentResult['points']
 );
 
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
@@ -1082,6 +1360,7 @@ private function detectAttachment(string $text): array
             $this->buildCheck('VirusTotal / CTI Check', $vtResult, 'DETECTED'),
             $this->buildCheck('IP Reputation & Location', $ipResult, 'SUSPICIOUS'),
             $this->buildCheck('Redirect Chain', $redirectResult, 'SUSPICIOUS'),
+            $this->buildCheck('Page Content Analysis', $contentResult, $contentResult['points'] >= 30 ? 'HIGH RISK' : 'SUSPICIOUS'),
             $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
 

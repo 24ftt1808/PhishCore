@@ -4,6 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'PhishCore') }} — Dashboard</title>
+
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased">
@@ -12,11 +18,9 @@
         {{-- MOBILE TOP BAR --}}
         <div class="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800/60">
             <a href="{{ route('welcome') }}" class="flex items-center gap-2">
-                <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
-                    <svg width="16" height="16" class="text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                    </svg>
-                </span>
+              <span class="w-8 h-8 flex items-center justify-center">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-8 h-8 object-contain">
+</span>
                 <span class="font-bold text-white">PhishCore</span>
             </a>
             <button @click="sidebarOpen = true" class="p-2 text-slate-300">
@@ -41,11 +45,9 @@
             <div>
                 <div class="flex items-center justify-between px-6 py-6">
                     <a href="{{ route('welcome') }}" class="flex items-center gap-2">
-                        <span class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
-                            <svg width="20" height="20" class="text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                            </svg>
-                        </span>
+                       <span class="w-9 h-9 flex items-center justify-center">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-9 h-9 object-contain">
+</span>
                         <span class="leading-tight">
                             <span class="block font-bold text-white">PhishCore</span>
                             <span class="block text-[10px] tracking-wide text-sky-400">DETECTION PLATFORM</span>

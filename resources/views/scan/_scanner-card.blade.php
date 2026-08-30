@@ -34,11 +34,9 @@
 
         <div class="relative flex items-center justify-between px-6 py-4 border-b border-slate-800">
             <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shrink-0 shadow-[0_0_16px_0_rgba(56,189,248,0.4)]">
-                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                    </svg>
-                </span>
+<span class="w-10 h-10 flex items-center justify-center shrink-0">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
+</span>
                 <div>
                     <p class="text-white font-semibold text-sm">PhishCore Scanner</p>
                     <p class="text-[11px] text-slate-500 tracking-wide mt-0.5">AI-POWERED &middot; 7 DETECTION CHECKS &middot; ~2S RESULTS</p>

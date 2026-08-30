@@ -29,11 +29,9 @@
 >
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="#home" class="flex items-center gap-2">
-            <span class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                </svg>
-            </span>
+          <span class="w-9 h-9 flex items-center justify-center">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-9 h-9 object-contain">
+</span>
             <span class="leading-tight">
                 <span class="block font-bold text-white">PhishCore</span>
                 <span class="block text-[11px] text-slate-400 -mt-1">Detection Platform</span>

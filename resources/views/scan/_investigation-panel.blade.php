@@ -2,11 +2,18 @@
     $investigation = $report->investigation;
     $isTeamMember = auth()->user()->is_team_member;
 
-    $invStatusStyles = [
+       $invStatusStyles = [
         'active' => ['badge' => 'bg-sky-500/10 text-sky-400 border-sky-500/20', 'label' => 'ACTIVE'],
         'completed' => ['badge' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', 'label' => 'COMPLETED'],
         'takedown_requested' => ['badge' => 'bg-orange-500/10 text-orange-400 border-orange-500/20', 'label' => 'TAKEDOWN REQUESTED'],
         'takedown_confirmed' => ['badge' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', 'label' => 'TAKEDOWN CONFIRMED'],
+    ];
+
+    $invDotColors = [
+        'active' => 'bg-sky-400',
+        'completed' => 'bg-emerald-400',
+        'takedown_requested' => 'bg-orange-400',
+        'takedown_confirmed' => 'bg-emerald-400',
     ];
 @endphp
 
@@ -26,12 +33,27 @@
                     </p>
                 </div>
             </div>
-            @if ($investigation)
+                     @if ($investigation)
                 <span class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $invStatusStyles[$investigation->status]['badge'] }}">
                     {{ $invStatusStyles[$investigation->status]['label'] }}
                 </span>
             @endif
         </div>
+
+        @if ($investigation && $investigation->statusLogs->isNotEmpty())
+            <div class="mt-5">
+                <p class="text-xs text-slate-500 mb-3">STATUS TIMELINE</p>
+                <div class="space-y-4 border-l border-slate-800 pl-4">
+                    @foreach ($investigation->statusLogs as $log)
+                        <div class="relative">
+                            <span class="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full {{ $invDotColors[$log->status] }}"></span>
+                            <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
+                            <p class="text-xs text-slate-500">{{ $log->created_at->format('j F Y \a\t g:i A') }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         @if (!$investigation)
             @if (session('success'))
@@ -130,7 +152,7 @@
                         <dd class="text-slate-300">{{ $investigation->resolved_at->format('j F Y \a\t g:i A') }}</dd>
                     </div>
                 @endif
-                @if ($investigation->notes)
+                             @if ($investigation->notes)
                     <div class="sm:col-span-2">
                         <dt class="text-xs text-slate-500 mb-1">NOTES</dt>
                         <dd class="text-slate-300">{{ $investigation->notes }}</dd>
@@ -138,13 +160,33 @@
                 @endif
             </dl>
 
+            @if ($investigation->statusLogs->isNotEmpty())
+                <div class="mb-5">
+                    <p class="text-xs text-slate-500 mb-3">STATUS TIMELINE</p>
+                    <div class="space-y-4 border-l border-slate-800 pl-4">
+                        @foreach ($investigation->statusLogs as $log)
+                            <div class="relative">
+                                <span class="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full {{ $invDotColors[$log->status] }}"></span>
+                                <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
+                                <p class="text-xs text-slate-500">
+                                    {{ $log->created_at->format('j F Y \a\t g:i A') }}
+                                    @if ($log->changedBy)
+                                        &middot; by {{ $log->changedBy->name }}
+                                    @endif
+                                </p>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('investigations.update', $investigation) }}" class="flex flex-wrap items-end gap-3">
                 @csrf
                 @method('PATCH')
-                <div>
+                              <div>
                     <label class="block text-xs text-slate-500 mb-1.5">UPDATE STATUS</label>
                     <select name="status"
-                        class="bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-violet-500/50">
+                        class="bg-slate-950/60 border border-slate-800 rounded-lg pl-4 pr-9 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 min-w-[210px]">
                         @foreach (['active', 'completed', 'takedown_requested', 'takedown_confirmed'] as $statusOption)
                             <option value="{{ $statusOption }}" @selected($investigation->status === $statusOption)>
                                 {{ $invStatusStyles[$statusOption]['label'] }}

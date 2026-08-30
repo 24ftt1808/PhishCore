@@ -29,11 +29,9 @@
             <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-sky-500/10 blur-3xl pointer-events-none"></div>
             <div class="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-red-500/5 blur-3xl pointer-events-none"></div>
 
-            <div class="relative w-14 h-14 mx-auto rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center mb-6" style="box-shadow: 0 0 20px -4px rgba(56,189,248,0.5);">
-                <svg width="28" height="28" class="text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                </svg>
-            </div>
+<div class="relative w-14 h-14 mx-auto rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center mb-6" style="box-shadow: 0 0 20px -4px rgba(56,189,248,0.5);">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-8 h-8 object-contain">
+</div>
 
             <div class="relative flex items-center gap-2.5 bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 mb-4 text-sm text-slate-400 font-mono">
                 <svg width="16" height="16" class="text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -202,11 +200,9 @@
             <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800">
                     <div class="flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shrink-0 shadow-[0_0_16px_0_rgba(56,189,248,0.4)]">
-                            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                            </svg>
-                        </span>
+                    <span class="w-10 h-10 flex items-center justify-center shrink-0">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
+</span>
                         <div>
                             <p class="text-white font-semibold text-sm">PhishCore Scanner</p>
                             <p class="text-[11px] text-slate-500 tracking-wide mt-0.5">AI-POWERED &middot; 7 DETECTION CHECKS &middot; ~2S RESULTS</p>
@@ -423,11 +419,9 @@
     {{-- ABOUT --}}
     <section id="about" class="scroll-mt-20 reveal max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-3 gap-12 items-start">
         <div class="text-center md:text-left">
-            <div class="w-16 h-16 mx-auto md:mx-0 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center mb-3">
-                <svg class="w-8 h-8 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-                </svg>
-            </div>
+          <div class="w-16 h-16 mx-auto md:mx-0 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center mb-3">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
+</div>
             <p class="text-white font-medium">Final Year Project</p>
             <p class="text-sm text-slate-500">Politeknik Brunei · 2026</p>
         </div>

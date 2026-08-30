@@ -1,11 +1,9 @@
 <x-guest-layout>
 
     <x-slot:rightPanel>
-        <div class="w-20 h-20 mx-auto mb-8 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
-            <svg class="w-10 h-10 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
-            </svg>
-        </div>
+<div class="w-20 h-20 mx-auto mb-8 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
+    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-12 h-12 object-contain">
+</div>
 
         <h2 class="text-2xl font-bold text-white mb-4">Secure Account Recovery</h2>
         <p class="text-slate-400 mb-10">

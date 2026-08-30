@@ -3,6 +3,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany; 
 class Investigation extends Model
 {
     use HasFactory;
@@ -28,5 +29,9 @@ class Investigation extends Model
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+        public function statusLogs(): HasMany
+    {
+        return $this->hasMany(InvestigationStatusLog::class)->latest();
     }
 }

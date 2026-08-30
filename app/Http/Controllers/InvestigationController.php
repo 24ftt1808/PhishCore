@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Investigation;
+use App\Models\InvestigationStatusLog;
 use App\Models\Report;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,11 +72,17 @@ class InvestigationController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        Investigation::create([
+               $investigation = Investigation::create([
             'report_id' => $report->id,
             'assigned_to' => $validated['assigned_to'] ?? null,
             'status' => 'active',
             'notes' => $validated['notes'] ?? null,
+        ]);
+
+        InvestigationStatusLog::create([
+            'investigation_id' => $investigation->id,
+            'status' => 'active',
+            'changed_by' => auth()->id(),
         ]);
 
         return redirect()->route('scan.show', $report)
@@ -99,14 +106,20 @@ class InvestigationController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        Investigation::create([
+              $investigation = Investigation::create([
             'report_id' => $report->id,
             'requested_by' => auth()->id(),
             'status' => 'active',
             'notes' => $validated['notes'] ?? null,
         ]);
 
-        return redirect()->route('scan.show', $report)
+        InvestigationStatusLog::create([
+            'investigation_id' => $investigation->id,
+            'status' => 'active',
+            'changed_by' => auth()->id(),
+        ]);
+
+              return redirect()->route('scan.show', $report)
             ->with('success', 'Investigation requested. Our team will review this report.');
     }
 
@@ -124,9 +137,11 @@ class InvestigationController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $resolvedAt = in_array($validated['status'], ['completed', 'takedown_confirmed'], true)
+              $resolvedAt = in_array($validated['status'], ['completed', 'takedown_confirmed'], true)
             ? ($investigation->resolved_at ?? now())
             : null;
+
+        $statusChanged = $investigation->status !== $validated['status'];
 
         $investigation->update([
             'status' => $validated['status'],
@@ -134,6 +149,17 @@ class InvestigationController extends Controller
             'notes' => $validated['notes'] ?? $investigation->notes,
             'resolved_at' => $resolvedAt,
         ]);
+
+        // Only log an actual status TRANSITION, not every save — otherwise
+        // re-saving the same status (e.g. just updating notes) would create
+        // a misleading duplicate entry in the timeline showing no real change.
+        if ($statusChanged) {
+            InvestigationStatusLog::create([
+                'investigation_id' => $investigation->id,
+                'status' => $validated['status'],
+                'changed_by' => auth()->id(),
+            ]);
+        }
 
         return redirect()->route('scan.show', $investigation->report)
             ->with('success', 'Investigation updated.');

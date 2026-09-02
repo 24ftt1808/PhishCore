@@ -18,12 +18,16 @@
             default => 'LOW',
         };
 
-        $statusColors = [
+              $statusColors = [
             'SAFE' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
             'SUSPICIOUS' => 'bg-orange-500/10 text-orange-400 border-orange-500/20',
             'HIGH RISK' => 'bg-red-500/10 text-red-400 border-red-500/20',
             'DETECTED' => 'bg-red-500/10 text-red-400 border-red-500/20',
             'REVIEW' => 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+            'UNKNOWN' => 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+            'LIVE' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            'OFFLINE' => 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+            'TAKEN DOWN' => 'bg-sky-500/10 text-sky-400 border-sky-500/20',
         ];
 
         $typeIcons = [

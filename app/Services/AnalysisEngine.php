@@ -498,6 +498,115 @@ class AnalysisEngine
         ];
     }
 
+        /**
+     * Flags domains hosted on free website-builder / static-hosting
+     * platforms (Weebly, Wix, Netlify, GitHub Pages, etc.) — a well-known,
+     * legitimate phishing-kit pattern: these platforms require no identity
+     * verification, are free, and can be spun up and abandoned in minutes.
+     * This is a supporting signal only (modest points), since plenty of
+     * hobbyists and small legitimate projects also use these same
+     * platforms — the check flags the infrastructure choice, not intent.
+     *
+     * Matches on the registrable base domain (e.g. "weebly.com"), not a
+     * substring, so a legitimate domain that merely contains one of these
+     * words (unlikely, but possible) isn't wrongly matched.
+     */
+    public function checkFreeHostingPlatform(string $url): array
+    {
+        $host = strtolower(parse_url($url, PHP_URL_HOST) ?? '');
+        $host = preg_replace('/^www\./', '', $host);
+
+        $freeHostSuffixes = [
+            'weebly.com', 'wixsite.com', 'blogspot.com', 'netlify.app',
+            'github.io', 'pages.dev', 'carrd.co', 'glitch.me',
+            '000webhostapp.com', 'firebaseapp.com', 'web.app',
+            'herokuapp.com', 'vercel.app', 'repl.co', 'r2.dev',
+            'sites.google.com', 'wordpress.com', 'square.site',
+        ];
+
+        foreach ($freeHostSuffixes as $suffix) {
+            if ($host === $suffix || str_ends_with($host, '.' . $suffix)) {
+                return [
+                    'flagged' => true,
+                    'points' => 10,
+                    'reasons' => ["Hosted on \"{$suffix}\", a free website-builder/hosting platform commonly used for disposable phishing pages — legitimate small projects also use these, so this is a supporting signal only"],
+                    'platform' => $suffix,
+                ];
+            }
+        }
+
+        return ['flagged' => false, 'points' => 0, 'reasons' => [], 'platform' => null];
+    }
+
+        /**
+     * Checks whether the site is currently reachable at all, distinguishing
+     * WHY it isn't (if it isn't) rather than lumping every failure into a
+     * single generic "unavailable." This is informational only — it does
+     * NOT affect the risk score in either direction. A site going offline
+     * doesn't undo the fact that it was confirmed malicious when reported
+     * (the original scan/VT/content evidence stands), and a site still
+     * being live doesn't make it more dangerous than the other checks
+     * already established. This exists purely so a reader — especially a
+     * team member managing an investigation — can see at a glance whether
+     * the threat is still active or already taken down.
+     */
+    public function checkSiteAvailability(string $url): array
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (!$host) {
+            return [
+                'status_label' => 'UNKNOWN',
+                'reasons' => ['Could not determine host from URL'],
+            ];
+        }
+
+        $resolved = @gethostbyname($host);
+        if (!$resolved || $resolved === $host) {
+            return [
+                'status_label' => 'OFFLINE',
+                'reasons' => ["This domain (\"{$host}\") no longer resolves — it may have expired, been suspended, or been taken down entirely"],
+            ];
+        }
+
+        try {
+            $response = Http::withOptions(['allow_redirects' => ['max' => 3]])
+                ->timeout(8)
+                ->get($url);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return [
+                'status_label' => 'OFFLINE',
+                'reasons' => ['The domain resolves, but the server refused the connection or timed out — the site is likely offline'],
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status_label' => 'UNKNOWN',
+                'reasons' => ['Could not determine site availability due to an unexpected error'],
+            ];
+        }
+
+        $status = $response->status();
+
+        if (in_array($status, [404, 410])) {
+            return [
+                'status_label' => 'TAKEN DOWN',
+                'reasons' => ["The server responded with HTTP {$status} — the specific page appears to have been removed, though the domain itself is still active"],
+            ];
+        }
+
+        if ($status >= 500) {
+            return [
+                'status_label' => 'UNKNOWN',
+                'reasons' => ["The server responded with HTTP {$status} — a server-side error, which may be temporary"],
+            ];
+        }
+
+        return [
+            'status_label' => 'LIVE',
+            'reasons' => ["Site is currently live and reachable (HTTP {$status})"],
+        ];
+    }
+
     /**
      * Tier 1 content validation: fetches the page's actual HTML (rather than
      * just checking reputation/metadata about the URL) and looks for concrete
@@ -574,7 +683,8 @@ class AnalysisEngine
             return $empty;
         }
 
-        $html = $response->body();
+              $html = $response->body();
+        $serverHeader = $response->header('Server');
 
         // Cap how much HTML we process — phishing pages are almost always
         // small, and this bounds worst-case processing time on a huge page.
@@ -626,7 +736,7 @@ class AnalysisEngine
         // PayPal phishing clone. A genuine credential-harvesting page
         // impersonates a brand AND asks for a password together — an
         // informational page about that brand does not do both.
-        if ($hasPasswordField) {
+               if ($hasPasswordField) {
             $brandDetection = $this->detectBrandExactMatch($combinedText);
             if ($brandDetection['brand']) {
                 $brandMismatch = $this->checkPageBrandMismatch($brandDetection['brand'], $brandDetection['surface'], $host);
@@ -635,15 +745,28 @@ class AnalysisEngine
                     $points += $brandMismatch['points'];
                 }
             }
+
+            $formSecurityResult = $this->checkFormActionSecurity($html, $host);
+            if ($formSecurityResult['flagged']) {
+                $reasons = array_merge($reasons, $formSecurityResult['reasons']);
+                $points += $formSecurityResult['points'];
+            }
         }
 
         if (empty($reasons)) {
             $reasons[] = 'No login forms, phishing-style language, or brand impersonation detected in page content';
         }
 
-        return [
+        // Purely informational — doesn't affect flagged/points. Legitimate
+        // sites and phishing pages both routinely omit or fake this header,
+        // so it's context for a reader, not evidence on its own.
+        if ($serverHeader) {
+            $reasons[] = "Server responds as: {$serverHeader}";
+        }
+
+             return [
             'flagged' => $points > 0,
-            'points' => min(40, $points),
+            'points' => min(55, $points),
             'reasons' => $reasons,
         ];
     }
@@ -770,6 +893,84 @@ class AnalysisEngine
             'flagged' => true,
             'points' => 30,
             'reasons' => ["Page content references \"" . $displayBrand . "\" branding, but the domain (\"{$host}\") does not belong to {$brand} — likely brand impersonation"],
+        ];
+    }
+
+        /**
+     * Checks a login form's own <form action="..."> destination — two
+     * well-documented static-HTML phishing indicators from published
+     * anti-phishing research: (1) the form submits credentials to a
+     * DIFFERENT domain than the page itself is hosted on, and (2) the form
+     * submits directly via "mailto:" rather than a server endpoint, a
+     * common low-effort phishing-kit pattern that needs no backend at all.
+     * Both are considered stronger, more specific signals than a bare
+     * password field alone, since a cloned legitimate page's HTML often
+     * carries the real site's structure but must redirect stolen
+     * credentials somewhere the attacker actually controls.
+     *
+     * Deliberately scoped PER-FORM: only forms that themselves contain a
+     * password field are checked. This avoids false positives from
+     * unrelated forms elsewhere on the same page (e.g. a legitimate
+     * newsletter signup submitting to Mailchimp) being flagged just
+     * because a login form exists somewhere else on the page.
+     */
+    private function checkFormActionSecurity(string $html, string $pageHost): array
+    {
+        $reasons = [];
+        $points = 0;
+
+        preg_match_all('/<form\b[^>]*\baction\s*=\s*["\']([^"\']*)["\'][^>]*>(.*?)<\/form>/is', $html, $matches, PREG_SET_ORDER);
+
+        $flaggedExternal = false;
+        $flaggedEmail = false;
+
+        foreach ($matches as $match) {
+            $action = trim($match[1]);
+            $formBody = $match[2];
+
+            $formHasPassword = (bool) preg_match('/<input[^>]+type\s*=\s*["\']password["\']/i', $formBody);
+            if (!$formHasPassword || $action === '') {
+                continue;
+            }
+
+            if (stripos($action, 'mailto:') === 0) {
+                $flaggedEmail = true;
+                continue;
+            }
+
+            $actionHost = parse_url($action, PHP_URL_HOST);
+            if ($actionHost === null) {
+                // A relative path ("/login", "submit.php") resolves to the
+                // same host the page is already on — not suspicious.
+                continue;
+            }
+
+            $actionHost = strtolower(preg_replace('/^www\./', '', $actionHost));
+            $normalizedPageHost = strtolower(preg_replace('/^www\./', '', $pageHost));
+
+            $sameOrSubdomain = $actionHost === $normalizedPageHost
+                || str_ends_with($normalizedPageHost, '.' . $actionHost)
+                || str_ends_with($actionHost, '.' . $normalizedPageHost);
+
+            if (!$sameOrSubdomain) {
+                $flaggedExternal = true;
+            }
+        }
+
+        if ($flaggedEmail) {
+            $reasons[] = 'Login form submits directly to an email address (mailto:) instead of a server endpoint — a common low-effort phishing-kit pattern requiring no backend';
+            $points += 20;
+        }
+
+        if ($flaggedExternal) {
+            $reasons[] = 'Login form submits entered credentials to a different domain than the page itself — a strong indicator of credential harvesting';
+            $points += 25;
+        }
+
+        return [
+            'flagged' => $points > 0,
+            'points' => $points,
+            'reasons' => $reasons,
         ];
     }
 
@@ -1342,12 +1543,14 @@ private function detectAttachment(string $text): array
         $ipResult = $this->checkIpReputation($url);
         $redirectResult = $this->checkRedirectChain($url);
         $contentResult = $this->checkPageContent($url);
+        $hostingResult = $this->checkFreeHostingPlatform($url);
+        $availabilityResult = $this->checkSiteAvailability($url);
 
-        $totalPoints = min(
+           $totalPoints = min(
     100,
     $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
         + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
-        + $contentResult['points']
+        + $contentResult['points'] + $hostingResult['points']
 );
 
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
@@ -1361,6 +1564,13 @@ private function detectAttachment(string $text): array
             $this->buildCheck('IP Reputation & Location', $ipResult, 'SUSPICIOUS'),
             $this->buildCheck('Redirect Chain', $redirectResult, 'SUSPICIOUS'),
             $this->buildCheck('Page Content Analysis', $contentResult, $contentResult['points'] >= 30 ? 'HIGH RISK' : 'SUSPICIOUS'),
+                       $this->buildCheck('Hosting Platform', $hostingResult, 'SUSPICIOUS'),
+            [
+                'name' => 'Site Availability',
+                'status' => $availabilityResult['status_label'],
+                'message' => implode(' ', $availabilityResult['reasons']),
+                'points' => 0,
+            ],
             $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
 
@@ -1524,7 +1734,7 @@ private function checkPreviousDomainReports(?string $domain, ?int $excludeReport
         $query->where('id', '!=', $excludeReportId);
     }
 
-    $candidateReports = $query->get(['id', 'user_id', 'url', 'sender_email']);
+        $candidateReports = $query->get(['id', 'user_id', 'url', 'sender_email', 'created_at']);
 
     // The LIKE query above is only a cheap first pass to shrink the result
     // set. It matches SUBSTRINGS, so a phishing lookalike domain like
@@ -1564,26 +1774,35 @@ private function checkPreviousDomainReports(?string $domain, ?int $excludeReport
         ];
     }
 
-   if ($reporterCount === 1) {
+    $firstSeen = $matchingReports->min('created_at');
+    $firstSeenLabel = $firstSeen ? "First seen on PhishCore: " . $firstSeen->format('j M Y') : null;
+
+     if ($reporterCount === 1) {
+    $reasons = ["This domain has appeared in 1 other report on PhishCore."];
+    if ($firstSeenLabel) $reasons[] = $firstSeenLabel;
     return [
         'flagged' => true,
         'points' => 10,
-        'reasons' => ["This domain has appeared in 1 other report on PhishCore"],
+        'reasons' => $reasons,
     ];
 }
 
 if ($reporterCount <= 4) {
+    $reasons = ["This domain has appeared in {$reporterCount} other reports on PhishCore — reused across multiple submissions."];
+    if ($firstSeenLabel) $reasons[] = $firstSeenLabel;
     return [
         'flagged' => true,
         'points' => 18,
-        'reasons' => ["This domain has appeared in {$reporterCount} other reports on PhishCore — reused across multiple submissions"],
+        'reasons' => $reasons,
     ];
 }
 
+$reasons = ["This domain has appeared in {$reporterCount} other reports on PhishCore — repeatedly reused phishing infrastructure."];
+if ($firstSeenLabel) $reasons[] = $firstSeenLabel;
 return [
     'flagged' => true,
     'points' => 25,
-    'reasons' => ["This domain has appeared in {$reporterCount} other reports on PhishCore — repeatedly reused phishing infrastructure"],
+    'reasons' => $reasons,
 ];
 }
 

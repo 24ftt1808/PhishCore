@@ -49,7 +49,7 @@ class AnalysisEngine
             // normalized one — otherwise a lookalike like "micros0ft.com" would
             // normalize into looking identical to "microsoft.com" and get
             // incorrectly whitelisted instead of flagged.
-            $isLegitDomain = str_starts_with($host, $brand . '.') || str_ends_with($host, '.' . $brand . '.com');
+                        $isLegitDomain = $host === $brand . '.com' || str_ends_with($host, '.' . $brand . '.com');
 
             if ($matchesBrand && !$isLegitDomain) {
                 $reasons[] = str_contains($host, $brand)
@@ -693,7 +693,9 @@ class AnalysisEngine
         preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $titleMatch);
         $title = trim(strip_tags($titleMatch[1] ?? ''));
 
-        $hasPasswordField = (bool) preg_match('/<input[^>]+type\s*=\s*["\']password["\']/i', $html);
+                $sensitiveFields = $this->detectSensitiveInputFields($html);
+        $hasPasswordField = $sensitiveFields['has_password'];
+        $hasSensitiveField = $hasPasswordField || $sensitiveFields['has_other_sensitive'];
 
         // Strip script/style blocks before converting to plain text so their
         // contents (JS code, CSS rules) don't pollute keyword/brand matching.
@@ -706,11 +708,21 @@ class AnalysisEngine
         $reasons = [];
         $points = 0;
 
+                        // A password field alone is near-universal on legitimate sites
+        // (banks, universities, webmail, forums) and is NOT evidence of
+        // phishing by itself — confirmed via testing against a real
+        // Politeknik Brunei login page, which has a password field and
+        // nothing else suspicious, yet was being marked SUSPICIOUS purely
+        // for having a login form. It's kept as context only (0 points);
+        // it still unlocks the corroborating checks below (brand mismatch,
+        // form-action security), which is where genuine evidence comes from.
         if ($hasPasswordField) {
-            $reasons[] = 'Page contains a password input field — actively requests credentials';
-            $points += 15;
+            $reasons[] = 'Page contains a password input field';
+        } elseif ($sensitiveFields['has_other_sensitive']) {
+            $fieldList = implode(', ', $sensitiveFields['matched']);
+            $reasons[] = "Page requests sensitive information without a login form: {$fieldList} — a common non-login credential/PII harvesting pattern (e.g. fake refund or OTP-verification pages)";
+            $points += 12;
         }
-
         $patternResult = $this->checkContentPatterns($combinedText);
         // Deliberately requires 2+ co-occurring lure patterns, not just 1 —
         // confirmed via testing that a single matched category (e.g. the
@@ -736,7 +748,7 @@ class AnalysisEngine
         // PayPal phishing clone. A genuine credential-harvesting page
         // impersonates a brand AND asks for a password together — an
         // informational page about that brand does not do both.
-               if ($hasPasswordField) {
+                             if ($hasSensitiveField) {
             $brandDetection = $this->detectBrandExactMatch($combinedText);
             if ($brandDetection['brand']) {
                 $brandMismatch = $this->checkPageBrandMismatch($brandDetection['brand'], $brandDetection['surface'], $host);
@@ -753,8 +765,22 @@ class AnalysisEngine
             }
         }
 
+                // Static HTML redirect trick that checkRedirectChain() can't see —
+        // that check only follows real HTTP 3xx responses.
+        $metaRefreshResult = $this->checkMetaRefresh($html, $host);
+        if ($metaRefreshResult['flagged']) {
+            $reasons = array_merge($reasons, $metaRefreshResult['reasons']);
+            $points += $metaRefreshResult['points'];
+        }
+
+        $obfuscationResult = $this->checkObfuscationPatterns($html);
+        if ($obfuscationResult['flagged']) {
+            $reasons = array_merge($reasons, $obfuscationResult['reasons']);
+            $points += $obfuscationResult['points'];
+        }
+
         if (empty($reasons)) {
-            $reasons[] = 'No login forms, phishing-style language, or brand impersonation detected in page content';
+            $reasons[] = 'No login forms, sensitive-data requests, phishing-style language, brand impersonation, hidden iframes, or obfuscated scripts detected in page content';
         }
 
         // Purely informational — doesn't affect flagged/points. Legitimate
@@ -764,9 +790,143 @@ class AnalysisEngine
             $reasons[] = "Server responds as: {$serverHeader}";
         }
 
-             return [
+                        return [
             'flagged' => $points > 0,
-            'points' => min(55, $points),
+            'points' => min(70, $points),
+            'reasons' => $reasons,
+        ];
+    }
+
+    /**
+     * Scans <input> tags for fields beyond just "password" that also
+     * indicate credential/PII harvesting — card numbers, CVV, bank
+     * account/routing numbers, OTP/PIN codes, and national ID/SSN numbers.
+     * A fake "claim your refund" or "verify OTP" page often has NO password
+     * field at all, so gating every deeper check on password presence alone
+     * (the previous behavior) let this entire class of phishing page through
+     * with a clean result. Matches on name/id/placeholder attributes since
+     * that's how these fields are actually labeled in real markup.
+     */
+    private function detectSensitiveInputFields(string $html): array
+    {
+        $hasPassword = (bool) preg_match('/<input[^>]+type\s*=\s*["\']password["\']/i', $html);
+
+        $labeledPatterns = [
+            'card number' => '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:card[-_ ]?number|cardnumber|cc[-_]?num)[^"\']*["\']/i',
+            'CVV/CVC' => '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:cvv|cvc|security[-_ ]?code)[^"\']*["\']/i',
+            'bank account/routing number' => '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:account[-_ ]?number|routing[-_ ]?number|iban|swift)[^"\']*["\']/i',
+            'OTP/PIN' => '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:otp|one[-_ ]?time[-_ ]?password|verification[-_ ]?code|\bpin\b)[^"\']*["\']/i',
+            'national ID/SSN' => '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:ssn|social[-_ ]?security|national[-_ ]?id|nric)[^"\']*["\']/i',
+        ];
+
+        preg_match_all('/<input\b[^>]*>/i', $html, $inputTags);
+        $matched = [];
+
+        foreach ($inputTags[0] as $tag) {
+            foreach ($labeledPatterns as $label => $regex) {
+                if (preg_match($regex, $tag) && !in_array($label, $matched)) {
+                    $matched[] = $label;
+                }
+            }
+        }
+
+        return [
+            'has_password' => $hasPassword,
+            'has_other_sensitive' => !empty($matched),
+            'matched' => $matched,
+        ];
+    }
+
+    /**
+     * Unlabeled regex list shared with detectSensitiveInputFields() so
+     * checkFormActionSecurity() can flag a card/OTP/bank-harvesting form's
+     * action destination exactly the same way it already does for password
+     * forms, without duplicating the pattern definitions.
+     */
+    private function sensitiveFieldPatterns(): array
+    {
+        return [
+            '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:card[-_ ]?number|cardnumber|cc[-_]?num)[^"\']*["\']/i',
+            '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:cvv|cvc|security[-_ ]?code)[^"\']*["\']/i',
+            '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:account[-_ ]?number|routing[-_ ]?number|iban|swift)[^"\']*["\']/i',
+            '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:otp|one[-_ ]?time[-_ ]?password|verification[-_ ]?code|\bpin\b)[^"\']*["\']/i',
+            '/(?:name|id|placeholder)\s*=\s*["\'][^"\']*(?:ssn|social[-_ ]?security|national[-_ ]?id|nric)[^"\']*["\']/i',
+        ];
+    }
+
+    private function formContainsSensitiveField(string $formBody): bool
+    {
+        foreach ($this->sensitiveFieldPatterns() as $regex) {
+            if (preg_match($regex, $formBody)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Detects a <meta http-equiv="refresh"> tag that redirects to a
+     * DIFFERENT domain than the page itself — the meta-tag equivalent of
+     * the cross-domain redirect already flagged in checkRedirectChain(),
+     * which only follows real HTTP 3xx status codes and would miss this
+     * entirely, since a page using meta-refresh returns a normal HTTP 200.
+     */
+    private function checkMetaRefresh(string $html, string $pageHost): array
+    {
+        if (!preg_match('/<meta[^>]+http-equiv\s*=\s*["\']refresh["\'][^>]*content\s*=\s*["\']([^"\']*)["\']/i', $html, $m)) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+        }
+
+        if (!preg_match('/url\s*=\s*(\S+)/i', $m[1], $urlMatch)) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+        }
+
+        $targetUrl = trim($urlMatch[1], '\'" ');
+        $targetHost = str_starts_with($targetUrl, 'http')
+            ? parse_url($targetUrl, PHP_URL_HOST)
+            : $pageHost;
+
+        $normalize = fn (?string $h) => preg_replace('/^www\./', '', strtolower($h ?? ''));
+
+        if ($targetHost && $normalize($targetHost) !== $normalize($pageHost)) {
+            return [
+                'flagged' => true,
+                'points' => 15,
+                'reasons' => ["Page uses a meta-refresh tag to automatically redirect visitors to a different domain ({$targetHost}) than the one they loaded"],
+            ];
+        }
+
+        return ['flagged' => false, 'points' => 0, 'reasons' => []];
+    }
+
+    /**
+     * Flags two Tier-1-detectable evasion patterns that need no headless
+     * browser or JS execution: (1) a hidden iframe (zero-size or
+     * display:none/visibility:hidden), commonly used to load malicious
+     * content invisibly, and (2) eval() combined with atob()/unescape() —
+     * decode-then-execute, a common way phishing kits hide their real
+     * payload from simple text scanning. Neither requires a sensitive
+     * field to be present — a hidden iframe or obfuscated script is
+     * suspicious on any page.
+     */
+    private function checkObfuscationPatterns(string $html): array
+    {
+        $reasons = [];
+        $points = 0;
+
+        if (preg_match('/<iframe\b[^>]*(?:width\s*=\s*["\']0["\']|height\s*=\s*["\']0["\']|display\s*:\s*none|visibility\s*:\s*hidden)[^>]*>/i', $html)) {
+            $reasons[] = 'Page contains a hidden iframe (zero-size or display:none/visibility:hidden) — commonly used to load malicious content invisibly to the visitor';
+            $points += 20;
+        }
+
+        if (preg_match('/eval\s*\(\s*(?:atob|unescape)\s*\(/i', $html)) {
+            $reasons[] = 'Page contains obfuscated JavaScript (eval combined with atob/unescape decoding) — a common technique for hiding a script\'s real behavior from simple text scanning';
+            $points += 15;
+        }
+
+        return [
+            'flagged' => $points > 0,
+            'points' => $points,
             'reasons' => $reasons,
         ];
     }
@@ -928,8 +1088,9 @@ class AnalysisEngine
             $action = trim($match[1]);
             $formBody = $match[2];
 
-            $formHasPassword = (bool) preg_match('/<input[^>]+type\s*=\s*["\']password["\']/i', $formBody);
-            if (!$formHasPassword || $action === '') {
+                        $formHasPassword = (bool) preg_match('/<input[^>]+type\s*=\s*["\']password["\']/i', $formBody);
+            $formHasSensitive = $formHasPassword || $this->formContainsSensitiveField($formBody);
+            if (!$formHasSensitive || $action === '') {
                 continue;
             }
 
@@ -1460,6 +1621,48 @@ private function detectAttachment(string $text): array
         return $matches[0] ?? [];
     }
 
+           /**
+     * Returns ALL phone-number-like sequences found in the text, validated
+     * through the SAME libphonenumber parsing checkPhoneNumber() uses, not
+     * just a loose regex match.
+     *
+     * Requires EITHER a leading "+" (international format) OR at least one
+     * separator character (space/dash) between digit groups — a bare,
+     * unbroken digit run (e.g. "9523732") is far more likely to be a
+     * report ID, order number, or database reference than a phone number.
+     * Confirmed via testing: a phishing-database listing's own reference
+     * ID number was being misread as a phone number candidate under the
+     * previous looser pattern, purely because it happened to be 7 digits
+     * long. Genuine phone numbers, even typed carelessly, are almost
+     * always separated somehow (spaces, dashes, or a leading "+").
+     */
+    private function extractAllPhonesFromText(string $text): array
+    {
+        preg_match_all('/\+\d[\d\-\s\(\)]{5,17}\d|\d{2,4}[\s\-]\d{2,4}[\s\-]\d{2,6}(?:[\s\-]\d{2,4})?/', $text, $matches);
+
+        $candidates = array_map(function ($m) {
+            return trim(preg_replace('/\s{2,}/', ' ', $m));
+        }, $matches[0] ?? []);
+
+        return array_values(array_unique(array_filter($candidates, fn ($c) => strlen(preg_replace('/\D/', '', $c)) >= 7)));
+    }
+
+    private function decodeQrCode(string $imagePath): ?string
+    {
+        if (!class_exists(\Zxing\QrReader::class)) {
+            return null;
+        }
+
+        try {
+            $qrReader = new \Zxing\QrReader($imagePath);
+            $decoded = $qrReader->text();
+
+            return (is_string($decoded) && $decoded !== '') ? $decoded : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     /**
      * A lightweight keyword check for common phishing/scam lure language.
      * Used purely to make the "no URL or email found" message clearer when a
@@ -1546,11 +1749,11 @@ private function detectAttachment(string $text): array
         $hostingResult = $this->checkFreeHostingPlatform($url);
         $availabilityResult = $this->checkSiteAvailability($url);
 
-           $totalPoints = min(
+                     $totalPoints = min(
     100,
     $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
         + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
-        + $contentResult['points'] + $hostingResult['points']
+        + $contentResult['points'] + $hostingResult['points'] + $domainHistoryResult['points']
 );
 
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
@@ -1625,9 +1828,10 @@ private function detectAttachment(string $text): array
 
         $brandResult = $this->checkBrandSenderMismatch($brandDetection['brand'], $brandDetection['surface'], $email);
 
-        $totalPoints = min(
+              $totalPoints = min(
             100,
             $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
+                + $domainHistoryResult['points']
         );
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
@@ -1660,7 +1864,7 @@ private function detectAttachment(string $text): array
         ];
     }
 
-   private function analyzePhone(string $phone, ?int $reportId = null): array
+      private function analyzePhone(string $phone, ?int $reportId = null): array
 {
     $phoneResult = $this->checkPhoneNumber($phone);
 
@@ -1677,13 +1881,15 @@ private function detectAttachment(string $text): array
     }
 
     $historyResult = $this->checkPreviousReports($phone, $reportId);
+    $reputationResult = $this->checkPhoneReputation($phone);
 
-    $totalPoints = min(100, $phoneResult['points'] + $historyResult['points']);
+    $totalPoints = min(100, $phoneResult['points'] + $historyResult['points'] + $reputationResult['points']);
     $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
     $checks = [
         $this->buildCheck('Phone Number Analysis', $phoneResult, 'SUSPICIOUS'),
         $this->buildCheck('Previous Reports', $historyResult, $historyResult['points'] >= 45 ? 'HIGH RISK' : 'SUSPICIOUS'),
+                $this->buildCheck('Phone Reputation (AbstractAPI)', $reputationResult, $reputationResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS'),
     ];
 
     return [
@@ -1806,11 +2012,27 @@ return [
 ];
 }
 
-    /**
+        /**
      * Checks how many times this exact phone number has already been
      * reported on PhishCore by other scans — a crowd-sourced signal similar
      * in spirit to caller-ID/spam-reporting apps, built from the platform's
-     * own report history rather than an external database.
+     * own report history rather than an external database. This is
+     * necessarily a much smaller dataset than a service like Truecaller,
+     * which relies on hundreds of millions of users — that scale gap can't
+     * be closed by a single platform's own report volume, and is a known,
+     * honest limitation of phone-based detection generally, not something
+     * this project can fully solve.
+     *
+     * Reports are weighted by RECENCY, not counted flat. Phone numbers are
+     * routinely reassigned by telcos after a period of subscriber
+     * inactivity — a number reported as a scam a year ago may since belong
+     * to an unrelated, innocent person. Treating a stale report the same
+     * as a fresh one (the previous behavior) is a real source of the
+     * inaccurate results common to phone-lookup tools generally. Recent
+     * reports (<=90 days) count at full weight; moderately old ones
+     * (91-365 days) at half weight; anything older is tapered further
+     * rather than dropped outright, since an old report is still weak
+     * supporting evidence, just not proof of current activity.
      *
      * Numbers are compared with punctuation/whitespace stripped so the same
      * number submitted in different formats (e.g. "+673 811 1346" vs
@@ -1838,49 +2060,190 @@ return [
                 return preg_replace('/[\s()\-]/', '', $report->phone_number) === $normalizedInput;
             });
 
-        // Count DISTINCT reporters, not raw scan submissions — otherwise one
-        // person scanning the same number several times (e.g. while testing)
-        // looks identical to several different people independently flagging
-        // it, which is a much stronger and more meaningful signal.
-        // Guest scans (user_id is null) can't be deduplicated against each
-        // other without session/IP tracking, so each guest scan is counted
-        // as its own reporter — a known limitation, not a perfect count.
-        $distinctLoggedInReporters = $matchingReports->pluck('user_id')->filter()->unique()->count();
-        $guestReportCount = $matchingReports->whereNull('user_id')->count();
-        $reporterCount = $distinctLoggedInReporters + $guestReportCount;
-
-        if ($reporterCount === 0) {
+        if ($matchingReports->isEmpty()) {
             return [
                 'flagged' => false,
                 'points' => 0,
-                'reasons' => ['No prior reports found for this number on PhishCore'],
+                'reasons' => [
+                    'No prior reports found for this number on PhishCore — note that phone-scam detection relies on crowdsourced reports, so this does not guarantee the number is safe, only that it has not been reported here before.',
+                ],
             ];
         }
 
-        if ($reporterCount === 1) {
+        // Deduplicate by reporter first (same rationale as before — one
+        // person testing repeatedly shouldn't look like multiple
+        // independent reporters), THEN apply a recency weight to each
+        // distinct reporter's most recent report of this number.
+        $byReporter = $matchingReports->groupBy(fn ($r) => $r->user_id ?? 'guest_' . $r->id);
+
+        $now = now();
+        $weightedScore = 0.0;
+
+        foreach ($byReporter as $reportsForReporter) {
+            $mostRecent = $reportsForReporter->sortByDesc('created_at')->first();
+            $ageDays = $mostRecent->created_at->diffInDays($now);
+
+            $weight = match (true) {
+                $ageDays <= 90 => 1.0,
+                $ageDays <= 365 => 0.5,
+                default => 0.2,
+            };
+
+            $weightedScore += $weight;
+        }
+
+        $reporterCount = $byReporter->count();
+        $mostRecentReport = $matchingReports->max('created_at');
+        $recencyNote = "Most recent report: " . $mostRecentReport->diffForHumans() . '.';
+
+        if ($weightedScore < 1) {
+            return [
+                'flagged' => true,
+                'points' => 8,
+                'reasons' => [
+                    "This number was reported {$reporterCount} time(s) on PhishCore, but the most recent report is over a year old — the number may since have been reassigned to a different subscriber by the telco.",
+                    $recencyNote,
+                ],
+            ];
+        }
+
+        if ($weightedScore < 2) {
             return [
                 'flagged' => true,
                 'points' => 15,
-                'reasons' => ['This number has been reported by 1 user before on PhishCore'],
+                'reasons' => [
+                    "This number has been reported by {$reporterCount} user(s) on PhishCore.",
+                    $recencyNote,
+                ],
             ];
         }
 
-        if ($reporterCount <= 4) {
+        if ($weightedScore < 4) {
             return [
                 'flagged' => true,
                 'points' => 30,
-                'reasons' => ["This number has been reported by {$reporterCount} different users before on PhishCore"],
+                'reasons' => [
+                    "This number has been reported by {$reporterCount} different users on PhishCore, including recent reports.",
+                    $recencyNote,
+                ],
             ];
         }
 
         return [
             'flagged' => true,
             'points' => 45,
-            'reasons' => ["This number has been reported by {$reporterCount} different users before on PhishCore — repeatedly flagged"],
+            'reasons' => [
+                "This number has been reported by {$reporterCount} different users on PhishCore — repeatedly and recently flagged.",
+                $recencyNote,
+            ],
         ];
     }
 
-     private function analyzeScreenshot(string $imagePath, ?int $reportId = null): array
+              /**
+     * Checks phone number reputation via AbstractAPI's Phone Intelligence
+     * API — an independent, carrier-backed signal to sit alongside
+     * PhishCore's own crowdsourced report history. checkPhoneNumber() only
+     * validates FORMAT and numbering-plan assignment, which is static,
+     * offline data derived purely from the number's shape. This instead
+     * queries a live third-party risk assessment.
+     *
+     * Field paths confirmed against a real response (not assumed from
+     * marketing docs, which showed a different/inconsistent shape):
+     * risk data lives under phone_risk.{risk_level,is_disposable,
+     * is_abuse_detected}, and validity/line status under
+     * phone_validation.{is_valid,line_status} — NOT top-level "valid" or
+     * "risk_score" as an earlier version of this check assumed, which
+     * caused every successful response to be misread as an error.
+     *
+     * Skip-safe like the other optional external checks (VirusTotal,
+     * Google Safe Browsing) — if no API key is configured, this is
+     * silently skipped rather than failing the scan.
+     */
+    public function checkPhoneReputation(string $phone): array
+    {
+        $apiKey = config('services.abstractapi_phone.key');
+
+        $empty = [
+            'flagged' => false,
+            'points' => 0,
+            'reasons' => [],
+            'unavailable' => true,
+        ];
+
+        if (!$apiKey) {
+            $empty['reasons'][] = 'Phone reputation check skipped: no API key configured';
+            return $empty;
+        }
+
+        $normalized = preg_replace('/[^\d+]/', '', $phone);
+
+        try {
+            $response = Http::timeout(10)->get('https://phoneintelligence.abstractapi.com/v1/', [
+                'api_key' => $apiKey,
+                'phone' => $normalized,
+            ]);
+
+            $data = $response->json();
+
+            if (!$response->successful() || !is_array($data) || !isset($data['phone_risk'])) {
+                $empty['reasons'][] = $data['error']['message'] ?? 'Phone reputation lookup unavailable';
+                return $empty;
+            }
+
+            $riskLevel = $data['phone_risk']['risk_level'] ?? null;
+            $isDisposable = $data['phone_risk']['is_disposable'] ?? false;
+            $isAbuseDetected = $data['phone_risk']['is_abuse_detected'] ?? false;
+            $isValid = $data['phone_validation']['is_valid'] ?? true;
+            $lineStatus = $data['phone_validation']['line_status'] ?? null;
+
+            $reasons = [];
+            $points = 0;
+
+            if ($riskLevel !== null) {
+                if (strtolower($riskLevel) === 'high') {
+                    $reasons[] = 'AbstractAPI flags this number as HIGH risk';
+                    $points += 35;
+                } elseif (strtolower($riskLevel) === 'medium') {
+                    $reasons[] = 'AbstractAPI flags this number as MEDIUM risk';
+                    $points += 18;
+                }
+            }
+
+            if ($isDisposable) {
+                $reasons[] = 'AbstractAPI flags this as a disposable/temporary number';
+                $points += 25;
+            }
+
+            if ($isAbuseDetected) {
+                $reasons[] = 'AbstractAPI has recorded abuse associated with this number';
+                $points += 35;
+            }
+
+            // Informational only — an invalid/inactive number isn't
+            // double-penalized here since checkPhoneNumber() already
+            // scores format/numbering-plan validity independently.
+            if (!$isValid) {
+                $reasons[] = 'AbstractAPI reports this number as not currently valid';
+            } elseif ($lineStatus && strtolower($lineStatus) !== 'active') {
+                $reasons[] = "Line status: {$lineStatus}";
+            }
+
+            if (empty($reasons)) {
+                $reasons[] = 'AbstractAPI: no significant risk flags for this number';
+            }
+
+            return [
+                'flagged' => $points > 0,
+                'points' => min(60, $points),
+                'reasons' => $reasons,
+            ];
+        } catch (\Throwable $e) {
+            $empty['reasons'][] = 'Could not reach AbstractAPI';
+            return $empty;
+        }
+    }
+
+          private function analyzeScreenshot(string $imagePath, ?int $reportId = null): array
 {
     $ocr = $this->checkScreenshotOcr($imagePath);
 
@@ -1901,13 +2264,19 @@ return [
 
     $text = $ocr['text'];
 
+    $qrUrl = $this->decodeQrCode($imagePath);
+
     $candidateUrlsRaw = $this->extractAllUrlsFromText($text);
-    $candidateUrls = array_values(array_filter($candidateUrlsRaw, fn ($u) => filter_var($u, FILTER_VALIDATE_URL)));
+    if ($qrUrl) {
+        $candidateUrlsRaw[] = $qrUrl;
+    }
+    $candidateUrls = array_values(array_unique(array_filter($candidateUrlsRaw, fn ($u) => filter_var($u, FILTER_VALIDATE_URL))));
     $extractedUrl = null;
     if (!empty($candidateUrls)) {
         usort($candidateUrls, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
         $extractedUrl = $candidateUrls[0];
     }
+    $urlCameFromQr = $qrUrl && $extractedUrl === $qrUrl;
 
     $candidateEmails = $this->extractAllEmailsFromText($text);
     $extractedEmail = null;
@@ -1916,22 +2285,37 @@ return [
         $extractedEmail = $candidateEmails[0];
     }
 
+    $candidatePhones = $this->extractAllPhonesFromText($text);
+    $extractedPhone = null;
+    $phoneCheckResult = null;
+    foreach ($candidatePhones as $candidate) {
+        $result = $this->checkPhoneNumber($candidate);
+        if ($result['unparseable'] ?? false) {
+            continue;
+        }
+        if ($phoneCheckResult === null || $result['points'] > $phoneCheckResult['points']) {
+            $extractedPhone = $candidate;
+            $phoneCheckResult = $result;
+        }
+    }
+
      $brandDetection = $this->detectBrandInText($text);
     $detectedBrand = $brandDetection['brand'];
     $brandSurfaceText = $brandDetection['surface'];
     $contentResult = $this->checkContentPatterns($text);
     $attachmentResult = $this->detectAttachment($text);
-    $brandResult = $this->checkBrandSenderMismatch($detectedBrand, $brandSurfaceText, $extractedEmail);
-    $hasAnyEvidence = $extractedUrl || $extractedEmail || $detectedBrand || $contentResult['flagged'] || $attachmentResult['flagged'];
+    $hasAnyEvidence = $extractedUrl || $extractedEmail || $extractedPhone || $detectedBrand || $contentResult['flagged'] || $attachmentResult['flagged'];
 
     $checks = [];
     $totalPoints = 0;
     $signalCategories = 0;
     $ageResult = ['domain_age_days' => null];
+    $extractedUrlCti = null;
 
     $extractionParts = [];
-    if ($extractedUrl) $extractionParts[] = "URL: {$extractedUrl}";
+    if ($extractedUrl) $extractionParts[] = ($urlCameFromQr ? 'URL (from QR code): ' : 'URL: ') . $extractedUrl;
     if ($extractedEmail) $extractionParts[] = "Sender: {$extractedEmail}";
+    if ($extractedPhone) $extractionParts[] = "Phone number: {$extractedPhone}";
     if ($detectedBrand) $extractionParts[] = 'Brand referenced: ' . ucfirst($detectedBrand);
 
     $checks[] = [
@@ -1939,7 +2323,7 @@ return [
         'status' => $hasAnyEvidence ? 'SAFE' : 'REVIEW',
         'message' => $hasAnyEvidence
             ? ('Extracted from image: ' . implode(' | ', $extractionParts ?: ['phishing-style language']))
-            : 'No URL, email address, brand reference, or phishing-style language was found in the image text. Extracted text: "' . Str::limit($text, 200) . '"',
+            : 'No URL, email address, phone number, brand reference, QR code, or phishing-style language was found in the image. Extracted text: "' . Str::limit($text, 200) . '"',
         'points' => 0,
     ];
 
@@ -1959,12 +2343,39 @@ return [
         }
     }
 
-    if ($detectedBrand) {
-        if ($brandResult['flagged']) {
-            $totalPoints += $brandResult['points'];
+    if ($extractedPhone && $phoneCheckResult) {
+        $totalPoints += (int) round($phoneCheckResult['points'] * 0.7);
+        if ($phoneCheckResult['points'] > 0) $signalCategories++;
+        $checks[] = $this->buildCheck('Phone Number Analysis', $phoneCheckResult, 'SUSPICIOUS');
+
+        $phoneHistoryResult = $this->checkPreviousReports($extractedPhone, $reportId);
+        if ($phoneHistoryResult['flagged'] ?? false) {
+            $totalPoints += (int) round($phoneHistoryResult['points'] * 0.7);
             $signalCategories++;
         }
-        $checks[] = $this->buildCheck('Brand / Sender Correlation', $brandResult, 'HIGH RISK');
+        $checks[] = $this->buildCheck('Previous Reports (Phone)', $phoneHistoryResult, $phoneHistoryResult['points'] >= 45 ? 'HIGH RISK' : 'SUSPICIOUS');
+    }
+
+    if ($detectedBrand) {
+        $brandCheckLabel = 'Brand / Domain Correlation';
+        if ($extractedEmail) {
+            $brandDomainResult = $this->checkBrandSenderMismatch($detectedBrand, $brandSurfaceText, $extractedEmail);
+            $brandCheckLabel = 'Brand / Sender Correlation';
+        } elseif ($extractedUrl && ($urlHost = parse_url($extractedUrl, PHP_URL_HOST))) {
+            $brandDomainResult = $this->checkPageBrandMismatch($detectedBrand, $brandSurfaceText, $urlHost);
+        } else {
+            $brandDomainResult = [
+                'flagged' => false,
+                'points' => 0,
+                'reasons' => ["Brand \"" . ucfirst($detectedBrand) . "\" referenced in image text, but no URL or sender email was extracted to verify it against"],
+            ];
+        }
+
+        if ($brandDomainResult['flagged']) {
+            $totalPoints += $brandDomainResult['points'];
+            $signalCategories++;
+        }
+        $checks[] = $this->buildCheck($brandCheckLabel, $brandDomainResult, 'HIGH RISK');
     }
 
     if ($contentResult['flagged']) {
@@ -1984,11 +2395,16 @@ return [
         $totalPoints += (int) round($urlAnalysis['risk_score'] * 0.6);
         $signalCategories++;
         $checks = array_merge($checks, $urlAnalysis['checks']);
+        $extractedUrlCti = $urlAnalysis['cti'] ?? null;
     }
 
     if ($extractedEmail) {
     $emailDomain = $this->checkEmailDomain($extractedEmail)['domain'];
     $domainHistoryResult = $this->checkPreviousDomainReports($emailDomain, $reportId);
+    if ($domainHistoryResult['flagged'] ?? false) {
+        $totalPoints += $domainHistoryResult['points'];
+        $signalCategories++;
+    }
     $checks[] = $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS');
 }
 
@@ -1996,7 +2412,7 @@ return [
     $verdict = !$hasAnyEvidence ? 'review' : ($riskScore >= 60 ? 'phishing' : ($riskScore >= 25 ? 'suspicious' : 'clean'));
     $confidence = $hasAnyEvidence ? min(95, 40 + $signalCategories * 13) : 20;
 
-    return [
+    $result = [
         'risk_score' => $riskScore,
         'confidence' => $confidence,
         'verdict' => $verdict,
@@ -2005,6 +2421,13 @@ return [
         'checks' => $checks,
         'extracted_url' => $extractedUrl,
         'extracted_email' => $extractedEmail,
+        'extracted_phone' => $extractedPhone,
     ];
+
+    if (!empty($extractedUrlCti)) {
+        $result['cti'] = $extractedUrlCti;
+    }
+
+    return $result;
 }
 }

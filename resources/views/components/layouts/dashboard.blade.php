@@ -13,7 +13,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased">
-    <div class="flex min-h-screen" x-data="{ sidebarOpen: false }">
+        <div class="flex lg:h-screen" x-data="{ sidebarOpen: false }">
 
         {{-- MOBILE TOP BAR --}}
         <div class="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800/60">
@@ -37,10 +37,10 @@
              x-transition:leave="transition-opacity ease-linear duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
         {{-- SIDEBAR --}}
-        <aside
+               <aside
             class="w-64 shrink-0 bg-slate-950 border-r border-slate-800/60 flex flex-col justify-between
                    fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out
-                   lg:static lg:translate-x-0"
+                   lg:translate-x-0"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
             <div>
                 <div class="flex items-center justify-between px-6 py-6">
@@ -172,7 +172,7 @@
         </aside>
 
         {{-- MAIN CONTENT --}}
-        <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 overflow-y-auto min-w-0">
+                <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-64 overflow-y-auto min-w-0">
             {{ $slot }}
         </main>
 

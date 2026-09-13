@@ -40,15 +40,22 @@
             @endif
         </div>
 
-        @if ($investigation && $investigation->statusLogs->isNotEmpty())
-            <div class="mt-5">
+               @if ($investigation && $investigation->statusLogs->isNotEmpty())
+            <div class="mt-5 mb-5">
                 <p class="text-xs text-slate-500 mb-3">STATUS TIMELINE</p>
-                <div class="space-y-4 border-l border-slate-800 pl-4">
+                               <div class="space-y-0">
                     @foreach ($investigation->statusLogs as $log)
-                        <div class="relative">
-                            <span class="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full {{ $invDotColors[$log->status] }}"></span>
-                            <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
-                            <p class="text-xs text-slate-500">{{ $log->created_at->format('j F Y \a\t g:i A') }}</p>
+                        <div class="flex gap-3">
+                            <div class="flex flex-col items-center">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 {{ $invDotColors[$log->status] }}"></span>
+                                @unless ($loop->last)
+                                    <span class="w-px flex-1 bg-slate-800 my-1"></span>
+                                @endunless
+                            </div>
+                            <div class="pb-6">
+                                <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
+                                <p class="text-xs text-slate-500">{{ $log->created_at->format('j F Y \a\t g:i A') }}</p>
+                            </div>
                         </div>
                     @endforeach
                 </div>
@@ -163,10 +170,16 @@
             @if ($investigation->statusLogs->isNotEmpty())
                 <div class="mb-5">
                     <p class="text-xs text-slate-500 mb-3">STATUS TIMELINE</p>
-                    <div class="space-y-4 border-l border-slate-800 pl-4">
-                        @foreach ($investigation->statusLogs as $log)
-                            <div class="relative">
-                                <span class="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full {{ $invDotColors[$log->status] }}"></span>
+                                 <div class="space-y-0">
+                    @foreach ($investigation->statusLogs as $log)
+                        <div class="flex gap-3">
+                            <div class="flex flex-col items-center">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 {{ $invDotColors[$log->status] }}"></span>
+                                @unless ($loop->last)
+                                    <span class="w-px flex-1 bg-slate-800 my-1"></span>
+                                @endunless
+                            </div>
+                            <div class="pb-6">
                                 <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
                                 <p class="text-xs text-slate-500">
                                     {{ $log->created_at->format('j F Y \a\t g:i A') }}
@@ -175,8 +188,8 @@
                                     @endif
                                 </p>
                             </div>
-                        @endforeach
-                    </div>
+                        </div>
+                    @endforeach
                 </div>
             @endif
 

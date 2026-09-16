@@ -1,6 +1,6 @@
 <nav
     x-data="{
-        active: 'home',
+        active: '{{ request()->routeIs('reports.public') ? 'public-reports' : 'home' }}',
         mobileOpen: false,
         sections: ['home', 'features', 'how-it-works', 'about', 'contact'],
        updateActive() {
@@ -24,11 +24,11 @@
     this.active = current;
 }
     }"
-    x-init="updateActive(); window.addEventListener('scroll', () => updateActive())"
+    x-init="@if (request()->routeIs('welcome')) updateActive(); window.addEventListener('scroll', () => updateActive()); @endif"
     class="border-b border-slate-800/60 bg-slate-950/80 backdrop-blur sticky top-0 z-50"
 >
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="#home" class="flex items-center gap-2">
+        <a href="{{ route('welcome') }}#home" class="flex items-center gap-2">
           <span class="w-9 h-9 flex items-center justify-center">
     <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-9 h-9 object-contain">
 </span>
@@ -39,11 +39,12 @@
         </a>
 
         <div class="hidden md:flex items-center gap-8 text-sm">
-            <a href="#home" :class="active === 'home' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Home</a>
-            <a href="#features" :class="active === 'features' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Features</a>
-            <a href="#how-it-works" :class="active === 'how-it-works' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">How It Works</a>
-            <a href="#about" :class="active === 'about' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">About</a>
-            <a href="#contact" :class="active === 'contact' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Contact</a>
+            <a href="{{ route('welcome') }}#home" :class="active === 'home' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Home</a>
+            <a href="{{ route('welcome') }}#features" :class="active === 'features' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Features</a>
+            <a href="{{ route('welcome') }}#how-it-works" :class="active === 'how-it-works' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">How It Works</a>
+            <a href="{{ route('welcome') }}#about" :class="active === 'about' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">About</a>
+            <a href="{{ route('welcome') }}#contact" :class="active === 'contact' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Contact</a>
+            <a href="{{ route('reports.public') }}" :class="active === 'public-reports' ? 'text-sky-400' : 'text-slate-300 hover:text-white'" class="transition">Public Reports</a>
         </div>
 
         <div class="hidden md:flex items-center gap-3">
@@ -73,11 +74,12 @@
          x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
          x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          class="md:hidden border-t border-slate-800/60 bg-slate-950 px-6 py-4 space-y-1">
-        <a href="#home" @click="mobileOpen = false" :class="active === 'home' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Home</a>
-        <a href="#features" @click="mobileOpen = false" :class="active === 'features' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Features</a>
-        <a href="#how-it-works" @click="mobileOpen = false" :class="active === 'how-it-works' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">How It Works</a>
-        <a href="#about" @click="mobileOpen = false" :class="active === 'about' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">About</a>
-        <a href="#contact" @click="mobileOpen = false" :class="active === 'contact' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Contact</a>
+        <a href="{{ route('welcome') }}#home" @click="mobileOpen = false" :class="active === 'home' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Home</a>
+        <a href="{{ route('welcome') }}#features" @click="mobileOpen = false" :class="active === 'features' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Features</a>
+        <a href="{{ route('welcome') }}#how-it-works" @click="mobileOpen = false" :class="active === 'how-it-works' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">How It Works</a>
+        <a href="{{ route('welcome') }}#about" @click="mobileOpen = false" :class="active === 'about' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">About</a>
+        <a href="{{ route('welcome') }}#contact" @click="mobileOpen = false" :class="active === 'contact' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Contact</a>
+        <a href="{{ route('reports.public') }}" @click="mobileOpen = false" :class="active === 'public-reports' ? 'text-sky-400 bg-sky-500/10' : 'text-slate-300'" class="block px-3 py-2.5 rounded-lg text-sm transition">Public Reports</a>
 
         <div class="pt-3 mt-3 border-t border-slate-800/60 space-y-2">
             @auth

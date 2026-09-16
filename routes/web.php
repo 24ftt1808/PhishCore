@@ -11,6 +11,7 @@ use App\Models\Report;
 use App\Http\Controllers\InvestigationController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\PublicReportsController;
 
 Route::get('/', function () {
     $totalScans = Report::where('status', 'completed')->count();
@@ -27,6 +28,7 @@ Route::get('/', function () {
 Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
 Route::post('/scan', [ScanController::class, 'store'])->name('scan.store');
 Route::get('/scan/{report}', [ScanController::class, 'show'])->name('scan.show');
+Route::get('/public-reports', [PublicReportsController::class, 'index'])->name('reports.public');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 

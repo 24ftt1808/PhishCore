@@ -11,66 +11,73 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <style>
+        .auth-in { animation: auth-in .7s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, 0s); }
+        @keyframes auth-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+        .auth-float { animation: auth-float 6s ease-in-out infinite; }
+        @keyframes auth-float { 50% { transform: translateY(-8px); } }
+        @media (prefers-reduced-motion: reduce) { .auth-in, .auth-float { animation: none; } }
+    </style>
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased">
-    <div class="min-h-screen flex">
 
-               {{-- LEFT: form panel --}}
-        <div class="w-full lg:w-2/5 flex flex-col px-10 py-10 lg:px-16">
-            <a href="{{ route('welcome') }}" class="flex items-center gap-2">
-<span class="w-9 h-9 flex items-center justify-center">
-    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-9 h-9 object-contain">
-</span>
-                                <span class="leading-tight">
+    {{-- Same animated background as the landing page --}}
+    <div class="hero-aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <div class="relative z-10 min-h-screen grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+
+        {{-- LEFT: form panel --}}
+        <div class="flex flex-col px-5 sm:px-10 lg:px-14 py-8">
+            <a href="{{ route('welcome') }}" class="auth-in inline-flex items-center gap-2.5 self-start">
+                <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-9 h-9 object-contain">
+                <span class="leading-tight">
                     <span class="block font-bold text-white">PhishCore</span>
-                    <span class="block text-[11px] tracking-wide text-sky-400 mt-0.5">DETECTION PLATFORM</span>
+                    <span class="block text-[11px] font-medium tracking-wide text-sky-300/90 mt-0.5">DETECTION PLATFORM</span>
                 </span>
             </a>
 
-            <div class="flex-1 flex items-center">
-                <div class="max-w-md w-full">
+            <div class="flex-1 flex items-center justify-center py-8">
+                <div class="auth-in glass-panel w-full max-w-md rounded-3xl p-7 sm:p-9" style="--d:.08s">
                     {{ $slot }}
                 </div>
             </div>
+
+            <p class="text-center lg:text-left text-xs text-slate-500">
+                <a href="{{ route('welcome') }}" class="hover:text-slate-300 transition">&larr; Back to home</a>
+            </p>
         </div>
 
-               {{-- RIGHT: brand panel --}}
-        <div class="hidden lg:flex lg:w-3/5 relative bg-gradient-to-br from-slate-900 to-slate-950 items-center justify-center overflow-hidden">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,theme(colors.sky.500/15%),transparent_70%)]"></div>
-
-            <div class="relative text-center px-12 max-w-md">
+        {{-- RIGHT: brand panel --}}
+        <div class="hidden lg:flex relative items-center justify-center overflow-hidden border-l border-white/[0.06]">
+            <div class="relative text-center px-12 max-w-lg w-full">
                 @isset($rightPanel)
-                    {{ $rightPanel }}
+                    <div class="auth-in" style="--d:.15s">{{ $rightPanel }}</div>
                 @else
-               <div class="relative w-56 h-56 mx-auto mb-8 flex items-center justify-center">
-    <div class="absolute inset-0 rounded-[2.5rem] border border-slate-800/60"></div>
-    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-32 h-32 object-contain">
-</div>
+                    <div class="auth-in" style="--d:.15s">
+                        <div class="auth-float relative w-40 h-40 mx-auto mb-9 grid place-items-center rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-[0_0_60px_-10px_rgba(56,189,248,0.35)]">
+                            <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-24 h-24 object-contain">
+                        </div>
 
-                    <h2 class="text-2xl font-bold text-white mb-4">Centralised Phishing Detection</h2>
-                    <p class="text-slate-400 mb-10">
-                        Protecting Brunei's digital infrastructure through AI-powered threat analysis and real-time phishing detection.
-                    </p>
+                        <h2 class="text-3xl font-bold text-white mb-4 leading-snug">Centralised Phishing Detection</h2>
+                        <p class="text-slate-400 mb-10 leading-relaxed">
+                            Protecting Brunei's digital infrastructure through AI-powered threat analysis and real-time phishing detection.
+                        </p>
+                    </div>
 
-                    <div class="flex justify-center gap-10">
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-sky-400">489</p>
-                            <p class="text-[11px] tracking-wide text-slate-500">URLS SCANNED</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-sky-400">97.4%</p>
-                            <p class="text-[11px] tracking-wide text-slate-500">ACCURACY</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-sky-400">2.1s</p>
-                            <p class="text-[11px] tracking-wide text-slate-500">AVG SCAN TIME</p>
-                        </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        @foreach ([['489', 'URLS SCANNED'], ['97.4%', 'ACCURACY'], ['2.1s', 'AVG SCAN TIME']] as $i => $stat)
+                            <div class="auth-in glass-card py-5 px-2" style="--d:{{ 0.3 + $i * 0.1 }}s">
+                                <p class="text-2xl font-bold text-sky-300 tabular-nums">{{ $stat[0] }}</p>
+                                <p class="text-[10px] tracking-wider text-slate-400 mt-1.5">{{ $stat[1] }}</p>
+                            </div>
+                        @endforeach
                     </div>
                 @endisset
             </div>
 
-            <p class="absolute bottom-8 text-xs tracking-wide text-slate-600">
-                POLITEKNIK BRUNEI · FINAL YEAR PROJECT 2026
+            <p class="absolute bottom-8 text-xs tracking-wide text-slate-500">
+                PHISHCORE · AI-POWERED PHISHING DETECTION
             </p>
         </div>
 

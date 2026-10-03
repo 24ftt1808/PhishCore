@@ -1,29 +1,13 @@
 <x-guest-layout>
 
     <x-slot:rightPanel>
-     <div class="w-20 h-20 mx-auto mb-8 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
-    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-12 h-12 object-contain">
-</div>
-
-        <h2 class="text-2xl font-bold text-white mb-4">Join the PhishCore Platform</h2>
-        <p class="text-slate-400 mb-10">
-            Help protect Politeknik Brunei's digital environment by detecting and reporting suspicious websites.
-        </p>
-
-        <div class="space-y-4 text-left">
-            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🔍</span>
-                <span class="text-sm text-slate-200">Scan suspicious website links</span>
-            </div>
-            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🛡️</span>
-                <span class="text-sm text-slate-200">Access detailed detection results</span>
-            </div>
-            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">📄</span>
-                <span class="text-sm text-slate-200">Monitor previous scans and security reports</span>
-            </div>
-        </div>
+        <x-auth-aside title="Join the PhishCore Platform"
+                      text="Help protect your digital environment by detecting and reporting suspicious websites."
+                      :items="[
+            ['M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z', 'Scan suspicious website links'],
+            ['M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z', 'Access detailed detection results'],
+            ['M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', 'Monitor previous scans and security reports'],
+        ]" />
     </x-slot:rightPanel>
 
     <div x-data="{ showPassword: false, showConfirm: false, agreed: false }">

@@ -1,3 +1,5 @@
+@import url('https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,6 +7,8 @@
 html {
     scroll-behavior: smooth;
 }
+
+[x-cloak] { display: none !important; }
 
 /* Fix browser autofill forcing white bg + black text on dark inputs */
 input:-webkit-autofill,
@@ -19,3 +23,370 @@ input:-webkit-autofill:focus {
 input {
     color-scheme: dark;
 }
+
+/* Page-wide animated gradient background (optimized) */
+.hero-aurora {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+    contain: strict;
+}
+
+.hero-aurora span {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+.hero-aurora span:nth-child(1) {
+    width: 60vw; height: 60vw;
+    top: -20%; left: -15%;
+    background: radial-gradient(circle, rgba(3, 105, 161, 0.42) 0%, transparent 65%);
+    animation: aurora-drift-1 9s ease-in-out infinite alternate;
+}
+.hero-aurora span:nth-child(2) {
+    width: 65vw; height: 65vw;
+    top: 5%; right: -25%;
+    background: radial-gradient(circle, rgba(29, 78, 216, 0.38) 0%, transparent 65%);
+    animation: aurora-drift-2 12s ease-in-out infinite alternate;
+}
+.hero-aurora span:nth-child(3) {
+    width: 55vw; height: 55vw;
+    bottom: -25%; left: 25%;
+    background: radial-gradient(circle, rgba(30, 58, 138, 0.49) 0%, transparent 65%);
+    animation: aurora-drift-3 15s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-1 { to { transform: translate3d(40vw, 30vh, 0) scale(1.15); } }
+@keyframes aurora-drift-2 { to { transform: translate3d(-45vw, 35vh, 0) scale(0.9); } }
+@keyframes aurora-drift-3 { to { transform: translate3d(-35vw, -40vh, 0) scale(1.2); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-aurora span { animation: none; }
+}
+
+/* ---------- Floating navbar ---------- */
+.nav-glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    backdrop-filter: blur(14px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow:
+        0 10px 30px -10px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.nav-glass--scrolled {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.62), rgba(15, 23, 42, 0.42));
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Liquid-glass highlight (motion is set inline by the navbar) */
+.nav-highlight {
+    will-change: left, right;
+}
+
+.nav-aura {
+    background: radial-gradient(closest-side, rgba(56, 189, 248, 0.38), rgba(56, 189, 248, 0) 100%);
+    animation: nav-breathe 3.4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes nav-breathe {
+    0%, 100% { opacity: 0.45; transform: scale(0.96); }
+    50%      { opacity: 1;    transform: scale(1.05); }
+}
+
+.nav-blob {
+    position: relative;
+    overflow: hidden;
+    transform-origin: center;
+    background:
+        radial-gradient(90% 120% at 25% 0%, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0) 55%),
+        radial-gradient(60% 80% at 85% 110%, rgba(125, 211, 252, 0.35), rgba(125, 211, 252, 0) 70%),
+        linear-gradient(180deg, rgba(56, 189, 248, 0.26), rgba(56, 189, 248, 0.10));
+    border: 1px solid rgba(186, 230, 253, 0.4);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -8px 12px -8px rgba(56, 189, 248, 0.45),
+        0 0 22px -4px rgba(56, 189, 248, 0.6);
+}
+
+/* Light that sweeps across the pill when it lands */
+.nav-glint {
+    position: absolute;
+    top: 0; 
+    bottom: 0;
+    left: 0;
+    width: 55%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Light sweep on the Create Account button */
+.btn-shine {
+    position: relative;
+    overflow: hidden;
+}
+.btn-shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.6s ease;
+}
+.btn-shine:hover::after {
+    transform: translateX(120%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-shine::after {
+        transition: none;
+    }
+}
+
+/* Sign In hover glow */
+.signin-glow {
+    transition: color 0.25s ease, text-shadow 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.signin-glow:hover {
+    color: #fff;
+    text-shadow: 0 0 12px rgba(125, 211, 252, 0.8);
+    background-color: rgba(56, 189, 248, 0.08);
+    box-shadow: 0 0 18px -2px rgba(56, 189, 248, 0.45);
+}
+
+/* =====================================================
+   Landing page redesign: append to the bottom of app.css
+   (delete the old "Risk card" block first if you added it)
+   ===================================================== */
+
+.eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #7dd3fc;
+}
+
+.section-index {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: #64748b;
+}
+
+/* ---------- Glass surfaces ---------- */
+.glass-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 24px 50px -28px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.25rem;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+.glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), rgba(56, 189, 248, 0.11), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.glass-card:hover { border-color: rgba(125, 211, 252, 0.24); background: rgba(255, 255, 255, 0.05); }
+.glass-card:hover::before { opacity: 1; }
+.glass-card > * { position: relative; }
+
+.icon-tile {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.75rem;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(125, 211, 252, 0.2);
+    color: #7dd3fc;
+}
+
+/* ---------- Hero risk card ---------- */
+.risk-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.risk-field {
+    background: rgba(2, 6, 23, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.risk-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid;
+    transition: transform 0.2s ease;
+}
+.risk-chip:hover { transform: translateY(-1px); }
+.risk-chip i { width: 7px; height: 7px; border-radius: 9999px; flex-shrink: 0; }
+.risk-chip--danger { background: linear-gradient(135deg, rgba(244, 63, 94, 0.16), rgba(244, 63, 94, 0.07)); border-color: rgba(251, 113, 133, 0.28); color: #fecdd3; }
+.risk-chip--danger i { background: #fb7185; box-shadow: 0 0 8px rgba(251, 113, 133, 0.7); }
+.risk-chip--warn { background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.07)); border-color: rgba(251, 191, 36, 0.28); color: #fde68a; }
+.risk-chip--warn i { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.6); }
+.risk-chip--info { background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.07)); border-color: rgba(125, 211, 252, 0.28); color: #bae6fd; }
+.risk-chip--info i { background: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
+
+.risk-bar { background: rgba(255, 255, 255, 0.08); }
+.risk-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #f59e0b, #f43f5e);
+    transform-origin: left;
+    animation: bar-fill 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+}
+@keyframes bar-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ---------- Scanner console ---------- */
+.tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    border: 1px solid transparent;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.tab-btn:hover { color: #fff; }
+.tab-btn--active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.field {
+    width: 100%;
+    background: rgba(2, 6, 23, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 0.85rem;
+    padding: 0.95rem 1rem;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field::placeholder { color: #475569; }
+.field:focus {
+    outline: none;
+    border-color: rgba(125, 211, 252, 0.5);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 0.92rem;
+    color: #fff;
+    background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 9999px;
+    font-size: 0.92rem;
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.03);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.24); }
+
+/* ---------- Steps connector ---------- */
+.steps-line {
+    background: repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.35) 0 6px, transparent 6px 14px);
+    height: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .risk-bar > span { animation: none; }
+}
+
+/* Bigger background blobs on phones */
+@media (max-width: 767px) {
+    .hero-aurora span:nth-child(1) { width: 130vw; height: 130vw; top: -15%; left: -40%; }
+    .hero-aurora span:nth-child(2) { width: 140vw; height: 140vw; top: 20%; right: -60%; }
+    .hero-aurora span:nth-child(3) { width: 120vw; height: 120vw; bottom: -20%; left: -10%; }
+
+    @keyframes aurora-drift-1 { to { transform: translate3d(50vw, 20vh, 0) scale(1.15); } }
+    @keyframes aurora-drift-2 { to { transform: translate3d(-50vw, 25vh, 0) scale(0.9); } }
+    @keyframes aurora-drift-3 { to { transform: translate3d(-40vw, -25vh, 0) scale(1.2); } }
+}
+
+/* ===== Signed-in area: readability + glass panels =====
+   Scoped to .dash-scope (set on the dashboard layout wrapper), so the public
+   pages are untouched and every dashboard page benefits without editing each. */
+
+/* dim text was too dark on dark: lift each step */
+.dash-scope .text-slate-600 { color: #8191a8; }
+.dash-scope .text-slate-500 { color: #9fadc2; }
+.dash-scope .text-slate-400 { color: #b9c5d6; }
+.dash-scope .text-slate-300 { color: #d6deea; }
+.dash-scope .text-slate-200 { color: #e8edf5; }
+
+/* borders were nearly invisible */
+.dash-scope .border-slate-800,
+.dash-scope .border-slate-800\/60,
+.dash-scope .border-slate-800\/70,
+.dash-scope .border-slate-700 { border-color: rgba(148, 163, 184, .2); }
+.dash-scope .divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(148, 163, 184, .16); }
+
+/* flat panels become soft glass (no blur here, so big tables and charts stay smooth) */
+.dash-scope .bg-slate-900,
+.dash-scope .bg-slate-900\/50,
+.dash-scope .bg-slate-900\/60 {
+    background-color: rgba(20, 32, 60, .58);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+.dash-scope .bg-slate-950\/60,
+.dash-scope .bg-slate-950\/80 { background-color: rgba(8, 14, 32, .55); }
+
+/* inputs: clearer edge and placeholder */
+.dash-scope input::placeholder,
+.dash-scope textarea::placeholder { color: #7f8ea6; }

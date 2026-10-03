@@ -1,29 +1,13 @@
 <x-guest-layout>
 
     <x-slot:rightPanel>
-<div class="w-20 h-20 mx-auto mb-8 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
-    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-12 h-12 object-contain">
-</div>
-
-        <h2 class="text-2xl font-bold text-white mb-4">Secure Account Recovery</h2>
-        <p class="text-slate-400 mb-10">
-            PhishCore uses secure, time-limited links to protect your account during password recovery.
-        </p>
-
-        <div class="space-y-4 text-left">
-            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🕐</span>
-                <span class="text-sm text-slate-200">Reset links expire after 15 minutes</span>
-            </div>
-            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🛡️</span>
-                <span class="text-sm text-slate-200">Each link can only be used once</span>
-            </div>
-            <div class="flex items-center gap-4 bg-slate-900/60 border border-slate-800 rounded-xl px-5 py-4">
-                <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">🔒</span>
-                <span class="text-sm text-slate-200">Your password is never sent by email</span>
-            </div>
-        </div>
+        <x-auth-aside title="Secure Account Recovery"
+                      text="PhishCore uses secure, time-limited links to protect your account during password recovery."
+                      :items="[
+            ['M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z', 'Reset links expire after 15 minutes'],
+            ['M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z', 'Each link can only be used once'],
+            ['M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z', 'Your password is never sent by email'],
+        ]" />
     </x-slot:rightPanel>
 
     <a href="{{ route('login') }}" class="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200 mb-8">

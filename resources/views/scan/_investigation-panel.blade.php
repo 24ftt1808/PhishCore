@@ -3,10 +3,10 @@
     $isTeamMember = auth()->user()->is_team_member;
 
        $invStatusStyles = [
-        'active' => ['badge' => 'bg-sky-500/10 text-sky-400 border-sky-500/20', 'label' => 'ACTIVE'],
-        'completed' => ['badge' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', 'label' => 'COMPLETED'],
-        'takedown_requested' => ['badge' => 'bg-orange-500/10 text-orange-400 border-orange-500/20', 'label' => 'TAKEDOWN REQUESTED'],
-        'takedown_confirmed' => ['badge' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', 'label' => 'TAKEDOWN CONFIRMED'],
+        'active' => ['badge' => 'text-sky-400', 'label' => 'ACTIVE'],
+        'completed' => ['badge' => 'text-emerald-400', 'label' => 'COMPLETED'],
+        'takedown_requested' => ['badge' => 'text-orange-400', 'label' => 'TAKEDOWN REQUESTED'],
+        'takedown_confirmed' => ['badge' => 'text-emerald-400', 'label' => 'TAKEDOWN CONFIRMED'],
     ];
 
     $invDotColors = [
@@ -18,23 +18,18 @@
 @endphp
 
 @if (!$isTeamMember)
-    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-8 mt-6">
+    <div class="r-card r-in p-6 mb-8 mt-6">
         <div class="flex items-center justify-between flex-wrap gap-3 {{ !$investigation ? 'mb-5' : '' }}">
             <div class="flex items-center gap-3">
-                <span class="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
-                    </svg>
-                </span>
                 <div>
                     <h2 class="text-lg font-bold text-white">Investigation Status</h2>
-                    <p class="text-sm text-slate-500">
+                    <p class="text-sm text-slate-300">
                         {{ $investigation ? 'This report is being tracked by our team.' : 'Think this needs closer attention? Let our team know.' }}
                     </p>
                 </div>
             </div>
                      @if ($investigation)
-                <span class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $invStatusStyles[$investigation->status]['badge'] }}">
+                <span class="text-xs font-semibold {{ $invStatusStyles[$investigation->status]['badge'] }}">
                     {{ $invStatusStyles[$investigation->status]['label'] }}
                 </span>
             @endif
@@ -42,19 +37,19 @@
 
                @if ($investigation && $investigation->statusLogs->isNotEmpty())
             <div class="mt-5 mb-5">
-                <p class="text-xs text-slate-500 mb-3">STATUS TIMELINE</p>
+                <p class="text-xs text-slate-300 mb-3">STATUS TIMELINE</p>
                                <div class="space-y-0">
                     @foreach ($investigation->statusLogs as $log)
                         <div class="flex gap-3">
                             <div class="flex flex-col items-center">
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 {{ $invDotColors[$log->status] }}"></span>
                                 @unless ($loop->last)
-                                    <span class="w-px flex-1 bg-slate-800 my-1"></span>
+                                    <span class="w-px flex-1 bg-slate-600/50 my-1"></span>
                                 @endunless
                             </div>
                             <div class="pb-6">
-                                <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
-                                <p class="text-xs text-slate-500">{{ $log->created_at->format('j F Y \a\t g:i A') }}</p>
+                                <p class="text-sm text-slate-100">{{ $invStatusStyles[$log->status]['label'] }}</p>
+                                <p class="text-xs text-slate-300">{{ $log->created_at->format('j F Y \a\t g:i A') }}</p>
                             </div>
                         </div>
                     @endforeach
@@ -64,24 +59,24 @@
 
         @if (!$investigation)
             @if (session('success'))
-                <div class="mb-4 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5">
+                <div class="mb-4 text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5">
                     {{ session('success') }}
                 </div>
             @endif
             @if (session('error'))
-                <div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
+                <div class="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
                     {{ session('error') }}
                 </div>
             @endif
             <form method="POST" action="{{ route('investigations.request', $report) }}" class="space-y-4">
                 @csrf
                 <div>
-                    <label class="block text-xs text-slate-500 mb-1.5">NOTES (OPTIONAL)</label>
+                    <label class="block text-xs text-slate-300 mb-1.5">NOTES (OPTIONAL)</label>
                     <textarea name="notes" rows="2" placeholder="Anything you'd like our team to know about this report..."
-                        class="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50"></textarea>
+                        class="w-full r-well px-4 py-2.5 text-sm text-slate-300 placeholder:text-slate-400 focus:outline-none focus:border-slate-400/60"></textarea>
                 </div>
                 <button type="submit"
-                    class="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition">
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 hover:opacity-90 text-white text-sm font-semibold transition">
                     Request Investigation
                 </button>
             </form>
@@ -89,33 +84,28 @@
     </div>
 @else
     {{-- FULL MANAGEMENT VIEW for team members --}}
-    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-8 mt-6">
+    <div class="r-card r-in p-6 mb-8 mt-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
             <div class="flex items-center gap-3">
-                <span class="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
-                    </svg>
-                </span>
                 <div>
                     <h2 class="text-lg font-bold text-white">Investigation</h2>
-                    <p class="text-sm text-slate-500">Track takedown progress for this report.</p>
+                    <p class="text-sm text-slate-300">Track takedown progress for this report.</p>
                 </div>
             </div>
             @if ($investigation)
-                <span class="text-xs font-medium px-3 py-1.5 rounded-full border {{ $invStatusStyles[$investigation->status]['badge'] }}">
+                <span class="text-xs font-semibold {{ $invStatusStyles[$investigation->status]['badge'] }}">
                     {{ $invStatusStyles[$investigation->status]['label'] }}
                 </span>
             @endif
         </div>
 
         @if (session('success'))
-            <div class="mb-4 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5">
+            <div class="mb-4 text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5">
                 {{ session('success') }}
             </div>
         @endif
         @if (session('error'))
-            <div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
+            <div class="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
                 {{ session('error') }}
             </div>
         @endif
@@ -124,9 +114,9 @@
             <form method="POST" action="{{ route('investigations.store', $report) }}" class="space-y-4">
                 @csrf
                 <div>
-                    <label class="block text-xs text-slate-500 mb-1.5">ASSIGN TO (OPTIONAL)</label>
+                    <label class="block text-xs text-slate-300 mb-1.5">ASSIGN TO (OPTIONAL)</label>
                     <select name="assigned_to"
-                        class="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-violet-500/50">
+                        class="w-full r-well px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-slate-400/60">
                         <option value="">Unassigned</option>
                         @foreach (\App\Models\User::where('is_team_member', true)->orderBy('name')->get() as $user)
                             <option value="{{ $user->id }}">{{ $user->name }}</option>
@@ -134,34 +124,34 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-500 mb-1.5">NOTES (OPTIONAL)</label>
+                    <label class="block text-xs text-slate-300 mb-1.5">NOTES (OPTIONAL)</label>
                     <textarea name="notes" rows="2" placeholder="Add any initial notes about this case..."
-                        class="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50"></textarea>
+                        class="w-full r-well px-4 py-2.5 text-sm text-slate-300 placeholder:text-slate-400 focus:outline-none focus:border-slate-400/60"></textarea>
                 </div>
                 <button type="submit"
-                    class="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition">
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 hover:opacity-90 text-white text-sm font-semibold transition">
                     Open Investigation
                 </button>
             </form>
         @else
             <dl class="grid sm:grid-cols-2 gap-4 text-sm mb-5">
                 <div>
-                    <dt class="text-xs text-slate-500 mb-1">ASSIGNED TO</dt>
+                    <dt class="text-xs text-slate-300 mb-1">ASSIGNED TO</dt>
                     <dd class="text-slate-300">{{ $investigation->assignedUser?->name ?? 'Unassigned' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-xs text-slate-500 mb-1">OPENED</dt>
+                    <dt class="text-xs text-slate-300 mb-1">OPENED</dt>
                     <dd class="text-slate-300">{{ $investigation->created_at->format('j F Y \a\t g:i A') }}</dd>
                 </div>
                 @if ($investigation->resolved_at)
                     <div>
-                        <dt class="text-xs text-slate-500 mb-1">RESOLVED</dt>
+                        <dt class="text-xs text-slate-300 mb-1">RESOLVED</dt>
                         <dd class="text-slate-300">{{ $investigation->resolved_at->format('j F Y \a\t g:i A') }}</dd>
                     </div>
                 @endif
                              @if ($investigation->notes)
                     <div class="sm:col-span-2">
-                        <dt class="text-xs text-slate-500 mb-1">NOTES</dt>
+                        <dt class="text-xs text-slate-300 mb-1">NOTES</dt>
                         <dd class="text-slate-300">{{ $investigation->notes }}</dd>
                     </div>
                 @endif
@@ -169,19 +159,19 @@
 
             @if ($investigation->statusLogs->isNotEmpty())
                 <div class="mb-5">
-                    <p class="text-xs text-slate-500 mb-3">STATUS TIMELINE</p>
+                    <p class="text-xs text-slate-300 mb-3">STATUS TIMELINE</p>
                                  <div class="space-y-0">
                     @foreach ($investigation->statusLogs as $log)
                         <div class="flex gap-3">
                             <div class="flex flex-col items-center">
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 {{ $invDotColors[$log->status] }}"></span>
                                 @unless ($loop->last)
-                                    <span class="w-px flex-1 bg-slate-800 my-1"></span>
+                                    <span class="w-px flex-1 bg-slate-600/50 my-1"></span>
                                 @endunless
                             </div>
                             <div class="pb-6">
-                                <p class="text-sm text-slate-300">{{ $invStatusStyles[$log->status]['label'] }}</p>
-                                <p class="text-xs text-slate-500">
+                                <p class="text-sm text-slate-100">{{ $invStatusStyles[$log->status]['label'] }}</p>
+                                <p class="text-xs text-slate-300">
                                     {{ $log->created_at->format('j F Y \a\t g:i A') }}
                                     @if ($log->changedBy)
                                         &middot; by {{ $log->changedBy->name }}
@@ -190,6 +180,7 @@
                             </div>
                         </div>
                     @endforeach
+                    </div>
                 </div>
             @endif
 
@@ -197,9 +188,9 @@
                 @csrf
                 @method('PATCH')
                               <div>
-                    <label class="block text-xs text-slate-500 mb-1.5">UPDATE STATUS</label>
+                    <label class="block text-xs text-slate-300 mb-1.5">UPDATE STATUS</label>
                     <select name="status"
-                        class="bg-slate-950/60 border border-slate-800 rounded-lg pl-4 pr-9 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 min-w-[210px]">
+                        class="r-well pl-4 pr-9 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-slate-400/60 min-w-[210px]">
                         @foreach (['active', 'completed', 'takedown_requested', 'takedown_confirmed'] as $statusOption)
                             <option value="{{ $statusOption }}" @selected($investigation->status === $statusOption)>
                                 {{ $invStatusStyles[$statusOption]['label'] }}
@@ -208,9 +199,9 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-500 mb-1.5">REASSIGN TO</label>
+                    <label class="block text-xs text-slate-300 mb-1.5">REASSIGN TO</label>
                     <select name="assigned_to"
-                        class="bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-violet-500/50">
+                        class="r-well px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-slate-400/60">
                         <option value="">Unassigned</option>
                         @foreach (\App\Models\User::where('is_team_member', true)->orderBy('name')->get() as $user)
                             <option value="{{ $user->id }}" @selected($investigation->assigned_to === $user->id)>{{ $user->name }}</option>
@@ -218,7 +209,7 @@
                     </select>
                 </div>
                 <button type="submit"
-                    class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold hover:opacity-90 transition">
+                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 hover:opacity-90 text-white text-sm font-semibold transition">
                     Update
                 </button>
             </form>

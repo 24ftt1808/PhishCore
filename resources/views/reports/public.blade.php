@@ -1,61 +1,113 @@
 @php
     $verdictBadge = [
-        'suspicious' => ['bg' => 'bg-orange-500/10', 'text' => 'text-orange-400', 'label' => 'SUSPICIOUS'],
-        'phishing' => ['bg' => 'bg-red-500/10', 'text' => 'text-red-400', 'label' => 'PHISHING'],
+        'suspicious' => ['cls' => 'bg-amber-400/10 text-amber-300 border-amber-300/25', 'label' => 'SUSPICIOUS'],
+        'phishing' => ['cls' => 'bg-rose-400/10 text-rose-300 border-rose-300/25', 'label' => 'PHISHING'],
     ];
+
+    $currentStatus = $filters['status'] ?? 'all';
+    $hasFilters = !empty($filters['search'] ?? '') || $currentStatus !== 'all' || !empty($filters['date_from'] ?? '') || !empty($filters['date_to'] ?? '');
+
+    $typeIcons = [
+        'email' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75',
+        'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
+        'screenshot' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M18 22.5H6a2.25 2.25 0 01-2.25-2.25V3.75A2.25 2.25 0 016 1.5h12a2.25 2.25 0 012.25 2.25v16.5A2.25 2.25 0 0118 22.5zM10.5 8.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+        'url' => 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244',
+    ];
+
+    /* build each row once, render it as table row (desktop) and card (mobile) */
+    $rows = [];
+    foreach ($reports as $report) {
+        $verdict = $report->analyses->first()->verdict ?? 'suspicious';
+        $badge = $verdictBadge[$verdict] ?? $verdictBadge['suspicious'];
+
+        $itemLabel = match ($report->type) {
+            'email' => $report->sender_email,
+            'phone' => $report->phone_number,
+            'screenshot' => (function () use ($report) {
+                $extraction = collect($report->analyses->first()?->flags ?? [])
+                    ->firstWhere('name', 'Screenshot Text Extraction');
+                if ($extraction && preg_match('/(?:URL(?:\s\(from QR code\))?|Sender|Phone number):\s*([^|]+)/', $extraction['message'], $matches)) {
+                    return trim($matches[1]);
+                }
+                return 'Uploaded screenshot';
+            })(),
+            default => $report->url,
+        };
+
+        $rows[] = [
+            'label' => $itemLabel,
+            'icon' => $typeIcons[$report->type] ?? $typeIcons['url'],
+            'badge' => $badge,
+            'by' => $report->user?->name ? Str::before($report->user->name, ' ') : 'Anonymous',
+            'date' => $report->created_at->format('Y-m-d H:i'),
+        ];
+    }
 @endphp
 
 <x-layouts.guest-landing>
 
-    <section class="max-w-6xl mx-auto px-6 py-16">
+    <section class="max-w-6xl mx-auto px-6 pt-10 pb-20">
 
-        <div class="mb-8">
-            <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 mb-4">
+        {{-- Header --}}
+        <div class="mb-10">
+            <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4">
                 <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Community Transparency Feed
             </span>
             <h1 class="text-3xl font-bold text-white mb-2">Public Threat Reports</h1>
-            <p class="text-slate-400 text-sm max-w-2xl">Confirmed suspicious and phishing submissions across the PhishCore community. Safe results are not shown here.</p>
+            <p class="text-slate-400 text-sm max-w-2xl leading-relaxed">Confirmed suspicious and phishing submissions across the PhishCore community. Safe results are not shown here.</p>
         </div>
 
+        {{-- Stats --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-sky-500/20 blur-2xl"></div>
-                <p class="relative text-xs tracking-wide text-slate-500 mb-3">TOTAL FLAGGED</p>
-                <p class="relative text-3xl font-bold text-sky-400">{{ $stats['suspicious'] + $stats['phishing'] }}</p>
-                <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-sky-400 shadow-[0_0_14px_3px_rgba(56,189,248,0.5)]"></span>
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-[11px] tracking-[0.14em] text-slate-400">TOTAL FLAGGED</p>
+                    <div class="icon-tile !w-9 !h-9"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg></div>
+                </div>
+                @php $totalFlagged = $stats['suspicious'] + $stats['phishing']; @endphp
+                <p class="text-3xl font-bold text-white tabular-nums" data-count="{{ $totalFlagged }}">{{ $totalFlagged }}</p>
             </div>
-            <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-orange-500/20 blur-2xl"></div>
-                <p class="relative text-xs tracking-wide text-slate-500 mb-3">SUSPICIOUS</p>
-                <p class="relative text-3xl font-bold text-orange-400">{{ $stats['suspicious'] }}</p>
-                <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-orange-400 shadow-[0_0_14px_3px_rgba(251,146,60,0.5)]"></span>
+
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-[11px] tracking-[0.14em] text-slate-400">SUSPICIOUS</p>
+                    <div class="icon-tile !w-9 !h-9 !bg-amber-400/10 !border-amber-300/20 !text-amber-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></div>
+                </div>
+                <p class="text-3xl font-bold text-white tabular-nums" data-count="{{ $stats['suspicious'] }}">{{ $stats['suspicious'] }}</p>
             </div>
-            <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-red-500/20 blur-2xl"></div>
-                <p class="relative text-xs tracking-wide text-slate-500 mb-3">PHISHING</p>
-                <p class="relative text-3xl font-bold text-red-400">{{ $stats['phishing'] }}</p>
-                <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-red-400 shadow-[0_0_14px_3px_rgba(248,113,113,0.5)]"></span>
+
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-[11px] tracking-[0.14em] text-slate-400">PHISHING</p>
+                    <div class="icon-tile !w-9 !h-9 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg></div>
+                </div>
+                <p class="text-3xl font-bold text-white tabular-nums" data-count="{{ $stats['phishing'] }}">{{ $stats['phishing'] }}</p>
             </div>
-            <div class="relative bg-slate-900/50 border border-slate-800 rounded-xl p-5 overflow-hidden">
-                <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-emerald-500/20 blur-2xl"></div>
-                <p class="relative text-xs tracking-wide text-slate-500 mb-3">MOST RECENT</p>
-                <p class="relative text-3xl font-bold text-emerald-400">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
-                <span class="absolute right-5 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-emerald-400 shadow-[0_0_14px_3px_rgba(52,211,153,0.5)]"></span>
+
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-[11px] tracking-[0.14em] text-slate-400">MOST RECENT</p>
+                    <div class="icon-tile !w-9 !h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                </div>
+                <p class="text-3xl font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
             </div>
         </div>
 
-        <form method="GET" action="{{ route('reports.public') }}" class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 mb-6">
+        {{-- Filters --}}
+        <form method="GET" action="{{ route('reports.public') }}" class="glass-panel rounded-2xl p-5 mb-6">
             <div class="flex flex-wrap gap-3 mb-4">
-                <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
-                       placeholder="Search by URL, email, or phone number"
-                       class="flex-1 min-w-[240px] bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                <div class="relative flex-1 min-w-[240px]">
+                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                    <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
+                           placeholder="Search URL, email or phone"
+                           class="field !pl-11 !py-3">
+                </div>
 
-                @php $currentStatus = $filters['status'] ?? 'all'; @endphp
-                <div class="flex gap-1 bg-slate-950 border border-slate-800 rounded-lg p-1">
+                <div class="flex gap-1 p-1 rounded-full bg-black/20 border border-white/5">
                     @foreach (['all' => 'All', 'suspicious' => 'Suspicious', 'phishing' => 'Phishing'] as $key => $label)
                         <button type="submit" name="status" value="{{ $key }}"
-                                class="px-3 py-1.5 rounded-md text-xs font-medium {{ $currentStatus === $key ? 'bg-sky-500/20 text-sky-400' : 'text-slate-400 hover:text-slate-200' }} transition">
-                            {{ strtoupper($label) }}
+                                class="tab-btn {{ $currentStatus === $key ? 'tab-btn--active' : '' }}">
+                            {{ $label }}
                         </button>
                     @endforeach
                 </div>
@@ -63,95 +115,123 @@
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
                 <div>
-                    <label class="block text-[10px] tracking-wide text-slate-500 mb-1">DATE FROM</label>
-                    <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"
-                           class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500 transition">
+                    <label class="block text-[10px] tracking-[0.14em] text-slate-500 mb-1.5">DATE FROM</label>
+                    <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="field !py-2.5">
                 </div>
                 <div>
-                    <label class="block text-[10px] tracking-wide text-slate-500 mb-1">DATE TO</label>
-                    <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"
-                           class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500 transition">
+                    <label class="block text-[10px] tracking-[0.14em] text-slate-500 mb-1.5">DATE TO</label>
+                    <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="field !py-2.5">
                 </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="flex-1 py-2 rounded-lg bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-medium hover:opacity-90 transition">
-                        Apply Filters
-                    </button>
-                    <a href="{{ route('reports.public') }}" class="px-3 py-2 rounded-lg border border-slate-700 text-slate-300 text-sm hover:bg-slate-800 transition">
-                        Reset
-                    </a>
+                <div class="col-span-2 md:col-span-1 flex gap-2">
+                    <button type="submit" class="btn-primary flex-1 !rounded-xl !py-2.5 !text-sm">Apply Filters</button>
+                    <a href="{{ route('reports.public') }}" class="btn-ghost !rounded-xl !py-2.5 !px-4 !text-sm">Reset</a>
                 </div>
             </div>
         </form>
 
         <div class="flex items-center justify-between mb-3 text-sm text-slate-500">
-            <span>Showing {{ $reports->firstItem() ?? 0 }}–{{ $reports->lastItem() ?? 0 }} of {{ $reports->total() }} total reports</span>
+            <span>Showing <span class="text-slate-300">{{ $reports->firstItem() ?? 0 }}–{{ $reports->lastItem() ?? 0 }}</span> of <span class="text-slate-300">{{ $reports->total() }}</span> total reports</span>
         </div>
 
-        <div class="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-x-auto">
-            <table class="w-full text-sm min-w-[700px]">
-                <thead>
-                    <tr class="border-b border-slate-800 text-left text-xs tracking-wide text-slate-500">
-                        <th class="px-5 py-3">REPORTED ITEM</th>
-                        <th class="px-5 py-3">SCAN RESULT</th>
-                        <th class="px-5 py-3">SUBMITTED BY</th>
-                        <th class="px-5 py-3">DATE &amp; TIME</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800">
-                    @forelse ($reports as $report)
-                        @php
-                            $verdict = $report->analyses->first()->verdict ?? 'suspicious';
-                            $badge = $verdictBadge[$verdict] ?? $verdictBadge['suspicious'];
-                            $itemLabel = match ($report->type) {
-                                'email' => $report->sender_email,
-                                'phone' => $report->phone_number,
-                                'screenshot' => (function () use ($report) {
-    $extraction = collect($report->analyses->first()?->flags ?? [])
-        ->firstWhere('name', 'Screenshot Text Extraction');
-    if ($extraction && preg_match('/(?:URL(?:\s\(from QR code\))?|Sender|Phone number):\s*([^|]+)/', $extraction['message'], $matches)) {
-        return trim($matches[1]);
-    }
-    return 'Uploaded screenshot';
-})(),
-                                default => $report->url,
-                            };
-                            $iconSvg = match ($report->type) {
-                                'email' => '<svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>',
-                                'phone' => '<svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>',
-                                'screenshot' => '<svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M18 22.5H6a2.25 2.25 0 01-2.25-2.25V3.75A2.25 2.25 0 016 1.5h12a2.25 2.25 0 012.25 2.25v16.5A2.25 2.25 0 0118 22.5zM10.5 8.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>',
-                                default => '<svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>',
-                            };
-                            $firstName = $report->user?->name ? Str::before($report->user->name, ' ') : 'Anonymous';
-                        @endphp
-                        <tr class="hover:bg-slate-900/40 transition">
-                            <td class="px-5 py-4">
-                                <p title="{{ $itemLabel }}" class="text-slate-200 truncate flex items-center gap-2">
-                                    {!! $iconSvg !!} {{ $itemLabel }}
-                                </p>
-                            </td>
-                            <td class="px-5 py-4">
-                                <span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full {{ $badge['bg'] }} {{ $badge['text'] }}">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
-                                </span>
-                            </td>
-                            <td class="px-5 py-4 text-slate-400">{{ $firstName }}</td>
-                            <td class="px-5 py-4 text-slate-400">{{ $report->created_at->format('Y-m-d H:i') }}</td>
+        @if (count($rows))
+            {{-- Desktop table --}}
+            <div class="hidden md:block glass-panel rounded-2xl overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-white/10 text-left text-[11px] tracking-[0.14em] text-slate-500 bg-white/[0.02]">
+                            <th class="px-6 py-4 font-medium">REPORTED ITEM</th>
+                            <th class="px-6 py-4 font-medium">SCAN RESULT</th>
+                            <th class="px-6 py-4 font-medium">SUBMITTED BY</th>
+                            <th class="px-6 py-4 font-medium">DATE &amp; TIME</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-5 py-10 text-center text-slate-500">
-                                No suspicious or phishing reports found.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody class="divide-y divide-white/[0.06]">
+                        @foreach ($rows as $r)
+                            <tr class="hover:bg-white/[0.035] transition-colors">
+                                <td class="px-6 py-4 max-w-md">
+                                    <p title="{{ $r['label'] }}" class="text-slate-200 truncate flex items-center gap-3">
+                                        <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
+                                        <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
+                                    </p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide px-2.5 py-1 rounded-full border {{ $r['badge']['cls'] }}">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $r['badge']['label'] }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-400">{{ $r['by'] }}</td>
+                                <td class="px-6 py-4 text-slate-400 tabular-nums">{{ $r['date'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
 
-        <div class="mt-4">
+            {{-- Mobile cards --}}
+            <div class="md:hidden space-y-3">
+                @foreach ($rows as $r)
+                    <div class="glass-card p-4">
+                        <p title="{{ $r['label'] }}" class="text-slate-200 flex items-center gap-2.5 mb-3">
+                            <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
+                            <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
+                        </p>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide px-2.5 py-1 rounded-full border {{ $r['badge']['cls'] }}">
+                                <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $r['badge']['label'] }}
+                            </span>
+                            <span class="text-xs text-slate-400 text-right">{{ $r['by'] }} &middot; {{ $r['date'] }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="glass-panel rounded-2xl px-6 py-16 text-center">
+                <div class="icon-tile !w-12 !h-12 mx-auto mb-4">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                </div>
+                <p class="text-white font-medium">No suspicious or phishing reports found</p>
+                <p class="text-sm text-slate-500 mt-1">
+                    @if ($hasFilters)
+                        Nothing matches your filters. <a href="{{ route('reports.public') }}" class="text-sky-300 hover:text-sky-200">Reset them</a> to see everything.
+                    @else
+                        Flagged submissions from the community will appear here.
+                    @endif
+                </p>
+            </div>
+        @endif
+
+        <div class="mt-5">
             {{ $reports->links() }}
         </div>
 
     </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            document.querySelectorAll('[data-count]').forEach((el) => {
+                const target = parseFloat(el.dataset.count) || 0;
+                if (reduceMotion || target === 0) return;
+                el.textContent = '0';
+                const start = performance.now();
+                const dur = 1100;
+                const tick = (now) => {
+                    const p = Math.min((now - start) / dur, 1);
+                    el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))).toLocaleString();
+                    if (p < 1) requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            });
+
+            document.querySelectorAll('.glass-card').forEach((card) => {
+                card.addEventListener('mousemove', (e) => {
+                    const r = card.getBoundingClientRect();
+                    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+                    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+                });
+            });
+        });
+    </script>
 
 </x-layouts.guest-landing>

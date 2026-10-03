@@ -312,9 +312,11 @@
         <p class="text-center text-sm text-slate-500 mt-6">No reports found in this period yet — try a wider date range or submit a few scans first.</p>
     @endif
 
-    @push('scripts')
+ @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
+        Chart.defaults.font.family = "'Manrope', ui-sans-serif, system-ui, sans-serif";
+
         const activityCtx = document.getElementById('activityChart');
         new Chart(activityCtx, {
             type: 'line',

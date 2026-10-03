@@ -1,396 +1,382 @@
 @php
     $verdictBadge = [
-        'clean' => ['bg' => 'bg-emerald-500/10', 'text' => 'text-emerald-400', 'label' => 'SAFE'],
-        'suspicious' => ['bg' => 'bg-orange-500/10', 'text' => 'text-orange-400', 'label' => 'SUSPICIOUS'],
-        'phishing' => ['bg' => 'bg-red-500/10', 'text' => 'text-red-400', 'label' => 'PHISHING'],
-        'review' => ['bg' => 'bg-sky-500/10', 'text' => 'text-sky-400', 'label' => 'REVIEW'],
+        'clean' => ['bg' => 'bg-emerald-400/10 border-emerald-400/25', 'text' => 'text-emerald-300', 'label' => 'SAFE'],
+        'suspicious' => ['bg' => 'bg-orange-400/10 border-orange-400/25', 'text' => 'text-orange-300', 'label' => 'SUSPICIOUS'],
+        'phishing' => ['bg' => 'bg-red-400/10 border-red-400/25', 'text' => 'text-red-300', 'label' => 'PHISHING'],
+        'review' => ['bg' => 'bg-sky-400/10 border-sky-400/25', 'text' => 'text-sky-300', 'label' => 'REVIEW'],
     ];
     $scoreColor = [
-        'clean' => 'text-emerald-400',
-        'suspicious' => 'text-orange-400',
-        'phishing' => 'text-red-400',
-        'review' => 'text-sky-400',
+        'clean' => ['text' => 'text-emerald-300', 'bar' => 'bg-emerald-400'],
+        'suspicious' => ['text' => 'text-orange-300', 'bar' => 'bg-orange-400'],
+        'phishing' => ['text' => 'text-red-300', 'bar' => 'bg-red-400'],
+        'review' => ['text' => 'text-sky-300', 'bar' => 'bg-sky-400'],
     ];
     $typeIcons = [
-        'url' => '🔗',
-        'email' => '✉️',
-        'phone' => '📱',
-        'screenshot' => '🖼️',
+        'url' => 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244',
+        'email' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-9.75 6-9.75-6',
+        'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
+        'screenshot' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5zM10.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+    ];
+
+    $total = max((int) $stats['total'], 0);
+    $pct = fn ($n) => $total > 0 ? (int) round(((int) $n) / $total * 100) : 0;
+    $weekSum = (int) $weekTotals['safe'] + (int) $weekTotals['suspicious'] + (int) $weekTotals['phishing'];
+
+    $cards = [
+        ['key' => 'total',      'title' => 'TOTAL REPORTS',      'tag' => 'SUBMITTED',        'sub' => 'URLs, emails, phone numbers & screenshots', 'rgb' => '56,189,248',  'num' => 'text-white',        'tile' => 'text-sky-300',     'bar' => null,             'icon' => 'M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18'],
+        ['key' => 'safe',       'title' => 'SAFE REPORTS',       'tag' => 'VERIFIED',         'sub' => 'No threats detected',                       'rgb' => '52,211,153',  'num' => 'text-emerald-300',  'tile' => 'text-emerald-300', 'bar' => 'bg-emerald-400', 'icon' => 'M4.5 12.75l6 6 9-13.5'],
+        ['key' => 'suspicious', 'title' => 'SUSPICIOUS REPORTS', 'tag' => 'NEEDS REVIEW',     'sub' => 'Potential threats',                         'rgb' => '251,146,60',  'num' => 'text-orange-300',   'tile' => 'text-orange-300',  'bar' => 'bg-orange-400',  'icon' => 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z'],
+        ['key' => 'phishing',   'title' => 'PHISHING REPORTS',   'tag' => 'THREATS DETECTED', 'sub' => 'Confirmed malicious',                      'rgb' => '248,113,113', 'num' => 'text-red-300',      'tile' => 'text-red-300',     'bar' => 'bg-red-400',     'icon' => 'M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+    ];
+
+    $actions = [
+        ['href' => route('scan.index'),   'title' => 'Run New Scan', 'sub' => 'URL, email, phone, or screenshot', 'icon' => 'M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z'],
+        ['href' => route('scan.history'), 'title' => 'Scan History', 'sub' => $totalScansCount . ' recent records',  'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
+        ['href' => route('analytics'),    'title' => 'Analytics',    'sub' => 'Charts & insights',                   'icon' => 'M3 13.5l3.75-3.75 3 3 4.5-4.5M3 19.5h18'],
+        auth()->user()->is_team_member
+            ? ['href' => route('reports.index'), 'title' => 'Reports',  'sub' => 'Platform-wide reports', 'icon' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z']
+            : ['href' => route('profile.edit'),  'title' => 'Settings', 'sub' => 'Manage your account',   'icon' => 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z'],
     ];
 @endphp
 
 <x-layouts.dashboard>
 
-    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+    <style>
+        /* light panels: gradient + hairline border, no blur filters, so the page stays smooth */
+        .d-card { background: linear-gradient(180deg, rgba(24, 40, 76, .62), rgba(14, 25, 50, .62)); border: 1px solid rgba(148, 163, 184, .18); border-radius: 1.1rem; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
+        .d-lift { position: relative; transition: transform .3s cubic-bezier(.34, 1.4, .64, 1), border-color .25s; }
+        .d-lift:hover { transform: translateY(-2px); border-color: rgba(var(--c, 56, 189, 248), .4); }
+
+        .d-tile { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .8rem; background: rgba(var(--c), .12); border: 1px solid rgba(var(--c), .3); }
+
+        .d-in { animation: d-in .6s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, 0s); }
+        @keyframes d-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        .d-grow { transform-origin: left; animation: d-grow .9s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, .3s); }
+        @keyframes d-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+        .d-row { transition: background-color .2s; }
+        .d-row:hover { background-color: rgba(125, 211, 252, .06); }
+        .d-arrow { transition: transform .25s cubic-bezier(.34, 1.4, .64, 1); }
+        a:hover > .d-arrow, .d-link:hover .d-arrow { transform: translateX(4px); }
+
+        @media (prefers-reduced-motion: reduce) { .d-in, .d-grow { animation: none; } .d-lift:hover { transform: none; } }
+    </style>
+
+    {{-- HEADER --}}
+    <div class="d-in flex items-start justify-between mb-7 flex-wrap gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-white mb-1">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-1.5">
                 @php $hour = now()->hour; @endphp
                 Good {{ $hour < 12 ? 'morning' : ($hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', auth()->user()->name)[0] }} 👋
             </h1>
-            <p class="text-slate-400 text-sm">
-                Here is your security overview for <span class="text-white">{{ now()->format('l, j F Y') }}</span>.
+            <p class="text-slate-300 text-sm">
+                Here is your security overview for <span class="text-white font-medium">{{ now()->format('l, j F Y') }}</span>.
             </p>
         </div>
-        <span class="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> System operational
+        <span class="flex items-center gap-2 text-xs text-emerald-300 bg-emerald-400/10 border border-emerald-300/25 px-3.5 py-2 rounded-full">
+            <span class="relative flex w-2 h-2"><span class="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60"></span><span class="relative w-2 h-2 rounded-full bg-emerald-400"></span></span>
+            System operational
         </span>
     </div>
 
-    {{-- REDESIGNED STAT CARDS --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-
-        {{-- TOTAL --}}
-        <div class="group relative overflow-hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-sky-500/40 transition-all duration-300">
-            <div class="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-sky-500/10 blur-2xl group-hover:bg-sky-500/20 transition"></div>
-
-            <div class="relative">
+    {{-- STAT CARDS --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        @foreach ($cards as $i => $card)
+            <div class="d-in d-card d-lift p-4 sm:p-5" style="--c: {{ $card['rgb'] }}; --d: {{ $i * 0.07 }}s">
                 <div class="flex items-center gap-3 mb-5">
-                    <span class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" />
-                        </svg>
+                    <span class="d-tile shrink-0 {{ $card['tile'] }}">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $card['icon'] }}" /></svg>
                     </span>
-                    <div>
-                        <p class="text-xs font-medium text-slate-300">TOTAL REPORTS</p>
-                        <p class="text-[10px] text-slate-600 uppercase tracking-wider">SUBMITTED</p>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-slate-100 truncate">{{ $card['title'] }}</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider truncate">{{ $card['tag'] }}</p>
                     </div>
                 </div>
 
-                <p class="text-3xl font-bold text-white">{{ $stats['total'] }}</p>
-                <p class="text-xs text-slate-600 mt-1">URLs, emails, phone numbers &amp; screenshots</p>
-            </div>
-        </div>
-
-        {{-- SAFE --}}
-        <div class="group relative overflow-hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all duration-300">
-            <div class="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition"></div>
-
-            <div class="relative">
-                <div class="flex items-center gap-3 mb-5">
-                    <span class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                    </span>
-                    <div>
-                        <p class="text-xs font-medium text-slate-300">SAFE REPORTS</p>
-                        <p class="text-[10px] text-slate-600 uppercase tracking-wider">VERIFIED</p>
-                    </div>
+                <div class="flex items-end justify-between gap-2">
+                    <p class="text-4xl font-bold leading-none tabular-nums {{ $card['num'] }}" data-count="{{ $stats[$card['key']] }}">{{ $stats[$card['key']] }}</p>
                 </div>
 
-                <p class="text-3xl font-bold text-emerald-400">{{ $stats['safe'] }}</p>
-                <p class="text-xs text-slate-600 mt-1">No threats detected</p>
+                <p class="text-xs text-slate-300 mt-3 leading-snug">{{ $card['sub'] }}</p>
             </div>
-        </div>
-
-        {{-- SUSPICIOUS --}}
-        <div class="group relative overflow-hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-orange-500/40 transition-all duration-300">
-            <div class="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-orange-500/10 blur-2xl group-hover:bg-orange-500/20 transition"></div>
-
-            <div class="relative">
-                <div class="flex items-center gap-3 mb-5">
-                    <span class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                        </svg>
-                    </span>
-                    <div>
-                        <p class="text-xs font-medium text-slate-300">SUSPICIOUS REPORTS</p>
-                        <p class="text-[10px] text-slate-600 uppercase tracking-wider">NEEDS REVIEW</p>
-                    </div>
-                </div>
-
-                <p class="text-3xl font-bold text-orange-400">{{ $stats['suspicious'] }}</p>
-                <p class="text-xs text-slate-600 mt-1">Potential threats</p>
-            </div>
-        </div>
-
-        {{-- PHISHING --}}
-        <div class="group relative overflow-hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-5 hover:border-red-500/40 transition-all duration-300">
-            <div class="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-red-500/10 blur-2xl group-hover:bg-red-500/20 transition"></div>
-
-            <div class="relative">
-                <div class="flex items-center gap-3 mb-5">
-                    <span class="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </span>
-                    <div>
-                        <p class="text-xs font-medium text-slate-300">PHISHING REPORTS</p>
-                        <p class="text-[10px] text-slate-600 uppercase tracking-wider">THREATS DETECTED</p>
-                    </div>
-                </div>
-
-                <p class="text-3xl font-bold text-red-400">{{ $stats['phishing'] }}</p>
-                <p class="text-xs text-slate-600 mt-1">Confirmed malicious</p>
-            </div>
-        </div>
-
+        @endforeach
     </div>
 
-    {{-- QUICK URL CHECK --}}
-    <div class="relative bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden mb-8">
+    {{-- QUICK CHECK + QUICK ACTIONS --}}
+    <div class="mb-6">
 
-        <div class="absolute -left-16 -top-16 w-56 h-56 rounded-full bg-sky-500/10 blur-3xl pointer-events-none"></div>
-        <div class="absolute -right-16 -bottom-16 w-56 h-56 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
-
-        <div class="relative flex items-center justify-between px-6 py-5 border-b border-slate-800">
-            <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
-                    </svg>
-                </span>
-
-                <div>
-                    <p class="text-white font-semibold text-sm">Quick URL Check</p>
-                    <p class="text-xs text-slate-500 mt-0.5">Paste a link for an instant security check</p>
+        <div class="d-in d-card overflow-hidden" style="--d:.2s"
+             x-data="{ busy: false }"
+             x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) busy = false; })">
+            <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/10">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="d-tile shrink-0 text-sky-300" style="--c: 56,189,248">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                    </span>
+                    <div class="min-w-0">
+                        <p class="text-white font-semibold text-sm">Quick URL Check</p>
+                        <p class="text-xs text-slate-300 mt-0.5">Paste a link for an instant security check</p>
+                    </div>
                 </div>
+                <span class="hidden sm:flex items-center gap-2 text-[10px] tracking-wide text-slate-200 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> PHISHCORE ENGINE
+                </span>
             </div>
 
-            <span class="hidden sm:flex items-center gap-2 text-[10px] tracking-wide text-slate-500 bg-slate-950/60 border border-slate-800 px-3 py-1.5 rounded-full">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                PHISHCORE ENGINE
-            </span>
-        </div>
+            <div class="p-5 sm:p-6" x-data="{ url: '' }">
+                <form method="POST" action="{{ route('scan.store') }}" class="flex flex-col sm:flex-row gap-3" @submit="busy = true">
+                    @csrf
+                    <div class="relative flex-1">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" /></svg>
+                        <input type="text" name="url" required x-model="url" :readonly="busy" placeholder="https://example.com"
+                               class="w-full rounded-xl pl-11 pr-20 py-3.5 text-sm text-white placeholder-slate-400 bg-[#0a1630]/80 border border-sky-200/15 focus:outline-none focus:border-sky-400/70 focus:ring-2 focus:ring-sky-400/20 transition">
+                        <button type="button" :disabled="busy"
+                                @click="navigator.clipboard.readText().then(t => url = t)"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white transition disabled:opacity-50">Paste</button>
+                    </div>
+                    <button type="submit" :disabled="busy"
+                            class="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-semibold whitespace-nowrap shadow-[0_0_20px_-2px_rgba(56,189,248,0.45)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-70">
+                        <svg x-show="!busy" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                        <svg x-show="busy" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        <span x-text="busy ? 'Scanning...' : 'Scan URL'"></span>
+                    </button>
+                </form>
 
-        <div class="relative p-6">
-            <p class="text-sm text-slate-400 mb-5 max-w-3xl leading-relaxed">
-                Each scan checks the URL structure, SSL certificate validity, domain registration age, and known phishing indicators across multiple threat databases.
-            </p>
+                @error('url')
+                    <p class="mt-3 text-xs text-red-300">{{ $message }}</p>
+                @enderror
 
-            <form method="POST" action="{{ route('scan.store') }}" class="flex flex-col sm:flex-row gap-3 mb-4">
-                @csrf
-
-                <div class="relative flex-1">
-                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" />
-                    </svg>
-
-                    <input type="text" name="url" required placeholder="https://example.com"
-                           class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/10 transition">
+                <div class="flex flex-wrap gap-2 mt-4">
+                    @foreach (['URL structure', 'Domain age analysis', 'HTTPS validation', 'Blacklist verification'] as $chip)
+                        <span class="inline-flex items-center gap-1.5 text-xs text-slate-200 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04]">
+                            <svg class="w-3 h-3 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            {{ $chip }}
+                        </span>
+                    @endforeach
                 </div>
 
-                <button type="submit"
-                        class="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-semibold hover:opacity-90 transition whitespace-nowrap shadow-[0_0_18px_1px_rgba(56,189,248,0.18)]">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
-                    </svg>
-                    Scan URL
-                </button>
-            </form>
-
-            @error('url')
-                <p class="mb-4 text-xs text-red-400">{{ $message }}</p>
-            @enderror
-
-            <div class="flex flex-wrap gap-x-4 gap-y-2 pt-4 border-t border-slate-800/70">
-                <span class="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                    URL structure
-                </span>
-
-                <span class="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                    Domain age analysis
-                </span>
-
-                <span class="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                    HTTPS validation
-                </span>
-
-                <span class="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                    Blacklist verification
-                </span>
-            </div>
-
-            <p class="text-xs text-slate-500 mt-4">
-                Need to report a sender email, phone number, or screenshot instead?
-                <a href="{{ route('scan.index') }}" class="text-sky-400 hover:text-sky-300">Go to the full Scan page →</a>
-            </p>
-        </div>
-    </div>
-
-    {{-- DETECTION OVERVIEW --}}
-    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-8">
-        <div class="flex items-center justify-between mb-1">
-            <h2 class="text-white font-semibold">Detection Overview</h2>
-            <span class="text-xs text-slate-500">{{ $weekRangeLabel }}</span>
-        </div>
-        <p class="text-sm text-slate-500 mb-5">Safe, Suspicious and Phishing results by day</p>
-
-        <canvas id="weekChart" height="90"></canvas>
-
-        <div class="flex items-center justify-center gap-6 mt-4 mb-5 text-xs text-slate-400">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Safe</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-400"></span> Suspicious</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-400"></span> Phishing</span>
-        </div>
-
-        <div class="grid grid-cols-3 text-center border-t border-slate-800 pt-5">
-            <div>
-                <p class="text-2xl font-bold text-emerald-400">{{ $weekTotals['safe'] }}</p>
-                <p class="text-xs text-slate-500">Safe</p>
-            </div>
-            <div>
-                <p class="text-2xl font-bold text-orange-400">{{ $weekTotals['suspicious'] }}</p>
-                <p class="text-xs text-slate-500">Suspicious</p>
-            </div>
-            <div>
-                <p class="text-2xl font-bold text-red-400">{{ $weekTotals['phishing'] }}</p>
-                <p class="text-xs text-slate-500">Phishing</p>
+                <p class="text-xs text-slate-300 mt-4">
+                    Need to report a sender email, phone number, or screenshot instead?
+                    <a href="{{ route('scan.index') }}" class="d-link text-sky-300 hover:text-sky-200 font-medium">Go to the full Scan page <span class="d-arrow inline-block">→</span></a>
+                </p>
             </div>
         </div>
     </div>
 
-    {{-- RECENT SCANS --}}
-    <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-8">
-        <div class="flex items-center justify-between mb-5">
+    {{-- DETECTION OVERVIEW + BREAKDOWN --}}
+    <div class="grid xl:grid-cols-3 gap-4 mb-6">
+        <div class="d-in d-card p-5 sm:p-6 xl:col-span-2" style="--d:.3s">
+            <div class="flex items-start justify-between gap-3 mb-1">
+                <h2 class="text-white font-semibold">Detection Overview</h2>
+                <span class="text-xs text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full whitespace-nowrap">{{ $weekRangeLabel }}</span>
+            </div>
+            <p class="text-sm text-slate-300 mb-5">Safe, Suspicious and Phishing results by day</p>
+
+            <div class="relative h-56 sm:h-64"><canvas id="weekChart"></canvas></div>
+
+            <div class="flex items-center justify-center gap-5 mt-4 text-xs text-slate-200">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Safe</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Suspicious</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-400"></span> Phishing</span>
+            </div>
+        </div>
+
+        <div class="d-in d-card p-5 sm:p-6 flex flex-col" style="--d:.36s">
+            <h2 class="text-white font-semibold">This Week</h2>
+            <p class="text-sm text-slate-300 mb-4">Share of each verdict</p>
+
+            <div class="relative mx-auto w-44 h-44 sm:w-48 sm:h-48 my-auto">
+                <canvas id="weekDonut"></canvas>
+                <div class="absolute inset-0 grid place-items-center pointer-events-none">
+                    <div class="text-center">
+                        <p class="text-3xl font-bold text-white tabular-nums leading-none">{{ $weekSum }}</p>
+                        <p class="text-[11px] text-slate-300 mt-1.5 tracking-wide">SCANS</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-5 text-center">
+                @foreach ([['safe', 'Safe', 'text-emerald-300', 'bg-emerald-400'], ['suspicious', 'Suspicious', 'text-orange-300', 'bg-orange-400'], ['phishing', 'Phishing', 'text-red-300', 'bg-red-400']] as $t)
+                    <div class="rounded-xl border border-white/10 bg-white/[0.04] py-2.5">
+                        <p class="text-xl font-bold tabular-nums {{ $t[2] }}">{{ $weekTotals[$t[0]] }}</p>
+                        <p class="text-[11px] text-slate-300 flex items-center justify-center gap-1"><span class="w-1.5 h-1.5 rounded-full {{ $t[3] }}"></span>{{ $t[1] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    {{-- RECENT REPORTS --}}
+    <div class="d-in d-card p-5 sm:p-6" style="--d:.4s">
+        <div class="flex items-center justify-between gap-3 mb-5">
             <div>
                 <h2 class="text-white font-semibold">Recent Reports</h2>
-                <p class="text-sm text-slate-500">Latest {{ $recentScans->count() }} scan results</p>
+                <p class="text-sm text-slate-300">Latest {{ $recentScans->count() }} scan results</p>
             </div>
-            <a href="{{ route('scan.history') }}" class="text-sky-400 text-sm font-medium hover:text-sky-300 flex items-center gap-1">
-                View All Scans →
+            <a href="{{ route('scan.history') }}" class="d-link text-sky-300 text-sm font-medium hover:text-sky-200 flex items-center gap-1 whitespace-nowrap">
+                View All Scans <span class="d-arrow inline-block">→</span>
             </a>
         </div>
 
-              @if ($recentScans->count() > 0)
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm min-w-[600px]">
-                <thead>
-                    <tr class="text-left text-xs tracking-wide text-slate-500 border-b border-slate-800">
-                        <th class="pb-3 pr-4">REPORTED ITEM</th>
-                        <th class="pb-3 pr-4">SCAN RESULT</th>
-                        <th class="pb-3 pr-4">RISK SCORE</th>
-                        <th class="pb-3 pr-4">DATE &amp; TIME</th>
-                        <th class="pb-3"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800">
-                    @foreach ($recentScans as $scan)
-                        @php
-                            $verdict = $scan->analyses->first()->verdict ?? 'clean';
-                            $score = $scan->analyses->first()->risk_score ?? 0;
-                            $badge = $verdictBadge[$verdict] ?? $verdictBadge['clean'];
-                            $itemLabel = match ($scan->type) {
-                                'email' => $scan->sender_email,
-                                'phone' => $scan->phone_number,
-                                'screenshot' => 'Uploaded screenshot',
-                                default => $scan->url,
-                            };
-                            $icon = $typeIcons[$scan->type] ?? '🔗';
-                        @endphp
-                        <tr>
-                            <td class="py-3 pr-4">
-                                <span class="flex items-center gap-2 text-slate-300 truncate max-w-[220px]">
-                                    <span class="shrink-0">{{ $icon }}</span>
-                                    {{ $itemLabel }}
-                                </span>
-                            </td>
-                            <td class="py-3 pr-4">
-                                <span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full {{ $badge['bg'] }} {{ $badge['text'] }}">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
-                                </span>
-                            </td>
-                            <td class="py-3 pr-4">
-                                <span class="font-medium {{ $scoreColor[$verdict] ?? 'text-slate-400' }}">{{ $score }}</span>
-                            </td>
-                            <td class="py-3 pr-4 text-slate-400">{{ $scan->created_at->format('Y-m-d H:i') }}</td>
-                            <td class="py-3 text-right">
-                                <a href="{{ route('scan.show', $scan) }}"
-                                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-400 text-xs font-medium hover:bg-sky-500/20 transition whitespace-nowrap">
-                                    View Details
-                                </a>
-                            </td>
+        @if ($recentScans->count() > 0)
+            <div class="overflow-x-auto -mx-1 px-1">
+                <table class="w-full text-sm min-w-[640px]">
+                    <thead>
+                        <tr class="text-left text-[11px] tracking-[0.12em] text-slate-300 border-b border-white/10">
+                            <th class="pb-3 pr-4 font-medium">REPORTED ITEM</th>
+                            <th class="pb-3 pr-4 font-medium">SCAN RESULT</th>
+                            <th class="pb-3 pr-4 font-medium">RISK SCORE</th>
+                            <th class="pb-3 pr-4 font-medium">DATE &amp; TIME</th>
+                            <th class="pb-3"></th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody class="divide-y divide-white/[0.07]">
+                        @foreach ($recentScans as $scan)
+                            @php
+                                $verdict = $scan->analyses->first()->verdict ?? 'clean';
+                                $score = $scan->analyses->first()->risk_score ?? 0;
+                                $badge = $verdictBadge[$verdict] ?? $verdictBadge['clean'];
+                                $sc = $scoreColor[$verdict] ?? $scoreColor['clean'];
+                                $itemLabel = match ($scan->type) {
+                                    'email' => $scan->sender_email,
+                                    'phone' => $scan->phone_number,
+                                    'screenshot' => 'Uploaded screenshot',
+                                    default => $scan->url,
+                                };
+                                $iconPath = $typeIcons[$scan->type] ?? $typeIcons['url'];
+                            @endphp
+                            <tr class="d-row">
+                                <td class="py-3 pr-4">
+                                    <span class="flex items-center gap-3 max-w-[260px]">
+                                        <span class="w-8 h-8 shrink-0 grid place-items-center rounded-lg bg-white/5 border border-white/10 text-sky-300">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
+                                        </span>
+                                        <span class="truncate text-slate-100">{{ $itemLabel }}</span>
+                                    </span>
+                                </td>
+                                <td class="py-3 pr-4">
+                                    <span class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border {{ $badge['bg'] }} {{ $badge['text'] }}">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
+                                    </span>
+                                </td>
+                                <td class="py-3 pr-4">
+                                    <span class="flex items-center gap-2.5">
+                                        <span class="w-8 font-semibold tabular-nums {{ $sc['text'] }}">{{ $score }}</span>
+                                        <span class="hidden md:block w-20 h-1.5 rounded-full bg-white/10 overflow-hidden"><span class="block h-full rounded-full {{ $sc['bar'] }}" style="width: {{ min(max((int) $score, 0), 100) }}%"></span></span>
+                                    </span>
+                                </td>
+                                <td class="py-3 pr-4 text-slate-300 tabular-nums">{{ $scan->created_at->format('Y-m-d H:i') }}</td>
+                                <td class="py-3 text-right">
+                                    <a href="{{ route('scan.show', $scan) }}"
+                                       class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-sky-300/30 bg-sky-400/10 text-sky-200 text-xs font-medium hover:bg-sky-400/20 hover:border-sky-300/50 transition whitespace-nowrap">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
 
-            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
-                <p class="text-xs text-slate-500">Showing {{ $recentScans->count() }} of {{ $totalScansCount }} total records</p>
-                <a href="{{ route('scan.history') }}"
-                   class="text-sky-400 text-xs font-medium hover:text-sky-300 flex items-center gap-1">
-                    View All Scans →
+            <div class="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+                <p class="text-xs text-slate-300">Showing {{ $recentScans->count() }} of {{ $totalScansCount }} total records</p>
+                <a href="{{ route('scan.history') }}" class="d-link text-sky-300 text-xs font-medium hover:text-sky-200 flex items-center gap-1">
+                    View All Scans <span class="d-arrow inline-block">→</span>
                 </a>
             </div>
         @else
-            <p class="text-sm text-slate-500 text-center py-6">
-                No reports yet — <a href="{{ route('scan.index') }}" class="text-sky-400">submit your first scan</a> to see it here.
-            </p>
+            <div class="text-center py-10">
+                <span class="w-12 h-12 mx-auto grid place-items-center rounded-2xl bg-sky-400/10 border border-sky-300/25 text-sky-300 mb-3">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                </span>
+                <p class="text-sm text-slate-200">No reports yet.</p>
+                <p class="text-sm text-slate-300"><a href="{{ route('scan.index') }}" class="text-sky-300 hover:text-sky-200 font-medium">Submit your first scan</a> to see it here.</p>
+            </div>
         @endif
     </div>
 
     {{-- QUICK ACTIONS --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="{{ route('scan.index') }}" class="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-sky-500/40 transition">
-            <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-3">
-                <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-            </span>
-            <p class="text-white font-medium text-sm mb-0.5">Run New Scan</p>
-            <p class="text-xs text-slate-500">URL, email, phone, or screenshot</p>
-        </a>
-        <a href="{{ route('scan.history') }}" class="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-sky-500/40 transition">
-            <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-3">
-                <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </span>
-            <p class="text-white font-medium text-sm mb-0.5">Scan History</p>
-            <p class="text-xs text-slate-500">{{ $totalScansCount }} recent records</p>
-        </a>
-        <a href="{{ route('analytics') }}" class="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-sky-500/40 transition">
-            <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-3">
-                <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5l3.75-3.75 3 3 4.5-4.5M3 19.5h18" /></svg>
-            </span>
-            <p class="text-white font-medium text-sm mb-0.5">Analytics</p>
-            <p class="text-xs text-slate-500">Charts &amp; insights</p>
-        </a>
-                     @if (auth()->user()->is_team_member)
-        <a href="{{ route('reports.index') }}" class="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-sky-500/40 transition">
-            <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-3">
-                <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25" /></svg>
-            </span>
-            <p class="text-white font-medium text-sm mb-0.5">Reports</p>
-            <p class="text-xs text-slate-500">Platform-wide reports</p>
-        </a>
-        @else
-        <a href="{{ route('profile.edit') }}" class="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-sky-500/40 transition">
-            <span class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mb-3">
-                <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            </span>
-            <p class="text-white font-medium text-sm mb-0.5">Settings</p>
-            <p class="text-xs text-slate-500">Manage your account</p>
-        </a>
-        @endif
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6">
+        @foreach ($actions as $i => $a)
+            <a href="{{ $a['href'] }}" class="d-in d-card d-lift block p-4 sm:p-5" style="--c: 56,189,248; --d: {{ 0.45 + $i * 0.06 }}s">
+                <span class="d-tile text-sky-300 mb-3" style="--c: 56,189,248">
+                    <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $a['icon'] }}" /></svg>
+                </span>
+                <p class="text-white font-medium text-sm mb-0.5">{{ $a['title'] }}</p>
+                <p class="text-xs text-slate-300">{{ $a['sub'] }}</p>
+            </a>
+        @endforeach
     </div>
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
-        const weekCtx = document.getElementById('weekChart');
-        new Chart(weekCtx, {
-            type: 'bar',
-            data: {
-                labels: @json($weekLabels),
-                datasets: [
-                    { label: 'Safe', data: @json($weekSafe), backgroundColor: '#34d399', borderRadius: 3 },
-                    { label: 'Suspicious', data: @json($weekSuspicious), backgroundColor: '#fb923c', borderRadius: 3 },
-                    { label: 'Phishing', data: @json($weekPhishing), backgroundColor: '#f87171', borderRadius: 3 },
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { color: '#64748b' }, grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { color: '#64748b', precision: 0 }, grid: { color: 'rgba(100,116,139,0.1)' } }
+        (function () {
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            /* count-up for the stat numbers */
+            document.querySelectorAll('[data-count]').forEach((el) => {
+                const target = parseFloat(el.dataset.count) || 0;
+                if (reduce || target === 0) return;
+                const start = performance.now(), dur = 1000;
+                el.textContent = '0';
+                const tick = (now) => {
+                    const p = Math.min((now - start) / dur, 1);
+                    el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))).toLocaleString();
+                    if (p < 1) requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            });
+
+            Chart.defaults.font.family = "'Manrope', system-ui, sans-serif";
+            Chart.defaults.color = '#cbd5e1';
+
+            const tooltip = {
+                backgroundColor: 'rgba(8, 15, 34, .95)', borderColor: 'rgba(148, 163, 184, .25)', borderWidth: 1,
+                titleColor: '#fff', bodyColor: '#e2e8f0', padding: 10, cornerRadius: 10, boxPadding: 4
+            };
+
+            new Chart(document.getElementById('weekChart'), {
+                type: 'bar',
+                data: {
+                    labels: @json($weekLabels),
+                    datasets: [
+                        { label: 'Safe', data: @json($weekSafe), backgroundColor: '#34d399', borderRadius: 6, maxBarThickness: 26 },
+                        { label: 'Suspicious', data: @json($weekSuspicious), backgroundColor: '#fb923c', borderRadius: 6, maxBarThickness: 26 },
+                        { label: 'Phishing', data: @json($weekPhishing), backgroundColor: '#f87171', borderRadius: 6, maxBarThickness: 26 },
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: reduce ? false : { duration: 700 },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false }, tooltip },
+                    scales: {
+                        x: { ticks: { color: '#cbd5e1' }, grid: { display: false }, border: { color: 'rgba(148,163,184,.25)' } },
+                        y: { beginAtZero: true, ticks: { color: '#cbd5e1', precision: 0 }, grid: { color: 'rgba(148,163,184,.14)' }, border: { display: false } }
+                    }
                 }
-            }
-        });
+            });
+
+            const wk = [{{ (int) $weekTotals['safe'] }}, {{ (int) $weekTotals['suspicious'] }}, {{ (int) $weekTotals['phishing'] }}];
+            const empty = wk.every((n) => n === 0);
+            new Chart(document.getElementById('weekDonut'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Safe', 'Suspicious', 'Phishing'],
+                    datasets: [{
+                        data: empty ? [1] : wk,
+                        backgroundColor: empty ? ['rgba(148,163,184,.2)'] : ['#34d399', '#fb923c', '#f87171'],
+                        borderColor: 'rgba(10, 20, 44, 1)', borderWidth: 3, hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true, cutout: '74%',
+                    animation: reduce ? false : { duration: 800 },
+                    plugins: { legend: { display: false }, tooltip: empty ? { enabled: false } : tooltip }
+                }
+            });
+        })();
     </script>
     @endpush
 

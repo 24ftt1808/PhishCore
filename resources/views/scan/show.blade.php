@@ -3,10 +3,10 @@
 
     if ($hasAnalysis) {
         $verdictStyles = [
-            'phishing' => ['bg' => 'bg-red-500/10', 'border' => 'border-red-500/20', 'text' => 'text-red-400', 'ring' => '#f87171', 'label' => 'PHISHING DETECTED', 'threat' => 'HIGH THREAT', 'threatBg' => 'bg-red-500/20 text-red-300'],
-            'suspicious' => ['bg' => 'bg-orange-500/10', 'border' => 'border-orange-500/20', 'text' => 'text-orange-400', 'ring' => '#fb923c', 'label' => 'SUSPICIOUS RESULT', 'threat' => 'MEDIUM THREAT', 'threatBg' => 'bg-orange-500/20 text-orange-300'],
-            'clean' => ['bg' => 'bg-emerald-500/10', 'border' => 'border-emerald-500/20', 'text' => 'text-emerald-400', 'ring' => '#34d399', 'label' => 'APPEARS SAFE', 'threat' => 'LOW THREAT', 'threatBg' => 'bg-emerald-500/20 text-emerald-300'],
-            'review' => ['bg' => 'bg-sky-500/10', 'border' => 'border-sky-500/20', 'text' => 'text-sky-400', 'ring' => '#38bdf8', 'label' => 'NEEDS MANUAL REVIEW', 'threat' => 'UNVERIFIED', 'threatBg' => 'bg-sky-500/20 text-sky-300'],
+            'phishing' => ['bg' => 'bg-red-500/10', 'border' => 'border-red-500/20', 'text' => 'text-red-400', 'ring' => '#f87171', 'rgb' => '248,113,113', 'label' => 'PHISHING DETECTED', 'threat' => 'HIGH THREAT', 'threatBg' => 'bg-red-500/20 text-red-300'],
+            'suspicious' => ['bg' => 'bg-orange-500/10', 'border' => 'border-orange-500/20', 'text' => 'text-orange-400', 'ring' => '#fb923c', 'rgb' => '251,146,60', 'label' => 'SUSPICIOUS RESULT', 'threat' => 'MEDIUM THREAT', 'threatBg' => 'bg-orange-500/20 text-orange-300'],
+            'clean' => ['bg' => 'bg-emerald-500/10', 'border' => 'border-emerald-500/20', 'text' => 'text-emerald-400', 'ring' => '#34d399', 'rgb' => '52,211,153', 'label' => 'APPEARS SAFE', 'threat' => 'LOW THREAT', 'threatBg' => 'bg-emerald-500/20 text-emerald-300'],
+            'review' => ['bg' => 'bg-sky-500/10', 'border' => 'border-sky-500/20', 'text' => 'text-sky-400', 'ring' => '#38bdf8', 'rgb' => '56,189,248', 'label' => 'NEEDS MANUAL REVIEW', 'threat' => 'UNVERIFIED', 'threatBg' => 'bg-sky-500/20 text-sky-300'],
         ];
         $style = $verdictStyles[$analysis->verdict] ?? $verdictStyles['clean'];
 
@@ -18,16 +18,16 @@
             default => 'LOW',
         };
 
-              $statusColors = [
-            'SAFE' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            'SUSPICIOUS' => 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-            'HIGH RISK' => 'bg-red-500/10 text-red-400 border-red-500/20',
-            'DETECTED' => 'bg-red-500/10 text-red-400 border-red-500/20',
-            'REVIEW' => 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-            'UNKNOWN' => 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-            'LIVE' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            'OFFLINE' => 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-            'TAKEN DOWN' => 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+        $statusColors = [
+            'SAFE' => 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+            'SUSPICIOUS' => 'bg-orange-500/10 text-orange-300 border-orange-500/25',
+            'HIGH RISK' => 'bg-red-500/10 text-red-300 border-red-500/25',
+            'DETECTED' => 'bg-red-500/10 text-red-300 border-red-500/25',
+            'REVIEW' => 'bg-sky-500/10 text-sky-300 border-sky-500/25',
+            'UNKNOWN' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
+            'LIVE' => 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+            'OFFLINE' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
+            'TAKEN DOWN' => 'bg-sky-500/10 text-sky-300 border-sky-500/25',
         ];
 
         $typeIcons = [
@@ -63,13 +63,15 @@
 
 @auth
     <x-layouts.dashboard>
-        <p class="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
-            <a href="{{ route('scan.index') }}" class="hover:text-slate-300">Scan</a>
+        @include('scan._result-styles')
+
+        <p class="r-in flex items-center gap-1.5 text-sm text-slate-400 mb-1">
+            <a href="{{ route('scan.index') }}" class="hover:text-white transition-colors">Scan</a>
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-            <span class="text-slate-300">Scan Result</span>
+            <span class="text-slate-200">Scan Result</span>
         </p>
-        <h1 class="text-2xl font-bold text-white mb-1">Scan Result Details</h1>
-        <p class="text-slate-400 text-sm mb-6">
+        <h1 class="r-in text-2xl font-bold text-white mb-1" style="--d:.05s">Scan Result Details</h1>
+        <p class="r-in text-slate-300 text-sm mb-6" style="--d:.1s">
             @switch($report->type)
                 @case('email') Detailed security analysis of the reported sender email. @break
                 @case('phone') Detailed security analysis of the reported phone number. @break
@@ -77,14 +79,16 @@
                 @default Detailed security analysis of the submitted website.
             @endswitch
         </p>
-                {!! $content !!}
 
-                        @if ($hasAnalysis)
+        {!! $content !!}
+
+        @if ($hasAnalysis)
             @include('scan._investigation-panel', ['report' => $report])
         @endif
     </x-layouts.dashboard>
 @else
     <x-layouts.public>
+        @include('scan._result-styles')
         {!! $content !!}
     </x-layouts.public>
 @endauth

@@ -1,11 +1,13 @@
 @php
-    $inner = View::make('scan._scanner-card', ['recentScans' => $recentScans])->render();
+    $inner = View::make('scan._scanner-card', ['recentScans' => $recentScans, 'wide' => auth()->check()])->render();
 @endphp
 
 @auth
     <x-layouts.dashboard>
-        <p class="text-sm text-slate-500 mb-1">Scan</p>
-        <h1 class="text-2xl font-bold text-white mb-6">Scan</h1>
+        <div class="sc-in mb-7" style="animation: sc-in .6s cubic-bezier(.2,.9,.3,1) both">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-1.5">Scan</h1>
+            <p class="text-slate-300 text-sm">Check a website URL, sender email, phone number, or screenshot for phishing threats.</p>
+        </div>
         {!! $inner !!}
     </x-layouts.dashboard>
 @else
@@ -17,7 +19,7 @@
                 </svg>
             </div>
             <h1 class="text-3xl font-bold text-white mb-2">Report a Threat</h1>
-            <p class="text-slate-400">Analyse a website URL, sender email, phone number, or screenshot for phishing threats.</p>
+            <p class="text-slate-300">Analyse a website URL, sender email, phone number, or screenshot for phishing threats.</p>
         </div>
         {!! $inner !!}
     </x-layouts.public>

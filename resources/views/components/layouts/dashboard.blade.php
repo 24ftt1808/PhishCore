@@ -53,7 +53,7 @@
                 ['route' => 'user-management.index', 'match' => ['user-management.index'], 'label' => 'User Management', 'tone' => 'violet', 'show' => $u->role === 'admin',     'anim' => 'pulse', 'icon' => 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z'],
             ];
             $navPrefs = [
-                ['route' => 'profile.edit',     'match' => ['profile.edit'],              'label' => 'Settings',        'tone' => 'sky',    'show' => true,                      'anim' => 'gear', 'icon' => 'M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.1250 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z'],
+                ['route' => 'profile.edit',     'match' => ['profile.edit'],              'label' => 'Settings',        'tone' => 'sky',    'show' => true,                      'anim' => 'tune', 'icon' => ''],
             ];
             $roleLabel = match (true) {
                 $u->role === 'admin' => 'Admin',
@@ -115,6 +115,15 @@
             @keyframes ia-pulse  { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.28); } 50% { transform: scale(.95); } 75% { transform: scale(1.14); } }
             @keyframes ia-gear   { to { transform: rotate(180deg); } }
             @keyframes ia-out    { 0% { transform: translateX(0); } 40% { transform: translateX(5px); } 70% { transform: translateX(-1px); } 100% { transform: translateX(0); } }
+            /* settings icon: the three slider knobs travel along their tracks and settle back (transform only) */
+            .ic-tune circle { transform-box: fill-box; transform-origin: center; }
+            .side-link[data-anim="tune"]:hover .ic-tune .k1 { animation: ia-k1 .9s cubic-bezier(.4, 0, .2, 1); }
+            .side-link[data-anim="tune"]:hover .ic-tune .k2 { animation: ia-k2 .9s cubic-bezier(.4, 0, .2, 1) .06s; }
+            .side-link[data-anim="tune"]:hover .ic-tune .k3 { animation: ia-k3 .9s cubic-bezier(.4, 0, .2, 1) .12s; }
+            @keyframes ia-k1 { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(8px); } }
+            @keyframes ia-k2 { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(-8px); } }
+            @keyframes ia-k3 { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(7px); } }
+            @media (prefers-reduced-motion: reduce) { .ic-tune circle { animation: none !important; } }
 
             .side-link[data-active="true"] { color: #fff; font-weight: 500; }
             .side-link[data-active="true"] .side-ic { background-color: rgba(56, 189, 248, .18); color: #7dd3fc; }
@@ -186,10 +195,10 @@
             <div class="side-scroll overflow-y-auto overflow-x-hidden">
                 <div class="flex items-center justify-between px-6 py-6">
                     <a href="{{ route('welcome') }}" class="side-brand flex items-center gap-2.5">
-                        <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-9 h-9 object-contain">
-                        <span class="leading-tight">
-                            <span class="block font-bold text-white">PhishCore</span>
-                            <span class="block text-[10px] tracking-wide text-sky-300">DETECTION PLATFORM</span>
+                        <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-11 h-11 object-contain">
+                        <span class="leading-none">
+                            <span class="block text-base font-bold tracking-tight text-white">PhishCore</span>
+                            <span class="block mt-0.5 text-[10px] font-semibold tracking-[0.14em] text-sky-200">DETECTION PLATFORM</span>
                         </span>
                     </a>
                     <button @click="sidebarOpen = false" class="lg:hidden p-1 text-slate-400 hover:text-white">
@@ -255,7 +264,19 @@
                         @php $on = request()->routeIs($item['match']); @endphp
                         <a href="{{ route($item['route']) }}" data-tone="{{ $item['tone'] }}" data-active="{{ $on ? 'true' : 'false' }}"
                            data-key="{{ $item['route'] }}" data-anim="{{ $item['anim'] }}" @mouseenter="moveTo($el)" @focus="moveTo($el)" @blur="reset()" @click="go($el)" class="side-link">
-                            <span class="side-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $item['icon'] }}" /></svg></span>
+                            <span class="side-ic">
+                                @if ($item['anim'] === 'tune')
+                                    {{-- sliders: three tracks, each knob slides on hover --}}
+                                    <svg class="ic-tune w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                        <path d="M4 6h16M4 12h16M4 18h16" />
+                                        <circle class="k1" cx="8" cy="6" r="2.3" fill="currentColor" stroke="none" />
+                                        <circle class="k2" cx="16" cy="12" r="2.3" fill="currentColor" stroke="none" />
+                                        <circle class="k3" cx="10" cy="18" r="2.3" fill="currentColor" stroke="none" />
+                                    </svg>
+                                @else
+                                    <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $item['icon'] }}" /></svg>
+                                @endif
+                            </span>
                             <span class="side-label">{{ $item['label'] }}</span>
                             @if ($on) <span class="side-dot"></span> @endif
                         </a>

@@ -46,67 +46,67 @@
 
 <x-layouts.guest-landing>
 
-    <section class="max-w-6xl mx-auto px-6 pt-10 pb-20">
+    <section class="max-w-6xl mx-auto px-6 pt-8 md:pt-10 pb-16 md:pb-20">
 
         {{-- Header --}}
-        <div class="mb-10">
+        <div class="mb-6 md:mb-10">
             <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4">
                 <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Community Transparency Feed
             </span>
-            <h1 class="text-3xl font-bold text-white mb-2">Public Threat Reports</h1>
+            <h1 class="text-[1.7rem] md:text-3xl font-bold text-white mb-2">Public Threat Reports</h1>
             <p class="text-slate-400 text-sm max-w-2xl leading-relaxed">Confirmed suspicious and phishing submissions across the PhishCore community. Safe results are not shown here.</p>
         </div>
 
         {{-- Stats --}}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="glass-card p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <p class="text-[11px] tracking-[0.14em] text-slate-400">TOTAL FLAGGED</p>
-                    <div class="icon-tile !w-9 !h-9"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg></div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
+                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
+                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">TOTAL FLAGGED</p>
+                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg></div>
                 </div>
                 @php $totalFlagged = $stats['suspicious'] + $stats['phishing']; @endphp
-                <p class="text-3xl font-bold text-white tabular-nums" data-count="{{ $totalFlagged }}">{{ $totalFlagged }}</p>
+                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.65rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $totalFlagged }}">{{ $totalFlagged }}</p>
             </div>
 
-            <div class="glass-card p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <p class="text-[11px] tracking-[0.14em] text-slate-400">SUSPICIOUS</p>
-                    <div class="icon-tile !w-9 !h-9 !bg-amber-400/10 !border-amber-300/20 !text-amber-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></div>
+            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
+                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
+                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">SUSPICIOUS</p>
+                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-amber-400/10 !border-amber-300/20 !text-amber-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></div>
                 </div>
-                <p class="text-3xl font-bold text-white tabular-nums" data-count="{{ $stats['suspicious'] }}">{{ $stats['suspicious'] }}</p>
+                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.65rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['suspicious'] }}">{{ $stats['suspicious'] }}</p>
             </div>
 
-            <div class="glass-card p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <p class="text-[11px] tracking-[0.14em] text-slate-400">PHISHING</p>
-                    <div class="icon-tile !w-9 !h-9 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg></div>
+            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
+                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
+                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">PHISHING</p>
+                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg></div>
                 </div>
-                <p class="text-3xl font-bold text-white tabular-nums" data-count="{{ $stats['phishing'] }}">{{ $stats['phishing'] }}</p>
+                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.65rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['phishing'] }}">{{ $stats['phishing'] }}</p>
             </div>
 
-            <div class="glass-card p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <p class="text-[11px] tracking-[0.14em] text-slate-400">MOST RECENT</p>
-                    <div class="icon-tile !w-9 !h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
+                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
+                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">MOST RECENT</p>
+                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                 </div>
-                <p class="text-3xl font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
+                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.3rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
             </div>
         </div>
 
         {{-- Filters --}}
-        <form method="GET" action="{{ route('reports.public') }}" class="glass-panel rounded-2xl p-5 mb-6">
+        <form method="GET" action="{{ route('reports.public') }}" class="glass-panel rounded-2xl p-4 md:p-5 mb-5 md:mb-6">
             <div class="flex flex-wrap gap-3 mb-4">
-                <div class="relative flex-1 min-w-[240px]">
+                <div class="relative w-full md:w-auto md:flex-1 md:min-w-[240px]">
                     <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
                     <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
                            placeholder="Search URL, email or phone"
                            class="field !pl-11 !py-3">
                 </div>
 
-                <div class="flex gap-1 p-1 rounded-full bg-black/20 border border-white/5">
+                <div class="flex w-full md:w-auto gap-1 p-1 rounded-full bg-black/20 border border-white/5">
                     @foreach (['all' => 'All', 'suspicious' => 'Suspicious', 'phishing' => 'Phishing'] as $key => $label)
                         <button type="submit" name="status" value="{{ $key }}"
-                                class="tab-btn {{ $currentStatus === $key ? 'tab-btn--active' : '' }}">
+                                class="tab-btn flex-1 md:flex-none justify-center {{ $currentStatus === $key ? 'tab-btn--active' : '' }}">
                             {{ $label }}
                         </button>
                     @endforeach
@@ -139,28 +139,28 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-white/10 text-left text-[11px] tracking-[0.14em] text-slate-500 bg-white/[0.02]">
-                            <th class="px-6 py-4 font-medium">REPORTED ITEM</th>
-                            <th class="px-6 py-4 font-medium">SCAN RESULT</th>
-                            <th class="px-6 py-4 font-medium">SUBMITTED BY</th>
-                            <th class="px-6 py-4 font-medium">DATE &amp; TIME</th>
+                            <th class="px-4 xl:px-6 py-4 font-medium">REPORTED ITEM</th>
+                            <th class="px-4 xl:px-6 py-4 font-medium">SCAN RESULT</th>
+                            <th class="px-4 xl:px-6 py-4 font-medium">SUBMITTED BY</th>
+                            <th class="px-4 xl:px-6 py-4 font-medium">DATE &amp; TIME</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-white/[0.06]">
                         @foreach ($rows as $r)
                             <tr class="hover:bg-white/[0.035] transition-colors">
-                                <td class="px-6 py-4 max-w-md">
+                                <td class="px-4 xl:px-6 py-4 max-w-[16rem] lg:max-w-md">
                                     <p title="{{ $r['label'] }}" class="text-slate-200 truncate flex items-center gap-3">
                                         <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
                                         <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
                                     </p>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-4 xl:px-6 py-4">
                                     <span class="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide px-2.5 py-1 rounded-full border {{ $r['badge']['cls'] }}">
                                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $r['badge']['label'] }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-slate-400">{{ $r['by'] }}</td>
-                                <td class="px-6 py-4 text-slate-400 tabular-nums">{{ $r['date'] }}</td>
+                                <td class="px-4 xl:px-6 py-4 text-slate-400">{{ $r['by'] }}</td>
+                                <td class="px-4 xl:px-6 py-4 text-slate-400 tabular-nums"><span class="block xl:inline">{{ substr($r['date'], 0, 10) }}</span> <span class="block xl:inline text-slate-500 xl:text-slate-400 text-xs xl:text-sm">{{ substr($r['date'], 11) }}</span></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -175,7 +175,7 @@
                             <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
                             <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
                         </p>
-                        <div class="flex items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                             <span class="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide px-2.5 py-1 rounded-full border {{ $r['badge']['cls'] }}">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $r['badge']['label'] }}
                             </span>

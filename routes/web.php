@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScanController;
+use App\Http\Controllers\ScanPdfController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ScanHistoryController;
@@ -28,6 +29,7 @@ Route::get('/', function () {
 Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
 Route::post('/scan', [ScanController::class, 'store'])->name('scan.store');
 Route::get('/scan/{report}', [ScanController::class, 'show'])->name('scan.show');
+Route::get('/scan/{report}/pdf', ScanPdfController::class)->name('scan.pdf');
 Route::get('/public-reports', [PublicReportsController::class, 'index'])->name('reports.public');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');

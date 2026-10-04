@@ -6,7 +6,9 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Analysis;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -29,7 +31,69 @@ class ProfileController extends Controller
                 'clean' => $analyses()->where('verdict', 'clean')->count(),
                 'last_scan' => $analyses()->latest()->value('created_at'),
             ],
+            'devices' => $this->signedInDevices($user->id, $request->session()->getId()),
         ]);
+    }
+
+    /**
+     * Devices with an active session for this user, newest first, or null when sessions are not stored in the database.
+     *
+     * @return list<array{label: string, ip: ?string, last_active: Carbon, current: bool, mobile: bool}>|null
+     */
+    private function signedInDevices(int $userId, string $currentSessionId): ?array
+    {
+        if (config('session.driver') !== 'database') {
+            return null;
+        }
+
+        return DB::table(config('session.table', 'sessions'))
+            ->where('user_id', $userId)
+            ->where('last_activity', '>=', now()->subMinutes((int) config('session.lifetime'))->getTimestamp())
+            ->orderByDesc('last_activity')
+            ->limit(8)
+            ->get()
+            ->map(function (object $session) use ($currentSessionId): array {
+                [$label, $mobile] = $this->describeUserAgent($session->user_agent);
+
+                return [
+                    'label' => $label,
+                    'ip' => $session->ip_address,
+                    'last_active' => Carbon::createFromTimestamp($session->last_activity),
+                    'current' => $session->id === $currentSessionId,
+                    'mobile' => $mobile,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * A short "Browser on System" label for a user agent, and whether it looks like a phone or tablet.
+     *
+     * @return array{0: string, 1: bool}
+     */
+    private function describeUserAgent(?string $userAgent): array
+    {
+        $agent = (string) $userAgent;
+
+        $browser = match (true) {
+            str_contains($agent, 'Edg/') => 'Edge',
+            str_contains($agent, 'OPR/') => 'Opera',
+            str_contains($agent, 'Firefox/') => 'Firefox',
+            str_contains($agent, 'Chrome/') => 'Chrome',
+            str_contains($agent, 'Safari/') => 'Safari',
+            default => 'Browser',
+        };
+
+        $system = match (true) {
+            str_contains($agent, 'Android') => 'Android',
+            str_contains($agent, 'iPhone'), str_contains($agent, 'iPad') => 'iOS',
+            str_contains($agent, 'Windows') => 'Windows',
+            str_contains($agent, 'Mac OS X') => 'macOS',
+            str_contains($agent, 'Linux') => 'Linux',
+            default => null,
+        };
+
+        return [$system ? "{$browser} on {$system}" : $browser, in_array($system, ['Android', 'iOS'], true)];
     }
 
     /**

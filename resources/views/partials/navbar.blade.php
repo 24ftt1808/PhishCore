@@ -1,11 +1,11 @@
 @php
     $navLinks = [
-        ['key' => 'home',          'label' => 'Home',          'href' => route('welcome') . '#home'],
-        ['key' => 'features',      'label' => 'Features',      'href' => route('welcome') . '#features'],
-        ['key' => 'how-it-works',  'label' => 'How It Works',  'href' => route('welcome') . '#how-it-works'],
-        ['key' => 'about',         'label' => 'About',         'href' => route('welcome') . '#about'],
-        ['key' => 'contact',       'label' => 'Contact',       'href' => route('welcome') . '#contact'],
-        ['key' => 'public-reports','label' => 'Public Reports','href' => route('reports.public')],
+        ['key' => 'home',          'label' => 'Home',          'href' => route('welcome') . '#home', 'icon' => 'M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25'],
+        ['key' => 'features',      'label' => 'Features',      'href' => route('welcome') . '#features', 'icon' => 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z'],
+        ['key' => 'how-it-works',  'label' => 'How It Works',  'href' => route('welcome') . '#how-it-works', 'icon' => 'M21 12a9 9 0 11-18 0 9 9 0 0118 0z M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z'],
+        ['key' => 'about',         'label' => 'About',         'href' => route('welcome') . '#about', 'icon' => 'M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z'],
+        ['key' => 'contact',       'label' => 'Contact',       'href' => route('welcome') . '#contact', 'icon' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75'],
+        ['key' => 'public-reports','label' => 'Public Reports','href' => route('reports.public'), 'icon' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'],
     ];
 @endphp
 
@@ -140,22 +140,22 @@
             this.active = current;
         }
     }"
-    class="fixed top-4 inset-x-0 mx-auto z-50 w-[calc(100%-2rem)] md:w-max max-w-full"
+    class="pointer-events-none fixed top-4 inset-x-0 mx-auto z-50 w-[calc(100%-2rem)] min-[1180px]:w-max max-w-full"
 >
     {{-- PILL --}}
-    <nav class="nav-glass rounded-full pl-6 pr-3 py-2.5 flex items-center justify-between md:gap-6 lg:gap-12"
+    <nav class="pointer-events-auto nav-glass rounded-full pl-5 pr-2 xl:pl-6 py-2 flex items-center justify-between min-[1180px]:gap-6 xl:gap-12"
          :class="{ 'nav-glass--scrolled': scrolled }">
 
-        <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)" class="flex items-center gap-2 shrink-0">
-            <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-8 h-8 object-contain">
+        <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)" class="flex items-center gap-2.5 shrink-0">
+            <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
             <span class="flex flex-col items-start leading-tight">
                 <span class="block text-left font-bold text-white text-sm">PhishCore</span>
-                <span class="block text-left text-[11px] font-medium tracking-wide text-sky-200/90 mt-0.5">Detection Platform</span>
+                <span class="hidden xl:block text-left text-[11px] font-medium tracking-wide text-sky-200/90 mt-0.5">Detection Platform</span>
             </span>
         </a>
 
         {{-- DESKTOP LINKS --}}
-        <div x-ref="links" @mouseleave="resetHl()" class="relative hidden md:flex items-center p-1 rounded-full text-sm">
+        <div x-ref="links" @mouseleave="resetHl()" class="relative hidden min-[1180px]:flex items-center p-1 rounded-full text-sm">
             <span class="nav-highlight absolute top-1 bottom-1 rounded-full pointer-events-none"
                   :style="`left:${hl.l}px;right:${hl.r}px;opacity:${hl.ready ? 1 : 0};transition:left ${hl.lt}s ${hl.le},right ${hl.rt}s ${hl.re},opacity .2s ease`">
                 <span x-ref="blob" class="nav-blob block w-full h-full rounded-full"></span>
@@ -169,65 +169,78 @@
                    @focus="moveTo($el)"
                    @blur="resetHl()"
                    :class="active === '{{ $link['key'] }}' ? 'text-sky-300' : 'text-slate-300 hover:text-white'"
-                   class="relative z-10 px-4 lg:px-5 py-2 rounded-full whitespace-nowrap transition-colors duration-200">
+                   class="relative z-10 px-3.5 xl:px-5 py-2 rounded-full whitespace-nowrap transition-colors duration-200">
                     {{ $link['label'] }}
                 </a>
             @endforeach
         </div>
 
         {{-- DESKTOP AUTH --}}
-        <div class="hidden md:flex items-center gap-2">
+        <div class="hidden min-[1180px]:flex items-center gap-1.5 xl:gap-2">
             @auth
                 <a href="{{ route('dashboard') }}"
-                   class="btn-shine text-sm font-medium px-5 py-2 rounded-full bg-gradient-to-b from-sky-400 to-sky-500 text-white hover:from-sky-300 hover:to-sky-400 transition-colors">
+                   class="btn-shine text-sm font-medium whitespace-nowrap px-4 xl:px-5 py-2 rounded-full bg-gradient-to-b from-sky-400 to-sky-500 text-white hover:from-sky-300 hover:to-sky-400 transition-colors">
                     Dashboard
                 </a>
             @else
-                <a href="{{ route('login') }}" class="signin-glow text-sm text-slate-300 px-4 py-2 rounded-full">Sign In</a>
+                <a href="{{ route('login') }}" class="signin-glow text-sm text-slate-300 whitespace-nowrap px-3 xl:px-4 py-2 rounded-full">Sign In</a>
                 <a href="{{ route('register') }}"
-                   class="btn-shine text-sm font-medium px-5 py-2 rounded-full bg-gradient-to-b from-sky-400 to-sky-500 text-white hover:from-sky-300 hover:to-sky-400 transition-colors">
+                   class="btn-shine text-sm font-medium whitespace-nowrap px-4 xl:px-5 py-2 rounded-full bg-gradient-to-b from-sky-400 to-sky-500 text-white hover:from-sky-300 hover:to-sky-400 transition-colors">
                     Create Account
                 </a>
             @endauth
         </div>
 
         {{-- HAMBURGER --}}
-        <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 mr-1 text-slate-200" aria-label="Menu">
-            <svg x-show="!mobileOpen" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-            </svg>
-            <svg x-show="mobileOpen" x-cloak width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <button type="button" @click="mobileOpen = !mobileOpen" :aria-expanded="mobileOpen.toString()" aria-controls="nav-sheet"
+                class="nav-burger min-[1180px]:hidden" aria-label="Menu">
+            <i></i><i></i><i></i>
         </button>
     </nav>
 
-    {{-- MOBILE MENU --}}
-    <div x-show="mobileOpen" x-cloak @click.outside="mobileOpen = false"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 -translate-y-2"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-100"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="nav-glass nav-glass--scrolled md:hidden mt-2 rounded-3xl p-3 space-y-1 max-h-[75vh] overflow-y-auto">
+    {{-- MOBILE / TABLET MENU --}}
+    <div class="nav-scrim min-[1180px]:hidden" :data-open="mobileOpen" @click="mobileOpen = false" aria-hidden="true"></div>
 
-        @foreach ($navLinks as $link)
-            <a href="{{ $link['href'] }}" @click="mobileOpen = false; go('{{ $link['key'] }}', $el.href)"
-               :class="active === '{{ $link['key'] }}' ? 'text-white bg-white/10' : 'text-slate-300'"
-               class="block px-4 py-2.5 rounded-xl text-sm transition">
-                {{ $link['label'] }}
-            </a>
-        @endforeach
+    <div class="nav-stage md:max-w-[34rem] md:ml-auto min-[1180px]:hidden">
+    <div id="nav-sheet" class="nav-glass nav-glass--scrolled nav-sheet"
+         :data-open="mobileOpen" :inert="!mobileOpen" @keydown.escape.window="mobileOpen = false">
+        <span class="nav-sheet-shade" aria-hidden="true"></span>
+        <div class="nav-sheet-fx" aria-hidden="true">
+            <span class="nav-sheet-glow g1"></span>
+            <span class="nav-sheet-glow g2"></span>
+            <span class="nav-sheet-sheen"></span>
+        </div>
 
-        <div class="pt-2 mt-2 border-t border-white/10 space-y-2">
+        <div class="nav-sheet-in">
+        <div class="grid gap-1.5 md:grid-cols-2 md:gap-2">
+            @foreach ($navLinks as $link)
+                <a href="{{ $link['href'] }}" style="--i: {{ $loop->index }}"
+                   @click="mobileOpen = false; go('{{ $link['key'] }}', $el.href)"
+                   :data-on="active === '{{ $link['key'] }}'"
+                   class="nav-item nav-m">
+                    <span class="nav-m-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $link['icon'] }}"/></svg></span>
+                    <span class="nav-m-tx">{{ $link['label'] }}</span>
+                    <svg class="nav-m-go" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                </a>
+            @endforeach
+        </div>
+
+        <div class="nav-item nav-m-auth" style="--i: 6">
             @auth
-                <a href="{{ route('dashboard') }}" class="block text-center text-sm font-medium px-4 py-2.5 rounded-xl bg-sky-500 text-white">Dashboard</a>
+                <a href="{{ route('dashboard') }}" class="nav-m-cta btn-shine md:col-span-2">
+                    <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z"/></svg> Dashboard
+                </a>
             @else
-                <a href="{{ route('login') }}" class="block px-4 py-2.5 rounded-xl text-sm text-slate-300">Sign In</a>
-                <a href="{{ route('register') }}" class="block text-center text-sm font-medium px-4 py-2.5 rounded-xl bg-sky-500 text-white">Create Account</a>
+                <a href="{{ route('login') }}" class="nav-m-ghost">
+                    <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg> Sign In
+                </a>
+                <a href="{{ route('register') }}" class="nav-m-cta btn-shine">
+                    <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z"/></svg> Create Account
+                </a>
             @endauth
         </div>
+        </div>
+    </div>
     </div>
 </div>
 

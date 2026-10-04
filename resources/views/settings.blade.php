@@ -60,13 +60,14 @@
         .s-note li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: var(--dot, #38bdf8); }
 
         /* ---- ID badge on a V-lanyard ---- */
-        .b-persp { perspective: 800px; max-width: 17rem; margin: 0 auto; }
+        .b-persp { --w: 15rem; perspective: 800px; max-width: var(--w); margin: 0 auto; }
+        @media (min-width: 640px) { .b-persp { --w: 17rem; } }
         .b-v-short { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%); mask-image: linear-gradient(to bottom, transparent, #000 40%); }
-        @media (min-width: 1024px) { .b-persp { max-width: 21rem; } }
+        @media (min-width: 1280px) { .b-persp { max-width: 21rem; } }
         .b-swing { display: flow-root; transform-origin: 50% 0; transform-style: preserve-3d; animation: b-swing 9s ease-in-out .9s infinite; will-change: transform; }
         .b-swing.b-hold { animation-play-state: paused; }
         @keyframes b-swing { 0%, 100% { transform: none; } 25% { transform: rotate(-.8deg) rotateY(-7deg) rotateX(1deg); } 75% { transform: rotate(.8deg) rotateY(7deg) rotateX(-1deg); } }
-        @media (min-width: 1024px) { .b-swing { transform-origin: 50% -28rem; } }
+        @media (min-width: 1280px) { .b-swing { transform-origin: 50% -28rem; } }
 
         .b-v { width: 100%; height: auto; overflow: visible; margin-bottom: -.2rem; }
         .b-v-long { margin-top: -133.333%; }
@@ -79,13 +80,13 @@
         .b-swivel::after { content: ""; position: absolute; left: 50%; bottom: .3rem; width: .6rem; height: .35rem; margin-left: -.3rem; border-radius: 999px; background: #1e293b; }
 
         .b-pull { display: flow-root; transform-style: preserve-3d; transform-origin: 50% 0; will-change: transform; }
-        @media (min-width: 1024px) { .b-pull { transform-origin: 50% -28rem; } }
+        @media (min-width: 1280px) { .b-pull { transform-origin: 50% -28rem; } }
         .b-hang { display: flow-root; transform-style: preserve-3d; will-change: transform; }
         .b-v { transform-origin: 50% 0; will-change: transform; }
         .b-card { cursor: grab; touch-action: pan-y; }
         .b-card.b-drag { cursor: grabbing; user-select: none; }
-        .b-tilt { display: flow-root; transform-style: preserve-3d; transform-origin: 50% 11.7rem; transition: transform .18s ease-out; will-change: transform; }
-        @media (min-width: 1024px) { .b-tilt { transform-origin: 50% 8.8rem; } }
+        .b-tilt { display: flow-root; transform-style: preserve-3d; transform-origin: 50% calc(var(--w) * .5333 - .2rem); transition: transform .18s ease-out; will-change: transform; }
+        @media (min-width: 1280px) { .b-tilt { transform-origin: 50% 8.8rem; } }
         .b-card { position: relative; transform-style: preserve-3d; }
         .b-z { transform: translateZ(var(--zz)); transform-style: preserve-3d; }
         .b-shine { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; transform: translateZ(1px); }
@@ -99,6 +100,7 @@
         .b-slot { position: absolute; top: 1rem; left: 50%; width: 3.2rem; height: .55rem; margin-left: -1.6rem; border-radius: 999px; background: #050b1e; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .8), 0 0 0 1px rgba(148, 163, 184, .25); }
 
         .b-photo { position: relative; display: block; width: 8.5rem; height: 8.5rem; border-radius: 1.2rem; overflow: hidden; box-shadow: 0 0 0 3px rgba(56, 189, 248, .45), 0 10px 24px -8px rgba(0, 0, 0, .6); }
+        @media (max-width: 639px) { .b-photo { width: 7rem; height: 7rem; } .s-initials { font-size: 2.3rem; } }
         .b-photo img, .b-photo .s-initials { width: 100%; height: 100%; object-fit: cover; }
         .s-initials { display: grid; place-items: center; background: linear-gradient(135deg, #38bdf8, #2563eb); color: #fff; font-size: 2.8rem; font-weight: 700; }
         .b-cam { position: absolute; inset: 0; background: rgba(2, 6, 23, .55); display: grid; place-items: center; opacity: 0; transition: opacity .2s; }
@@ -138,7 +140,7 @@
                 x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0,
                 downX: 0, downY: 0, baseX: 0, baseY: 0, pid: null, last: 0,
 
-                len() { return (window.innerWidth >= 1024 ? 43 : 18) * rem(); },
+                len() { return (window.innerWidth >= 1280 ? 43 : 18) * rem(); },
 
                 render() {
                     const L = this.len();
@@ -219,32 +221,22 @@
         };
     </script>
 
-    <div class="grid lg:grid-cols-[21rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[this.tab === 'profile' ? 'tProfile' : 'tSecurity']; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
+    <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[this.tab === 'profile' ? 'tProfile' : 'tSecurity']; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
 
-        <div class="s-in mb-6 lg:col-start-2 lg:row-start-1">
+        <div class="s-in mb-2 sm:mb-6 xl:col-start-2 xl:row-start-1">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
             <p class="text-slate-300 text-sm">Manage your account and security preferences.</p>
         </div>
 
         {{-- ID BADGE --}}
-        <aside class="relative z-20 mb-6 lg:mb-0 lg:col-start-1 lg:row-start-1 lg:row-span-2" x-data="idBadge()">
-            @if (session('status') === 'photo-updated')
-                <div class="mb-4 text-sm text-emerald-300 s-well px-4 py-2.5" style="border-color: rgba(52,211,153,.4)">Profile photo updated.</div>
-            @endif
-            @if (session('status') === 'photo-removed')
-                <div class="mb-4 text-sm text-emerald-300 s-well px-4 py-2.5" style="border-color: rgba(52,211,153,.4)">Profile photo removed.</div>
-            @endif
-            @error('photo')
-                <div class="mb-4 text-sm text-red-300 s-well px-4 py-2.5" style="border-color: rgba(248,113,113,.4)">{{ $message }}</div>
-            @enderror
-
+        <aside class="relative z-20 mb-6 xl:mb-0 xl:col-start-1 xl:row-start-1 xl:row-span-2" x-data="idBadge()">
             <div class="b-drop b-persp" @mousemove="if (drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
                  @mouseleave="if (drag || raf) return; rx = 0; ry = 0; hold = false">
                 
                 <div class="b-swing" :class="hold ? 'b-hold' : ''">
                     <div class="b-pull" :style="`transform: rotate(${th}deg)`">
                     <div class="b-tilt" :style="`transform: rotateX(${rx}deg) rotateY(${ry}deg)`">
-                    <svg class="b-v b-v-long hidden lg:block" :style="`transform: scaleY(${sy})`" viewBox="0 -400 300 530" aria-hidden="true">
+                    <svg class="b-v b-v-long hidden xl:block" :style="`transform: scaleY(${sy})`" viewBox="0 -400 300 530" aria-hidden="true">
                     <g fill="none">
                         <path d="M78 -400 L78 -4 C78 44 128 92 150 126 M222 -400 L222 -4 C222 44 172 92 150 126" stroke="#080f22" stroke-width="20"/>
                         <path d="M78 -400 L78 -4 C78 44 128 92 150 126 M222 -400 L222 -4 C222 44 172 92 150 126" stroke="#1a2c55" stroke-width="17"/>
@@ -252,12 +244,12 @@
                         <path d="M78 -400 L78 -4 C78 44 128 92 150 126 M222 -400 L222 -4 C222 44 172 92 150 126" stroke="rgba(255,255,255,.07)" stroke-width="17" stroke-dasharray="1 2.5"/>
                     </g>
                 </svg>
-                <svg class="b-v b-v-short block lg:hidden" :style="`transform: scaleY(${sy})`" viewBox="0 -80 300 210" aria-hidden="true">
+                <svg class="b-v b-v-short block xl:hidden" :style="`transform: scaleY(${sy})`" viewBox="0 -30 300 160" aria-hidden="true">
                     <g fill="none">
-                        <path d="M78 -80 L78 -4 C78 44 128 92 150 126 M222 -80 L222 -4 C222 44 172 92 150 126" stroke="#080f22" stroke-width="20"/>
-                        <path d="M78 -80 L78 -4 C78 44 128 92 150 126 M222 -80 L222 -4 C222 44 172 92 150 126" stroke="#1a2c55" stroke-width="17"/>
-                        <path d="M78 -80 L78 -4 C78 44 128 92 150 126 M222 -80 L222 -4 C222 44 172 92 150 126" stroke="#243d73" stroke-width="7"/>
-                        <path d="M78 -80 L78 -4 C78 44 128 92 150 126 M222 -80 L222 -4 C222 44 172 92 150 126" stroke="rgba(255,255,255,.07)" stroke-width="17" stroke-dasharray="1 2.5"/>
+                        <path d="M78 -30 L78 -4 C78 44 128 92 150 126 M222 -30 L222 -4 C222 44 172 92 150 126" stroke="#080f22" stroke-width="20"/>
+                        <path d="M78 -30 L78 -4 C78 44 128 92 150 126 M222 -30 L222 -4 C222 44 172 92 150 126" stroke="#1a2c55" stroke-width="17"/>
+                        <path d="M78 -30 L78 -4 C78 44 128 92 150 126 M222 -30 L222 -4 C222 44 172 92 150 126" stroke="#243d73" stroke-width="7"/>
+                        <path d="M78 -30 L78 -4 C78 44 128 92 150 126 M222 -30 L222 -4 C222 44 172 92 150 126" stroke="rgba(255,255,255,.07)" stroke-width="17" stroke-dasharray="1 2.5"/>
                     </g>
                 </svg>
                     <div class="b-hang" :style="`transform: translateY(${py}px)`">
@@ -284,7 +276,7 @@
                             </div>
                         </div>
 
-                        <div class="px-6 pt-6 pb-5 flex flex-col items-center text-center b-z" style="--zz:0px">
+                        <div class="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 flex flex-col items-center text-center b-z" style="--zz:0px">
                             <form id="photo-upload-form" method="POST" action="{{ route('profile.photo.update') }}" enctype="multipart/form-data" class="contents">
                                 @csrf
                                 <label for="photo-input" class="b-photo cursor-pointer block" title="Change photo">
@@ -312,7 +304,7 @@
                                        ">
                             </form>
 
-                            <p class="text-white font-bold text-xl mt-5 leading-tight break-words max-w-full">{{ $user->name }}</p>
+                            <p class="text-white font-bold text-xl mt-4 sm:mt-5 leading-tight break-words max-w-full">{{ $user->name }}</p>
                             <p class="mt-1 text-[11px] font-bold tracking-[.2em] {{ $isAdmin ? 'text-sky-300' : 'text-slate-300' }}">{{ $isAdmin ? 'ADMINISTRATOR' : 'MEMBER' }}</p>
                             <p class="mt-2 text-xs text-slate-300 break-all max-w-full" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">{{ $user->email }}</p>
 
@@ -323,7 +315,7 @@
                             @endif
                         </div>
 
-                        <div class="mx-6 grid grid-cols-2 gap-4 py-3 border-t border-dashed b-z" style="--zz:10px; border-color: rgba(148,163,184,.3)">
+                        <div class="mx-5 sm:mx-6 grid grid-cols-2 gap-4 py-3 border-t border-dashed b-z" style="--zz:10px; border-color: rgba(148,163,184,.3)">
                             <div>
                                 <p class="text-[10px] font-semibold tracking-[.16em] text-slate-400">ID NO.</p>
                                 <p class="text-sm text-white font-semibold" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">{{ $badgeId }}</p>
@@ -334,7 +326,7 @@
                             </div>
                         </div>
 
-                        <div class="px-6 pb-6 pt-1 b-z" style="--zz:6px">
+                        <div class="px-5 sm:px-6 pb-5 sm:pb-6 pt-1 b-z" style="--zz:6px">
                             <div class="b-bars"></div>
                         </div>
                         </div>
@@ -345,7 +337,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-center gap-2 mt-5">
+            <div class="flex items-center justify-center gap-2 mt-4 sm:mt-5">
                 <label for="photo-input" class="s-btn s-btn-ghost !py-1.5 !px-3 !text-xs cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                     Change photo
@@ -358,10 +350,22 @@
                     </form>
                 @endif
             </div>
+
+            {{-- photo feedback sits right under the buttons you just used, and fades by itself --}}
+            @if (in_array(session('status'), ['photo-updated', 'photo-removed'], true))
+                <p x-data="{ show: true }" x-init="setTimeout(() => show = false, 4500)" x-show="show" x-transition.opacity.duration.400ms
+                   class="mt-3 flex items-center justify-center gap-1.5 text-xs text-emerald-300">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    {{ session('status') === 'photo-updated' ? 'Profile photo updated.' : 'Profile photo removed.' }}
+                </p>
+            @endif
+            @error('photo')
+                <p class="mt-3 text-center text-xs text-red-300">{{ $message }}</p>
+            @enderror
         </aside>
 
         {{-- RIGHT SIDE --}}
-        <div class="min-w-0 lg:col-start-2 lg:row-start-2">
+        <div class="min-w-0 xl:col-start-2 xl:row-start-2">
             <div class="s-in s-tabs" style="--d:.08s">
                 <span class="s-pill" x-ref="pill" aria-hidden="true"></span>
                 <button type="button" x-ref="tProfile" @click="tab = 'profile'" class="s-tab" :class="tab === 'profile' ? 's-tab-on' : ''">
@@ -375,8 +379,8 @@
             </div>
 
             {{-- PROFILE TAB --}}
-            <div x-show="tab === 'profile'" x-cloak class="grid lg:grid-cols-3 gap-5 items-stretch">
-                <div class="s-card p-6 lg:col-span-2" x-data="{ n: {{ Js::from(old('name', $user->name)) }}, e: {{ Js::from(old('email', $user->email)) }}, n0: {{ Js::from($user->name) }}, e0: {{ Js::from($user->email) }}, get dirty() { return this.n !== this.n0 || this.e !== this.e0; } }">
+            <div x-show="tab === 'profile'" x-cloak class="space-y-5">
+                <div class="s-card p-5 sm:p-6" x-data="{ n: {{ Js::from(old('name', $user->name)) }}, e: {{ Js::from(old('email', $user->email)) }}, n0: {{ Js::from($user->name) }}, e0: {{ Js::from($user->email) }}, get dirty() { return this.n !== this.n0 || this.e !== this.e0; } }">
                     <div class="flex items-start gap-3.5 mb-6">
                             <span class="a-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg></span>
                             <div>
@@ -440,34 +444,42 @@
                     </form>
                 </div>
 
-                <div class="s-card p-6 flex flex-col">
-                    <div class="flex items-start gap-3.5 mb-6">
-                            <span class="a-ic" style="--c:167,139,250; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5l3.75-3.75 3 3 4.5-4.5m0 0h-3m3 0v3M3 19.5h18" /></svg></span>
-                            <div>
-                                <h2 class="text-white font-semibold leading-tight">Your activity</h2>
-                                <p class="text-sm text-slate-300 mt-0.5">From the scans you submitted.</p>
+                <div class="s-card p-5 sm:p-6">
+                    <div class="flex items-start gap-3.5 mb-5">
+                        <span class="a-ic" style="--c:167,139,250; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5l3.75-3.75 3 3 4.5-4.5m0 0h-3m3 0v3M3 19.5h18" /></svg></span>
+                        <div>
+                            <h2 class="text-white font-semibold leading-tight">Your activity</h2>
+                            <p class="text-sm text-slate-300 mt-0.5">From the scans you submitted.</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div class="s-well flex items-center gap-3.5 px-4 py-3.5" style="--c:56,189,248">
+                            <span class="a-ic" style="width:2.4rem; height:2.4rem; border-radius:.75rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg></span>
+                            <div class="min-w-0">
+                                <p class="text-xl font-semibold text-white leading-none tabular-nums">{{ number_format($activity['scans']) }}</p>
+                                <p class="text-xs text-slate-300 mt-1.5">Scans submitted</p>
                             </div>
                         </div>
-                    <div class="flex flex-col flex-1 justify-between">
-                        <div class="s-kv" style="--c:56,189,248">
-                            <span class="a-ic" style="width:2.1rem; height:2.1rem; border-radius:.65rem"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg></span>
-                            <span class="text-sm text-slate-300">Scans submitted</span>
-                            <span class="ml-auto text-base font-semibold text-white">{{ number_format($activity['scans']) }}</span>
+                        <div class="s-well flex items-center gap-3.5 px-4 py-3.5" style="--c:248,113,113">
+                            <span class="a-ic" style="width:2.4rem; height:2.4rem; border-radius:.75rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-4.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg></span>
+                            <div class="min-w-0">
+                                <p class="text-xl font-semibold text-white leading-none tabular-nums">{{ number_format($activity['phishing']) }}</p>
+                                <p class="text-xs text-slate-300 mt-1.5">Phishing detected</p>
+                            </div>
                         </div>
-                        <div class="s-kv" style="--c:248,113,113">
-                            <span class="a-ic" style="width:2.1rem; height:2.1rem; border-radius:.65rem"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-4.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg></span>
-                            <span class="text-sm text-slate-300">Phishing detected</span>
-                            <span class="ml-auto text-base font-semibold text-white">{{ number_format($activity['phishing']) }}</span>
+                        <div class="s-well flex items-center gap-3.5 px-4 py-3.5" style="--c:52,211,153">
+                            <span class="a-ic" style="width:2.4rem; height:2.4rem; border-radius:.75rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
+                            <div class="min-w-0">
+                                <p class="text-xl font-semibold text-white leading-none tabular-nums">{{ number_format($activity['clean']) }}</p>
+                                <p class="text-xs text-slate-300 mt-1.5">Clean results</p>
+                            </div>
                         </div>
-                        <div class="s-kv" style="--c:52,211,153">
-                            <span class="a-ic" style="width:2.1rem; height:2.1rem; border-radius:.65rem"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
-                            <span class="text-sm text-slate-300">Clean results</span>
-                            <span class="ml-auto text-base font-semibold text-white">{{ number_format($activity['clean']) }}</span>
-                        </div>
-                        <div class="s-kv" style="--c:167,139,250">
-                            <span class="a-ic" style="width:2.1rem; height:2.1rem; border-radius:.65rem"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
-                            <span class="text-sm text-slate-300">Last scan</span>
-                            <span class="ml-auto text-base font-semibold text-white">{{ $activity['last_scan'] ? \Illuminate\Support\Carbon::parse($activity['last_scan'])->diffForHumans(['short' => true]) : 'None yet' }}</span>
+                        <div class="s-well flex items-center gap-3.5 px-4 py-3.5" style="--c:167,139,250">
+                            <span class="a-ic" style="width:2.4rem; height:2.4rem; border-radius:.75rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
+                            <div class="min-w-0">
+                                <p class="text-xl font-semibold text-white leading-none tabular-nums">{{ $activity['last_scan'] ? \Illuminate\Support\Carbon::parse($activity['last_scan'])->diffForHumans(['short' => true]) : 'None yet' }}</p>
+                                <p class="text-xs text-slate-300 mt-1.5">Last scan</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -476,7 +488,7 @@
             {{-- SECURITY TAB --}}
             <div x-show="tab === 'security'" x-cloak class="space-y-5">
                 <div class="grid lg:grid-cols-3 gap-5 items-stretch" x-data="{ pw: '', cf: '', get r() { const p = this.pw; return { len: p.length >= 12, mix: /[a-z]/.test(p) && /[A-Z]/.test(p), num: /\d/.test(p), sym: /[^A-Za-z0-9]/.test(p), match: p.length > 0 && p === this.cf }; }, get score() { return [this.r.len, this.r.mix, this.r.num, this.r.sym].filter(Boolean).length; } }">
-                    <div class="s-card p-6 lg:col-span-2">
+                    <div class="s-card p-5 sm:p-6 lg:col-span-2">
                         <div class="flex items-start gap-3.5 mb-6">
                             <span class="a-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg></span>
                             <div>
@@ -544,7 +556,7 @@
                         </form>
                     </div>
 
-                    <div class="s-card p-6 flex flex-col">
+                    <div class="s-card p-5 sm:p-6 flex flex-col">
                         <div class="flex items-start gap-3.5 mb-6">
                             <span class="a-ic" style="--c:52,211,153; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.623 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg></span>
                             <div>
@@ -569,17 +581,50 @@
                     </div>
                 </div>
 
-                {{-- Danger zone --}}
-                <div class="s-card p-5 sm:p-6" style="border-color: rgba(248,113,113,.35)" x-data="{ confirmingDeletion: {{ $errors->userDeletion->isNotEmpty() ? 'true' : 'false' }} }">
-                    <div class="flex items-center justify-between gap-4 flex-wrap">
-                        <div class="flex items-start gap-3.5">
-                            <span class="a-ic" style="--c:248,113,113; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></span>
+                {{-- bottom row: signed-in devices (only when sessions are stored in the database) next to the danger zone, so the tab stays short --}}
+                <div class="grid lg:grid-cols-3 gap-5 items-stretch">
+                @if ($devices !== null)
+                    <div class="s-card p-5 sm:p-6 lg:col-span-2">
+                        <div class="flex items-start gap-3.5 mb-4">
+                            <span class="a-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg></span>
                             <div>
-                                <h2 class="text-red-300 font-semibold leading-tight">Delete account</h2>
-                                <p class="text-sm text-slate-300 mt-0.5 max-w-lg">This permanently deletes your account and all of its data. It cannot be undone.</p>
+                                <h2 class="text-white font-semibold leading-tight">Where you are signed in</h2>
+                                <p class="text-sm text-slate-300 mt-0.5">Not yours? Change your password.</p>
                             </div>
                         </div>
-                        <button type="button" @click="confirmingDeletion = true" class="s-btn s-btn-danger shrink-0">Delete account</button>
+                        @forelse (array_slice($devices, 0, 3) as $device)
+                            <div class="s-kv" style="--c:56,189,248">
+                                <span class="a-ic" style="width:2.1rem; height:2.1rem; border-radius:.65rem"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $device['mobile'] ? 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3' : 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25' }}" /></svg></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm text-slate-100 truncate">{{ $device['label'] }}</p>
+                                    <p class="text-xs text-slate-400 font-mono truncate">{{ $device['ip'] ?? 'Unknown address' }}</p>
+                                </div>
+                                @if ($device['current'])
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300"><span class="w-1.5 h-1.5 rounded-full bg-current"></span>This device</span>
+                                @else
+                                    <span class="text-xs text-slate-400">Active {{ $device['last_active']->diffForHumans() }}</span>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="text-sm text-slate-300">No active sessions found.</p>
+                        @endforelse
+                        @if (count($devices) > 3)
+                            <p class="text-xs text-slate-400 pt-3 border-t border-white/10">and {{ count($devices) - 3 }} more {{ count($devices) - 3 === 1 ? 'device' : 'devices' }}</p>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- Danger zone --}}
+                <div class="s-card p-5 sm:p-6 flex flex-col {{ $devices === null ? 'lg:col-span-3' : '' }}" style="border-color: rgba(248,113,113,.35)" x-data="{ confirmingDeletion: {{ $errors->userDeletion->isNotEmpty() ? 'true' : 'false' }} }">
+                    <div class="{{ $devices !== null ? 'flex flex-col flex-1 gap-4' : 'flex items-center justify-between gap-4 flex-wrap' }}">
+                        <div class="{{ $devices !== null ? '' : 'flex items-start gap-3.5' }}">
+                            <div class="flex items-center gap-3.5">
+                                <span class="a-ic" style="--c:248,113,113; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></span>
+                                <h2 class="text-red-300 font-semibold leading-tight">Delete account</h2>
+                            </div>
+                            <p class="text-sm text-slate-300 leading-relaxed {{ $devices !== null ? 'mt-3' : 'mt-2 max-w-xl' }}">Permanently removes your account and all of its data. This cannot be undone.</p>
+                        </div>
+                        <button type="button" @click="confirmingDeletion = true" class="s-btn s-btn-danger shrink-0 {{ $devices !== null ? 'w-full mt-auto' : '' }}">Delete account</button>
                     </div>
 
                     <div x-show="confirmingDeletion" x-cloak x-transition.opacity class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -603,6 +648,7 @@
                             </form>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>

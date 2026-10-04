@@ -56,6 +56,15 @@
         .a-chip:hover { color: #fff; border-color: rgba(148, 163, 184, .45); }
         .a-chip-on { color: #fff; background: rgba(56, 189, 248, .16); border-color: rgba(56, 189, 248, .5); }
 
+        .a-chip { flex-shrink: 0; white-space: nowrap; }
+        .a-scroll { scrollbar-width: none; }
+        .a-scroll::-webkit-scrollbar { display: none; }
+        @media (max-width: 639px) {
+            .a-tile { width: 2.1rem; height: 2.1rem; border-radius: .65rem; }
+            .a-tile svg { width: 1rem; height: 1rem; }
+            .a-chip { padding: .42rem .85rem; font-size: .75rem; }
+        }
+
         .a-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; letter-spacing: -.01em; }
         .a-row { transition: background-color .15s; }
         .a-row:hover { background-color: rgba(125, 211, 252, .06); }
@@ -67,19 +76,19 @@
         @media (prefers-reduced-motion: reduce) { .a-in, .a-grow { animation: none; } .a-stat:hover { transform: none; } }
     </style>
 
-    <div class="a-in flex items-start justify-between mb-6 flex-wrap gap-4">
-        <div>
+    <div class="a-in flex items-start justify-between mb-5 sm:mb-6 md:max-xl:landscape:mb-4 sm:flex-wrap gap-3 sm:gap-4">
+        <div class="min-w-0">
             <h1 class="text-2xl font-bold text-white mb-1">Detection Analytics</h1>
             <p class="text-slate-300 text-sm">Monitor phishing trends, report activity and detection performance.</p>
         </div>
-        <span class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-500/30 text-slate-200 text-sm font-semibold opacity-60 cursor-not-allowed" title="Coming soon">
+        <span class="inline-flex items-center justify-center shrink-0 gap-2 max-sm:w-10 max-sm:h-10 sm:px-4 sm:py-2.5 rounded-xl border border-slate-500/30 text-slate-200 text-sm font-semibold opacity-60 cursor-not-allowed" title="Coming soon">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-            Export Analytics
+            <span class="hidden sm:inline">Export Analytics</span>
         </span>
     </div>
 
     {{-- PERIOD --}}
-    <div class="a-in flex flex-wrap gap-2 mb-6" style="--d:.04s">
+    <div class="a-scroll a-in flex gap-2 mb-5 sm:mb-6 md:max-xl:landscape:mb-4 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0" style="--d:.04s">
         @foreach ($periods as $days => $label)
             <a href="{{ route('analytics', ['period' => $days]) }}" class="a-chip {{ $period == $days ? 'a-chip-on' : '' }}">{{ $label }}</a>
         @endforeach
@@ -87,18 +96,18 @@
     </div>
 
     {{-- TOP STAT CARDS --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6 md:max-xl:landscape:mb-4">
         @foreach ($statCards as $card)
-            <div class="a-card a-stat a-in p-5" style="--c: {{ $card['rgb'] }}; --d: {{ 0.06 + $loop->index * 0.06 }}s">
-                <div class="flex items-start justify-between gap-3 mb-4">
-                    <p class="text-xs font-medium tracking-wide text-slate-300 leading-snug">{{ $card['label'] }}</p>
-                    <span class="a-tile">
+            <div class="a-card a-stat a-in p-3.5 sm:p-5 md:max-xl:p-4" style="--c: {{ $card['rgb'] }}; --d: {{ 0.06 + $loop->index * 0.06 }}s">
+                <div class="flex items-start justify-between gap-2 sm:gap-3 md:max-xl:gap-2 mb-3 sm:mb-4 md:max-xl:min-h-[2.5rem]">
+                    <p class="text-[11px] sm:text-xs md:max-xl:text-[11px] font-medium tracking-wide md:max-xl:tracking-normal text-slate-300 leading-snug min-w-0">{{ $card['label'] }}</p>
+                    <span class="a-tile shrink-0 md:max-xl:!w-9 md:max-xl:!h-9">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $card['icon'] }}" /></svg>
                     </span>
                 </div>
-                <p class="text-3xl font-bold text-white mb-1">{{ $card['value'] }}{{ $card['suffix'] }}</p>
+                <p class="text-2xl sm:text-3xl font-bold text-white mb-1">{{ $card['value'] }}{{ $card['suffix'] }}</p>
                 <p class="text-xs font-medium {{ trendColor($card['change'], $card['goodUp']) }}">
-                    {{ trendArrow($card['change']) }} {{ $card['change'] > 0 ? '+' : '' }}{{ $card['change'] }}% <span class="text-slate-400 font-normal">vs prev. period</span>
+                    {{ trendArrow($card['change']) }} {{ $card['change'] > 0 ? '+' : '' }}{{ $card['change'] }}% <span class="hidden sm:inline md:max-xl:hidden text-slate-400 font-normal">vs prev. period</span><span class="hidden md:max-xl:inline text-slate-400 font-normal">vs prev.</span>
                 </p>
             </div>
         @endforeach
@@ -106,19 +115,19 @@
 
     {{-- CHARTS ROW --}}
     <div class="grid lg:grid-cols-3 gap-4 mb-4">
-        <div class="lg:col-span-2 a-card a-in p-6" style="--d:.1s">
-            <div class="flex items-center justify-between mb-1">
+        <div class="lg:col-span-2 a-card a-in p-4 sm:p-6" style="--d:.1s">
+            <div class="flex items-center justify-between gap-3 mb-1">
                 <h2 class="text-white font-semibold">Report Activity Over Time</h2>
                 <span class="text-xs font-medium text-slate-300">{{ $periods[$period] ?? '' }}</span>
             </div>
             <p class="text-sm text-slate-300 mb-4">Daily report totals for the selected period</p>
-            <canvas id="activityChart" height="90"></canvas>
+            <div class="relative h-48 sm:h-56 md:max-xl:h-64 xl:h-auto"><canvas id="activityChart" height="90"></canvas></div>
         </div>
 
-        <div class="a-card a-in p-6" style="--d:.16s">
-            <h2 class="text-white font-semibold mb-1">Detection Results</h2>
-            <p class="text-sm text-slate-300 mb-4">Result breakdown for {{ $periods[$period] ?? '' }}</p>
-            <div class="relative w-40 h-40 mx-auto mb-5">
+        <div class="a-card a-in p-4 sm:p-6 md:max-xl:p-4 md:max-lg:portrait:grid md:max-lg:portrait:grid-cols-[auto_1fr] md:max-lg:portrait:items-center md:max-lg:portrait:gap-x-10" style="--d:.16s">
+            <h2 class="text-white font-semibold mb-1 md:max-lg:portrait:col-span-2">Detection Results</h2>
+            <p class="text-sm text-slate-300 mb-4 md:max-lg:portrait:col-span-2">Result breakdown for {{ $periods[$period] ?? '' }}</p>
+            <div class="relative w-40 h-40 mx-auto mb-5 md:max-lg:portrait:mb-0 md:max-lg:portrait:ml-4">
                 <canvas id="breakdownChart"></canvas>
                 <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span class="text-2xl font-bold text-white">{{ $breakdown['total'] }}</span>
@@ -137,8 +146,8 @@
     </div>
 
     {{-- RISK DISTRIBUTION + INDICATORS --}}
-    <div class="grid lg:grid-cols-2 gap-4 mb-4">
-        <div class="a-card a-in p-6 flex flex-col" style="--d:.1s">
+    <div class="grid md:grid-cols-2 gap-4 mb-4 md:max-xl:landscape:mb-3">
+        <div class="a-card a-in p-4 sm:p-6 flex flex-col" style="--d:.1s">
             <h2 class="text-white font-semibold mb-1">Risk-Level Distribution</h2>
             <p class="text-sm text-slate-300 mb-5">Number of reports in each risk bracket</p>
 
@@ -160,7 +169,7 @@
                         $bucketName = trim(preg_replace('/\s*\(.*\)$/', '', $bucket['label']));
                         $bucketRange = preg_match('/\((.*)\)/', $bucket['label'], $mm) ? $mm[1] : '';
                     @endphp
-                    <div class="a-well p-4 flex flex-col justify-between min-h-[8.5rem]">
+                    <div class="a-well p-3.5 sm:p-4 flex flex-col justify-between min-h-[7.25rem] sm:min-h-[8.5rem]">
                         <div class="flex items-start justify-between gap-2">
                             <div>
                                 <p class="text-sm font-semibold text-slate-100">{{ $bucketName }}</p>
@@ -170,8 +179,8 @@
                         </div>
                         <div>
                             <p class="flex items-baseline gap-2">
-                                <span class="text-4xl font-bold {{ $tone['text'] }}">{{ $bucket['count'] }}</span>
-                                <span class="text-xs text-slate-300">{{ $bucket['count'] == 1 ? 'report' : 'reports' }}</span>
+                                <span class="text-3xl sm:text-4xl font-bold {{ $tone['text'] }}">{{ $bucket['count'] }}</span>
+                                <span class="hidden sm:inline text-xs text-slate-300">{{ $bucket['count'] == 1 ? 'report' : 'reports' }}</span>
                                 <span class="ml-auto text-sm font-semibold text-slate-200">{{ $bucket['pct'] }}%</span>
                             </p>
                             <span class="block h-1.5 rounded-full bg-white/10 overflow-hidden mt-3">
@@ -183,7 +192,7 @@
             </div>
         </div>
 
-        <div class="a-card a-in p-6" style="--d:.16s">
+        <div class="a-card a-in p-4 sm:p-6" style="--d:.16s">
             <h2 class="text-white font-semibold mb-1">Most Common Phishing Indicators</h2>
             <p class="text-sm text-slate-300 mb-5">Top triggers across your flagged reports, across all detection types (URL, email, phone, screenshot)</p>
             @if (count($indicatorCounts) > 0)
@@ -207,8 +216,8 @@
     </div>
 
     {{-- PERIOD COMPARISON + SCANNING PERFORMANCE --}}
-    <div class="grid lg:grid-cols-2 gap-4 mb-4">
-        <div class="a-card a-in p-6" style="--d:.1s">
+    <div class="grid md:grid-cols-2 gap-4 mb-4 md:max-xl:landscape:mb-3">
+        <div class="a-card a-in p-4 sm:p-6" style="--d:.1s">
             <h2 class="text-white font-semibold mb-1">Period Comparison</h2>
             <p class="text-sm text-slate-300 mb-5">Current vs previous {{ strtolower($periods[$period] ?? '') }}</p>
             <div class="space-y-4">
@@ -243,7 +252,7 @@
             </div>
         </div>
 
-        <div class="a-card a-in p-6" style="--d:.16s">
+        <div class="a-card a-in p-4 sm:p-6" style="--d:.16s">
             <h2 class="text-white font-semibold mb-1">Scanning Performance</h2>
             <p class="text-sm text-slate-300 mb-5">Engine response times across your reports</p>
             @if ($performance)
@@ -276,7 +285,7 @@
     </div>
 
     {{-- TOP SOURCE COUNTRIES --}}
-    <div class="a-card a-in p-6 mb-4" style="--d:.1s">
+    <div class="a-card a-in p-4 sm:p-6 mb-4" style="--d:.1s">
         <h2 class="text-white font-semibold mb-1">Top Source Countries</h2>
         <p class="text-sm text-slate-300 mb-5">Countries your scanned URLs were hosted in, based on IP geolocation</p>
         @if ($topCountries->count() > 0)
@@ -304,14 +313,14 @@
     </div>
 
     {{-- TOP PHISHING SOURCES --}}
-    <div class="a-card a-in p-6 mb-4" style="--d:.14s">
+    <div class="a-card a-in p-4 sm:p-6 mb-4" style="--d:.14s">
         <h2 class="text-white font-semibold mb-1">Top Phishing Sources</h2>
         <p class="text-sm text-slate-300 mb-5">Your most frequently detected phishing sources in this period — URLs, sender domains, phone numbers, or screenshots</p>
 
         @if ($topDomains->count() > 0)
-            <div class="overflow-x-auto -mx-2">
-                <table class="w-full text-sm min-w-[600px]">
-                    <thead>
+            <div class="md:overflow-x-auto md:-mx-2">
+                <table class="block md:table w-full text-sm md:min-w-[600px]">
+                    <thead class="hidden md:table-header-group">
                         <tr class="text-left text-xs font-medium tracking-wide text-slate-300 border-b border-slate-500/25">
                             <th class="pb-3 px-2 w-10">#</th>
                             <th class="pb-3 px-2">SOURCE</th>
@@ -320,17 +329,17 @@
                             <th class="pb-3 px-2">LATEST DETECTION</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-500/20">
+                    <tbody class="block md:table-row-group divide-y divide-slate-500/20">
                         @foreach ($topDomains as $i => $d)
-                            <tr class="a-row">
-                                <td class="py-3 px-2 text-slate-400">{{ $i + 1 }}</td>
-                                <td class="py-3 px-2 w-full max-w-0">
+                            <tr class="a-row flex flex-wrap items-center gap-x-3 gap-y-1.5 py-3 md:py-0 md:table-row">
+                                <td class="w-6 md:w-auto md:py-3 md:px-2 text-slate-400">{{ $i + 1 }}</td>
+                                <td class="flex-1 min-w-0 md:py-3 md:px-2 md:w-full md:max-w-0">
                                     <span class="flex items-center gap-2 text-slate-100 min-w-0" title="{{ $d['domain'] }}">
                                         <span class="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0"></span>
                                         <span class="truncate a-mono text-[13px]">{{ $d['domain'] }}</span>
                                     </span>
                                 </td>
-                                <td class="py-3 px-2">
+                                <td class="pl-9 md:pl-2 md:py-3 md:px-2">
                                     <div class="flex items-center gap-2.5">
                                         <span class="text-red-400 font-semibold w-5">{{ $d['detections'] }}</span>
                                         <span class="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -338,8 +347,8 @@
                                         </span>
                                     </div>
                                 </td>
-                                <td class="py-3 px-2 whitespace-nowrap text-orange-400 font-semibold">{{ $d['avg_score'] }} <span class="text-slate-400 font-normal">/ 100</span></td>
-                                <td class="py-3 px-2 whitespace-nowrap text-slate-300">{{ \Carbon\Carbon::parse($d['latest'])->format('Y-m-d') }}</td>
+                                <td class="text-xs md:text-sm md:py-3 md:px-2 whitespace-nowrap text-orange-400 font-semibold">{{ $d['avg_score'] }} <span class="text-slate-400 font-normal">/ 100</span></td>
+                                <td class="ml-auto md:ml-0 text-xs md:text-sm md:py-3 md:px-2 whitespace-nowrap text-slate-300">{{ \Carbon\Carbon::parse($d['latest'])->format('Y-m-d') }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -397,6 +406,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: window.matchMedia('(min-width: 1280px)').matches,
                 interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { display: false }, tooltip },
                 scales: {

@@ -1,31 +1,31 @@
 <x-layouts.guest-landing>
 
 {{-- HERO --}}
-<section id="home" class="scroll-mt-28 max-w-7xl mx-auto px-6 py-10 md:py-16 grid md:grid-cols-2 gap-10 md:gap-12 items-center">
+<section id="home" class="scroll-mt-28 max-w-7xl mx-auto px-6 pt-6 pb-8 md:py-14 lg:py-16 grid gap-8 md:gap-10 md:max-lg:landscape:grid-cols-2 lg:grid-cols-2 lg:gap-12 items-center">
     <div>
-        <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-6">
+        <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4 md:mb-6">
             <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> AI-Powered Phishing Protection
         </span>
-        <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-1 md:mb-2">Detect Phishing Threats</h1>
-        <h2 class="text-4xl md:text-5xl font-extrabold text-sky-400 leading-tight mb-5 md:mb-6">
+        <h1 class="text-[2.15rem] sm:text-5xl md:text-5xl font-extrabold text-white leading-[1.1] mb-1 md:mb-2">Detect Phishing Threats</h1>
+        <h2 class="text-[2.15rem] sm:text-5xl md:text-5xl font-extrabold text-sky-400 leading-[1.1] mb-4 md:mb-6">
             Before They Cause Harm.
         </h2>
-        <p class="text-slate-400 mb-8 max-w-lg">
+        <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8 max-w-lg">
             PhishCore helps anyone analyse suspicious links, emails, phone numbers and screenshots &mdash; identifying phishing threats and protecting sensitive information.
         </p>
-        <div class="flex flex-wrap gap-3 sm:gap-4">
-            <a href="{{ route('register') }}" class="btn-primary !rounded-lg !px-6 !py-3">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <a href="{{ route('register') }}" class="btn-primary !rounded-lg !px-6 !py-3.5 md:!py-3">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
                 Start Scanning
             </a>
-            <a href="#how-it-works" class="btn-ghost !rounded-lg !px-6 !py-3">
+            <a href="#how-it-works" class="btn-ghost !rounded-lg !px-6 !py-3.5 md:!py-3">
                 Learn How It Works
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </a>
         </div>
     </div>
 
-    <div class="risk-card relative rounded-2xl p-6 md:p-8">
+    <div class="risk-card relative rounded-2xl p-6 md:p-8 hidden md:block md:max-lg:portrait:w-full md:max-lg:portrait:max-w-xl md:max-lg:portrait:mx-auto">
         <div class="relative w-14 h-14 mx-auto rounded-xl bg-sky-400/10 border border-sky-300/25 flex items-center justify-center mb-6">
             <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-8 h-8 object-contain">
         </div>
@@ -51,11 +51,55 @@
             <p class="text-xs text-rose-300 font-medium mt-2">HIGH RISK &mdash; PHISHING DETECTED</p>
         </div>
     </div>
+
+    {{-- Phone-only compact scan preview --}}
+    <div class="risk-card md:hidden rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+            <span class="eyebrow !text-[10px]">Live scan preview</span>
+            <span class="flex items-center gap-1.5 text-[10px] text-rose-300 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Phishing</span>
+        </div>
+        <div class="risk-field flex items-center gap-2 rounded-lg px-3 py-2.5 mb-3 text-[13px] text-slate-300 font-mono min-w-0">
+            <svg width="14" height="14" class="text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+            <span class="truncate">https://suspicious-example.com</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="risk-chip risk-chip--danger !py-2 !px-3 !text-[12px]"><i></i>SSL Invalid</div>
+            <div class="risk-chip risk-chip--warn !py-2 !px-3 !text-[12px]"><i></i>Domain &lt; 7d</div>
+            <div class="risk-chip risk-chip--danger !py-2 !px-3 !text-[12px]"><i></i>Blacklisted</div>
+            <div class="risk-chip risk-chip--info !py-2 !px-3 !text-[12px]"><i></i>Scan: 1.8s</div>
+        </div>
+        <div class="flex items-center gap-4 border-t border-white/10 pt-3">
+            <p class="text-4xl font-bold text-rose-400 leading-none">92<span class="text-base text-slate-500">/100</span></p>
+            <div class="flex-1 min-w-0">
+                <div class="risk-bar h-1.5 w-full rounded-full overflow-hidden"><span style="width: 92%"></span></div>
+                <p class="text-[11px] text-rose-300 font-medium mt-2 tracking-wide">HIGH RISK &mdash; PHISHING DETECTED</p>
+            </div>
+        </div>
+    </div>
 </section>
 
 {{-- STATS --}}
-<section class="reveal max-w-7xl mx-auto px-6 py-12">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<section class="reveal max-w-7xl mx-auto px-6 py-2 md:py-12">
+    {{-- Phone: compact stat strip --}}
+    <div class="grid grid-cols-3 gap-2.5 md:hidden">
+        <div class="glass-card px-2 py-4 text-center">
+            <div class="icon-tile !w-9 !h-9 !rounded-lg mx-auto mb-2.5"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg></div>
+            <p class="text-2xl font-bold text-white tabular-nums leading-none" data-count="{{ $totalScans }}">{{ number_format($totalScans) }}</p>
+            <p class="mt-1.5 text-[11px] text-slate-300 leading-tight">Scans<br>performed</p>
+        </div>
+        <div class="glass-card px-2 py-4 text-center">
+            <div class="icon-tile !w-9 !h-9 !rounded-lg mx-auto mb-2.5 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg></div>
+            <p class="text-2xl font-bold text-white tabular-nums leading-none" data-count="{{ $threatsDetected }}">{{ number_format($threatsDetected) }}</p>
+            <p class="mt-1.5 text-[11px] text-slate-300 leading-tight">Threats<br>detected</p>
+        </div>
+        <div class="glass-card px-2 py-4 text-center">
+            <div class="icon-tile !w-9 !h-9 !rounded-lg mx-auto mb-2.5 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg></div>
+            <p class="text-2xl font-bold text-white tabular-nums leading-none" data-count="{{ $avgScanSeconds }}" data-suffix="s">{{ $avgScanSeconds }}s</p>
+            <p class="mt-1.5 text-[11px] text-slate-300 leading-tight">Avg scan<br>time</p>
+        </div>
+    </div>
+
+    <div class="hidden md:grid md:grid-cols-3 gap-4">
 
         <div class="glass-card p-6 flex items-center gap-5">
             <div class="icon-tile !w-12 !h-12 shrink-0">
@@ -94,14 +138,14 @@
 </section>
 
 {{-- FEATURES --}}
-<section id="features" class="scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-16 md:py-24 text-center">
+<section id="features" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 text-center">
     <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Platform Features</span>
-    <h2 class="text-3xl font-bold text-white mb-14">Everything You Need to Stay Protected</h2>
+    <h2 class="text-2xl md:text-3xl font-bold text-white mb-7 md:mb-12">Everything You Need to Stay Protected</h2>
 
-    <div class="grid md:grid-cols-3 gap-6 text-left">
+    <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-6 px-6 pb-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 lg:gap-6 md:overflow-visible md:mx-0 md:px-0 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-left">
 
-        <div class="reveal glass-card p-6" style="transition-delay: 0s">
-            <div class="icon-tile mb-4">
+        <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0s">
+            <div class="icon-tile mb-3.5 md:mb-4">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 8v5M8 10.5h5" />
@@ -111,8 +155,8 @@
             <p class="text-sm text-slate-400">Submit a URL, email, phone number, or screenshot and receive instant threat analysis powered by multiple detection layers.</p>
         </div>
 
-        <div class="reveal glass-card p-6" style="transition-delay: 0.08s">
-            <div class="icon-tile mb-4">
+        <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.08s">
+            <div class="icon-tile mb-3.5 md:mb-4">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
                 </svg>
@@ -121,8 +165,8 @@
             <p class="text-sm text-slate-400">Machine learning models trained on phishing patterns classify URLs with high accuracy.</p>
         </div>
 
-        <div class="reveal glass-card p-6" style="transition-delay: 0.16s">
-            <div class="icon-tile mb-4">
+        <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.16s">
+            <div class="icon-tile mb-3.5 md:mb-4">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
@@ -131,8 +175,8 @@
             <p class="text-sm text-slate-400">Checks certificate validity, domain age, registrar reputation, and WHOIS data.</p>
         </div>
 
-        <div class="reveal glass-card p-6" style="transition-delay: 0.24s">
-            <div class="icon-tile mb-4">
+        <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.24s">
+            <div class="icon-tile mb-3.5 md:mb-4">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
                 </svg>
@@ -141,8 +185,8 @@
             <p class="text-sm text-slate-400">Cross-references URLs against known phishing and malware domain blocklists.</p>
         </div>
 
-        <div class="reveal glass-card p-6" style="transition-delay: 0.32s">
-            <div class="icon-tile mb-4">
+        <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.32s">
+            <div class="icon-tile mb-3.5 md:mb-4">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
@@ -151,8 +195,8 @@
             <p class="text-sm text-slate-400">Export comprehensive PDF reports of scan results for documentation and compliance.</p>
         </div>
 
-        <div class="reveal glass-card p-6" style="transition-delay: 0.4s">
-            <div class="icon-tile mb-4">
+        <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.4s">
+            <div class="icon-tile mb-3.5 md:mb-4">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5l3.75-3.75 3 3 4.5-4.5m0 0h-3m3 0v3M3 19.5h18" />
                 </svg>
@@ -162,14 +206,15 @@
         </div>
 
     </div>
+    <p class="md:hidden mt-3 text-[11px] text-slate-500 flex items-center justify-center gap-1.5">Swipe to explore <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></p>
 </section>
 
 {{-- HOW IT WORKS --}}
-<section id="how-it-works" class="scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-16 md:py-24 text-center">
+<section id="how-it-works" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 text-center">
     <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Simple Process</span>
-    <h2 class="text-3xl font-bold text-white mb-16">How PhishCore Works</h2>
+    <h2 class="text-2xl md:text-3xl font-bold text-white mb-8 md:mb-14">How PhishCore Works</h2>
 
-    <div class="grid md:grid-cols-3 gap-5 text-left">
+    <div class="hidden md:max-lg:landscape:grid lg:grid grid-cols-3 gap-5 text-left">
         @php
             $steps = [
                 ['n' => '01', 'title' => 'Submit What You Received', 'desc' => 'Paste a suspicious link, sender email, phone number, or upload a screenshot into the PhishCore scanner.'],
@@ -200,6 +245,27 @@
             </div>
         @endforeach
     </div>
+
+    {{-- Phones and portrait tablets: vertical timeline --}}
+    <ol class="lg:hidden md:max-lg:landscape:hidden text-left max-w-xl mx-auto">
+        @foreach ($steps as $s)
+            <li class="reveal relative flex gap-4 pb-8 last:pb-0" style="transition-delay: {{ $loop->index * 0.1 }}s">
+                <div class="flex flex-col items-center shrink-0">
+                    <div class="icon-tile !w-11 !h-11 !rounded-xl shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $stepIcons[$loop->index] }}" /></svg>
+                    </div>
+                    @unless ($loop->last)
+                        <span class="flex-1 w-px mt-2" style="background: repeating-linear-gradient(180deg, rgba(125,211,252,.4) 0 5px, transparent 5px 11px)"></span>
+                    @endunless
+                </div>
+                <div class="pt-0.5 min-w-0">
+                    <span class="font-mono text-[11px] font-semibold text-sky-300/90 tracking-[0.16em]">STEP {{ $s['n'] }}</span>
+                    <h3 class="text-white font-semibold text-[17px] mt-1 mb-1.5">{{ $s['title'] }}</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">{{ $s['desc'] }}</p>
+                </div>
+            </li>
+        @endforeach
+    </ol>
 </section>
 
 {{-- LIVE SCANNER --}}
@@ -394,10 +460,10 @@
 </section>
 
 {{-- WHY PHISHCORE --}}
-<section class="reveal max-w-7xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
+<section class="reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
     <div>
         <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Why PhishCore</span>
-        <h2 class="text-3xl font-bold text-white mb-4 leading-snug">Designed to Protect, Not to Confuse.</h2>
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 md:mb-4 leading-snug">Designed to Protect, Not to Confuse.</h2>
         <p class="text-slate-400">PhishCore turns complex threat intelligence into decisions your users can act on immediately.</p>
         <a href="#scanner" class="btn-ghost !rounded-lg !px-5 !py-2.5 !text-sm mt-7">
             Try the scanner
@@ -405,7 +471,7 @@
         </a>
     </div>
 
-    <div class="grid sm:grid-cols-2 gap-6">
+    <div class="grid sm:grid-cols-2 gap-3 md:gap-5 lg:gap-6">
         @php
             $why = [
                 ['title' => 'Reduces Phishing Risk', 'desc' => 'Gives users a quick, reliable way to verify links before clicking, reducing exposure to credential theft.'],
@@ -423,12 +489,14 @@
                     'M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5',
                 ];
             @endphp
-            <div class="reveal glass-card p-6" style="transition-delay: {{ $loop->index * 0.1 }}s">
-                <div class="icon-tile mb-4">
+            <div class="reveal glass-card p-4 sm:p-5 md:p-6 flex sm:block gap-3.5" style="transition-delay: {{ $loop->index * 0.1 }}s">
+                <div class="icon-tile shrink-0 sm:mb-3 md:mb-4">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $whyIcons[$loop->index] }}" /></svg>
                 </div>
-                <p class="text-white font-semibold mb-1.5">{{ $w['title'] }}</p>
-                <p class="text-sm text-slate-400 leading-relaxed">{{ $w['desc'] }}</p>
+                <div class="min-w-0">
+                    <p class="text-white font-semibold mb-1">{{ $w['title'] }}</p>
+                    <p class="text-sm text-slate-400 leading-relaxed">{{ $w['desc'] }}</p>
+                </div>
             </div>
         @endforeach
     </div>
@@ -447,16 +515,16 @@
 </div>
 
 {{-- ABOUT --}}
-<section id="about" class="scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-3 gap-10 md:gap-12 items-start">
-    <div class="text-center md:text-left">
-        <div class="w-16 h-16 mx-auto md:mx-0 rounded-xl bg-sky-400/10 border border-sky-300/25 flex items-center justify-center mb-3">
+<section id="about" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 grid lg:grid-cols-3 gap-8 lg:gap-12 items-start">
+    <div class="text-center lg:text-left">
+        <div class="w-16 h-16 mx-auto lg:mx-0 rounded-xl bg-sky-400/10 border border-sky-300/25 flex items-center justify-center mb-3">
             <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
         </div>
         <p class="text-white font-medium">PhishCore</p>
         <p class="text-sm text-slate-500">Detection Platform · 2026</p>
     </div>
 
-    <div class="md:col-span-2">
+    <div class="lg:col-span-2">
         <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">About the Project</span>
         <h2 class="text-2xl font-bold text-white mb-4">Built for Everyone.</h2>
         <p class="text-slate-400 mb-4">
@@ -475,13 +543,13 @@
 </section>
 
 {{-- CTA --}}
-<section id="contact" class="scroll-mt-28 reveal max-w-4xl mx-auto px-6 pb-24">
-    <div class="glass-panel rounded-2xl p-8 md:p-12 text-center">
-        <h2 class="text-2xl font-bold text-white mb-2">Ready to Check a Suspicious Link?</h2>
-        <p class="text-slate-400 mb-8">Create an account or sign in to begin scanning websites and protecting your digital activity.</p>
-        <div class="flex flex-wrap justify-center gap-3 md:gap-4">
-            <a href="{{ route('register') }}" class="btn-primary !rounded-lg !px-6 !py-3">Create Account</a>
-            <a href="{{ route('login') }}" class="btn-ghost !rounded-lg !px-6 !py-3">Sign In</a>
+<section id="contact" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-4xl mx-auto px-6 pb-16 md:pb-24">
+    <div class="glass-panel rounded-2xl p-6 md:p-12 text-center">
+        <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Ready to Check a Suspicious Link?</h2>
+        <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8">Create an account or sign in to begin scanning websites and protecting your digital activity.</p>
+        <div class="flex flex-col sm:flex-row sm:justify-center gap-3 md:gap-4">
+            <a href="{{ route('register') }}" class="btn-primary !rounded-lg !px-6 !py-3.5 md:!py-3">Create Account</a>
+            <a href="{{ route('login') }}" class="btn-ghost !rounded-lg !px-6 !py-3.5 md:!py-3">Sign In</a>
         </div>
     </div>
 </section>

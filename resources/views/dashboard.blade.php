@@ -57,6 +57,12 @@
         .d-row { transition: background-color .2s; }
         .d-url { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .8125rem; letter-spacing: -.01em; }
         .d-view { display: inline-flex; align-items: center; gap: .3rem; padding: .4rem .8rem; border-radius: .7rem; font-size: .75rem; font-weight: 600; color: #e2e8f0; border: 1px solid rgba(148, 163, 184, .3); transition: background-color .15s, border-color .15s; }
+        .d-scroll { scrollbar-width: none; }
+        .d-scroll::-webkit-scrollbar { display: none; }
+        @media (max-width: 639px) { .d-tile { width: 2.2rem; height: 2.2rem; border-radius: .7rem; } }
+        @media (min-width: 768px) and (max-width: 1279px) and (pointer: coarse) {
+            .d-view { display: inline-flex; align-items: center; min-height: 2.5rem; }
+        }
         .d-view:hover { background: rgba(255, 255, 255, .06); border-color: rgba(148, 163, 184, .5); }
         .d-row:hover { background-color: rgba(125, 211, 252, .06); }
         .d-arrow { transition: transform .25s cubic-bezier(.34, 1.4, .64, 1); }
@@ -66,11 +72,11 @@
     </style>
 
     {{-- HEADER --}}
-    <div class="d-in flex items-start justify-between mb-7 flex-wrap gap-4">
+    <div class="d-in flex items-start justify-between mb-5 sm:mb-7 flex-wrap gap-3 sm:gap-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-white mb-1.5">
                 @php $hour = now()->hour; @endphp
-                Good {{ $hour < 12 ? 'morning' : ($hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', auth()->user()->name)[0] }} 👋
+                Good {{ $hour < 12 ? 'morning' : ($hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', auth()->user()->name)[0] }} {{ $hour < 12 ? '☀️' : ($hour < 18 ? '🌤️' : '🌙') }}
             </h1>
             <p class="text-slate-300 text-sm">
                 Here is your security overview for <span class="text-white font-medium">{{ now()->format('l, j F Y') }}</span>.
@@ -83,24 +89,26 @@
     </div>
 
     {{-- STAT CARDS --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 md:max-xl:portrait:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6 md:max-xl:landscape:mb-4">
         @foreach ($cards as $i => $card)
-            <div class="d-in d-card d-lift p-4 sm:p-5" style="--c: {{ $card['rgb'] }}; --d: {{ $i * 0.07 }}s">
-                <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center mb-4 sm:mb-5">
-                    <span class="d-tile shrink-0 {{ $card['tile'] }}">
+            <div class="d-in d-card d-lift p-4 sm:p-5 md:max-xl:p-4" style="--c: {{ $card['rgb'] }}; --d: {{ $i * 0.07 }}s">
+                <div class="max-sm:relative">
+                <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center mb-3 sm:mb-5 md:max-xl:portrait:flex-col md:max-xl:portrait:items-start md:max-xl:landscape:gap-2.5 md:max-xl:landscape:mb-3 md:max-xl:landscape:min-h-[3rem]">
+                    <span class="d-tile shrink-0 md:max-xl:landscape:!w-9 md:max-xl:landscape:!h-9 max-sm:absolute max-sm:right-0 max-sm:bottom-0 {{ $card['tile'] }}">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $card['icon'] }}" /></svg>
                     </span>
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold text-slate-100 sm:truncate">{{ $card['title'] }}</p>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider sm:truncate">{{ $card['tag'] }}</p>
+                        <p class="text-xs font-semibold text-slate-100 sm:truncate md:max-xl:overflow-visible md:max-xl:whitespace-normal md:max-xl:leading-tight">{{ $card['title'] }}</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider sm:truncate md:max-xl:overflow-visible md:max-xl:whitespace-nowrap md:max-xl:tracking-normal md:max-xl:leading-tight md:max-xl:mt-0.5">{{ $card['tag'] }}</p>
                     </div>
                 </div>
 
                 <div class="flex items-end justify-between gap-2">
-                    <p class="text-4xl font-bold leading-none tabular-nums {{ $card['num'] }}" data-count="{{ $stats[$card['key']] }}">{{ $stats[$card['key']] }}</p>
+                    <p class="text-3xl sm:text-4xl font-bold leading-none tabular-nums {{ $card['num'] }}" data-count="{{ $stats[$card['key']] }}">{{ $stats[$card['key']] }}</p>
+                </div>
                 </div>
 
-                <p class="text-xs text-slate-300 mt-3 leading-snug">{{ $card['sub'] }}</p>
+                <p class="hidden sm:block text-xs text-slate-300 mt-3 md:max-xl:landscape:mt-2 leading-snug">{{ $card['sub'] }}</p>
             </div>
         @endforeach
     </div>
@@ -111,7 +119,7 @@
         <div class="d-in d-card overflow-hidden" style="--d:.2s"
              x-data="{ busy: false }"
              x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) busy = false; })">
-            <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/10">
+            <div class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10">
                 <div class="flex items-center gap-3 min-w-0">
                     <span class="d-tile shrink-0 text-sky-300" style="--c: 56,189,248">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
@@ -126,7 +134,7 @@
                 </span>
             </div>
 
-            <div class="p-5 sm:p-6" x-data="{ url: '' }">
+            <div class="p-4 sm:p-6" x-data="{ url: '' }">
                 <form method="POST" action="{{ route('scan.store') }}" class="flex flex-col sm:flex-row gap-3" @submit="busy = true">
                     @csrf
                     <div class="relative flex-1">
@@ -149,9 +157,9 @@
                     <p class="mt-3 text-xs text-red-300">{{ $message }}</p>
                 @enderror
 
-                <div class="flex flex-wrap gap-2 mt-4">
+                <div class="d-scroll flex gap-2 mt-4 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
                     @foreach (['URL structure', 'Domain age analysis', 'HTTPS validation', 'Blacklist verification'] as $chip)
-                        <span class="inline-flex items-center gap-1.5 text-xs text-slate-200 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04]">
+                        <span class="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap text-xs text-slate-200 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04]">
                             <svg class="w-3 h-3 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             {{ $chip }}
                         </span>
@@ -167,15 +175,15 @@
     </div>
 
     {{-- DETECTION OVERVIEW + BREAKDOWN --}}
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
-        <div class="d-in d-card min-w-0 p-5 sm:p-6 xl:col-span-2" style="--d:.3s">
+    <div class="grid grid-cols-1 xl:grid-cols-3 md:max-xl:grid-cols-3 gap-4 mb-6 md:max-xl:landscape:mb-4">
+        <div class="d-in d-card min-w-0 p-4 sm:p-6 xl:col-span-2 md:max-xl:col-span-2" style="--d:.3s">
             <div class="flex items-start justify-between gap-3 mb-1">
                 <h2 class="text-white font-semibold">Detection Overview</h2>
                 <span class="text-xs text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full whitespace-nowrap">{{ $weekRangeLabel }}</span>
             </div>
             <p class="text-sm text-slate-300 mb-5">Safe, Suspicious and Phishing results by day</p>
 
-            <div class="relative h-56 sm:h-64 min-w-0"><canvas id="weekChart"></canvas></div>
+            <div class="relative h-56 sm:h-64 md:max-xl:landscape:h-52 min-w-0"><canvas id="weekChart"></canvas></div>
 
             <div class="flex items-center justify-center gap-5 mt-4 text-xs text-slate-200">
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Safe</span>
@@ -184,11 +192,11 @@
             </div>
         </div>
 
-        <div class="d-in d-card min-w-0 p-5 sm:p-6 flex flex-col" style="--d:.36s">
+        <div class="d-in d-card min-w-0 p-4 sm:p-6 md:max-xl:p-4 flex flex-col" style="--d:.36s">
             <h2 class="text-white font-semibold">This Week</h2>
             <p class="text-sm text-slate-300 mb-4">Share of each verdict</p>
 
-            <div class="relative mx-auto w-44 h-44 sm:w-48 sm:h-48 my-auto">
+            <div class="relative mx-auto w-44 h-44 sm:w-48 sm:h-48 md:max-xl:w-36 md:max-xl:h-36 my-auto">
                 <canvas id="weekDonut"></canvas>
                 <div class="absolute inset-0 grid place-items-center pointer-events-none">
                     <div class="text-center">
@@ -198,11 +206,11 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 mt-5 text-center">
+            <div class="grid grid-cols-3 gap-2 mt-5 md:max-xl:gap-1.5 text-center">
                 @foreach ([['safe', 'Safe', 'text-emerald-300', 'bg-emerald-400'], ['suspicious', 'Suspicious', 'text-orange-300', 'bg-orange-400'], ['phishing', 'Phishing', 'text-red-300', 'bg-red-400']] as $t)
                     <div class="rounded-xl border border-white/10 bg-white/[0.04] py-2.5">
                         <p class="text-xl font-bold tabular-nums {{ $t[2] }}">{{ $weekTotals[$t[0]] }}</p>
-                        <p class="text-[11px] text-slate-300 flex items-center justify-center gap-1"><span class="w-1.5 h-1.5 rounded-full {{ $t[3] }}"></span>{{ $t[1] }}</p>
+                        <p class="text-[11px] md:max-xl:text-[10px] text-slate-300 flex items-center justify-center gap-1"><span class="w-1.5 h-1.5 rounded-full {{ $t[3] }}"></span>{{ $t[1] }}</p>
                     </div>
                 @endforeach
             </div>
@@ -210,7 +218,7 @@
     </div>
 
     {{-- RECENT REPORTS --}}
-    <div class="d-in d-card p-5 sm:p-6" style="--d:.4s">
+    <div class="d-in d-card p-4 sm:p-6" style="--d:.4s">
         <div class="flex items-center justify-between gap-3 mb-5">
             <div>
                 <h2 class="text-white font-semibold">Recent Reports</h2>
@@ -255,25 +263,25 @@
                                 $iconPath = $typeIcons[$scan->type] ?? $typeIcons['url'];
                             @endphp
                             <tr class="d-row">
-                                <td class="py-3.5 pr-4 w-full max-w-0">
+                                <td class="py-3.5 md:max-xl:landscape:py-2.5 md:max-xl:portrait:py-4 pr-4 w-full max-w-0">
                                     <p class="flex items-center gap-2.5 min-w-0" title="{{ $itemLabel }}">
                                         <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
                                         <span class="truncate {{ $isMono ? 'd-url' : '' }} text-slate-100">@if ($scheme)<span class="text-slate-400">{{ $scheme }}</span>@endif{{ $rest }}</span>
                                     </p>
                                 </td>
-                                <td class="py-3.5 pr-4 whitespace-nowrap">
+                                <td class="py-3.5 md:max-xl:landscape:py-2.5 md:max-xl:portrait:py-4 pr-4 whitespace-nowrap">
                                     <span class="inline-flex items-center gap-1.5 text-xs font-semibold {{ $badge['text'] }}">
                                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
                                     </span>
                                 </td>
-                                <td class="py-3.5 pr-4">
+                                <td class="py-3.5 md:max-xl:landscape:py-2.5 md:max-xl:portrait:py-4 pr-4">
                                     <span class="flex items-center gap-2.5">
                                         <span class="w-7 font-semibold tabular-nums {{ $sc['text'] }}">{{ $score }}</span>
                                         <span class="hidden md:block w-20 h-1.5 rounded-full bg-white/10 overflow-hidden"><span class="block h-full rounded-full {{ $sc['bar'] }}" style="width: {{ min(max((int) $score, 0), 100) }}%"></span></span>
                                     </span>
                                 </td>
-                                <td class="py-3.5 pr-4 text-slate-300 tabular-nums whitespace-nowrap">{{ $scan->created_at->format('Y-m-d H:i') }}</td>
-                                <td class="py-3.5 text-right">
+                                <td class="py-3.5 md:max-xl:landscape:py-2.5 md:max-xl:portrait:py-4 pr-4 text-slate-300 tabular-nums whitespace-nowrap">{{ $scan->created_at->format('Y-m-d H:i') }}</td>
+                                <td class="py-3.5 md:max-xl:landscape:py-2.5 md:max-xl:portrait:py-4 text-right">
                                     <a href="{{ route('scan.show', $scan) }}" class="d-view whitespace-nowrap">
                                         View Details <span aria-hidden="true">→</span>
                                     </a>
@@ -302,7 +310,7 @@
     </div>
 
     {{-- QUICK ACTIONS --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 md:max-xl:grid-cols-4 gap-3 sm:gap-4 mt-6 md:max-xl:landscape:mt-4">
         @foreach ($actions as $i => $a)
             <a href="{{ $a['href'] }}" class="d-in d-card d-lift block p-4 sm:p-5" style="--c: 56,189,248; --d: {{ 0.45 + $i * 0.06 }}s">
                 <span class="d-tile text-sky-300 mb-3" style="--c: 56,189,248">

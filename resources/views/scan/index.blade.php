@@ -4,7 +4,7 @@
 
 @auth
     <x-layouts.dashboard>
-        <div class="sc-in mb-7" style="animation: sc-in .6s cubic-bezier(.2,.9,.3,1) both">
+        <div class="sc-in mb-7 md:max-xl:landscape:mb-5" style="animation: sc-in .6s cubic-bezier(.2,.9,.3,1) both">
             <h1 class="text-2xl sm:text-3xl font-bold text-white mb-1.5">Scan</h1>
             <p class="text-slate-300 text-sm">Check a website URL, sender email, phone number, or screenshot for phishing threats.</p>
         </div>

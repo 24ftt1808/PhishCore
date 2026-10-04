@@ -174,6 +174,7 @@
                                 <input type="text" name="url" x-model="url" :readonly="scanning" @input="clearOthers('url')"
                                        :class="{ 'opacity-50 pointer-events-none': scanning }"
                                        placeholder="Enter or paste a website URL, e.g. https://example.com"
+                                       :placeholder="window.innerWidth < 640 ? 'Paste a website URL' : 'Enter or paste a website URL, e.g. https://example.com'"
                                        class="sc-input !pr-24 !py-4">
                                 <button type="button" :disabled="scanning"
                                         @click="navigator.clipboard.readText().then(text => { url = text; clearOthers('url') })"
@@ -275,16 +276,16 @@
             </div>
             <p class="text-sm text-slate-300 mb-3">Highlighted checks run for the option you picked.</p>
 
-            <ul class="space-y-1">
+            <ul class="grid grid-cols-2 gap-1.5 sm:block sm:space-y-1 md:max-xl:grid md:max-xl:grid-cols-2 md:max-xl:space-y-0">
                 @foreach ($checks as [$name, $for])
                     @php $forJs = json_encode($for); @endphp
-                    <li class="flex items-center gap-3 rounded-xl px-3 py-2 border transition-colors duration-300"
+                    <li class="flex items-center gap-2 sm:gap-3 rounded-xl px-2.5 sm:px-3 py-2 border transition-colors duration-300"
                         :class="{{ $forJs }}.includes(tab) ? 'border-sky-300/30 bg-sky-400/10 text-white' : 'border-transparent text-slate-400'">
-                        <span class="w-5 h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
+                        <span class="w-[18px] h-[18px] sm:w-5 sm:h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
                               :class="{{ $forJs }}.includes(tab) ? 'bg-emerald-400/20 text-emerald-300' : 'bg-white/5 text-slate-500'">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                         </span>
-                        <span class="text-sm">{{ $name }}</span>
+                        <span class="text-xs sm:text-sm leading-tight">{{ $name }}</span>
                     </li>
                 @endforeach
             </ul>
@@ -293,7 +294,7 @@
         </div>
     </div>
 
-<h2 class="text-xl font-bold text-white mt-10 mb-1">How PhishCore Checks Reports</h2>
+<h2 class="text-xl font-bold text-white mt-10 md:max-xl:landscape:mt-7 mb-1">How PhishCore Checks Reports</h2>
 <p class="text-sm text-slate-300 mb-5">Every scan runs through the detection layers relevant to what you submitted.</p>
 
 <div class="sc-card sc-card-sm sc-in divide-y divide-white/10 overflow-hidden" style="--d:.12s">
@@ -304,13 +305,13 @@
         ['Blacklist, Phone & OCR', 'Checks Google Safe Browsing, phone country codes, and text read from screenshots.', ['url', 'phone', 'screenshot']],
     ] as $i => [$title, $text, $applies])
         @php $appliesJs = json_encode($applies); @endphp
-        <div class="relative flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 pl-5 sm:pl-6 pr-5 sm:pr-6 py-4 transition-opacity duration-300"
+        <div class="relative flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 md:max-xl:flex-row md:max-xl:flex-wrap md:max-xl:gap-x-4 md:max-xl:gap-y-1 pl-5 sm:pl-6 pr-5 sm:pr-6 py-4 md:max-xl:landscape:py-3 transition-opacity duration-300"
              :class="{{ $appliesJs }}.includes(tab) ? '' : 'opacity-60'">
             <span class="absolute left-0 inset-y-0 w-0.5 bg-sky-300 transition-opacity duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'opacity-100' : 'opacity-0'"></span>
-            <span class="hidden sm:block w-6 shrink-0 font-mono text-xs tabular-nums transition-colors duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'text-sky-300' : 'text-slate-500'">{{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}</span>
-            <h3 class="sm:w-52 shrink-0 text-sm font-semibold text-white">{{ $title }}</h3>
-            <p class="flex-1 text-sm text-slate-300 leading-relaxed">{{ $text }}</p>
-            <p class="shrink-0 mt-1 sm:mt-0 sm:w-56 sm:text-right text-[11px] tracking-[0.1em] text-slate-400">
+            <span class="hidden sm:block md:max-xl:!hidden w-6 shrink-0 font-mono text-xs tabular-nums transition-colors duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'text-sky-300' : 'text-slate-500'">{{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}</span>
+            <h3 class="sm:w-52 md:max-xl:w-auto shrink-0 text-sm font-semibold text-white">{{ $title }}</h3>
+            <p class="flex-1 text-sm text-slate-300 leading-relaxed md:max-xl:flex-none md:max-xl:basis-full md:max-xl:order-last">{{ $text }}</p>
+            <p class="shrink-0 mt-1 sm:mt-0 sm:w-56 sm:text-right md:max-xl:w-auto md:max-xl:ml-auto md:max-xl:mt-0 text-[11px] tracking-[0.1em] text-slate-400">
                 @foreach ($applies as $t)
                     <span class="transition-colors duration-300" :class="tab === '{{ $t }}' ? 'text-sky-300 font-semibold' : ''">{{ strtoupper($tabLabels[$t]) }}</span>@if (! $loop->last)<span class="mx-1.5 text-slate-600">&middot;</span>@endif
                 @endforeach
@@ -369,10 +370,10 @@
                         <span class="hidden sm:block w-14 h-1 rounded-full bg-white/10 overflow-hidden mt-1.5 ml-auto"><span class="block h-full rounded-full {{ $accent }}" style="width: {{ min(max((int) $score, 0), 100) }}%"></span></span>
                         <p class="text-[10px] text-slate-400 tracking-wide mt-1">SCORE</p>
                     </div>
-                    <a href="{{ route('scan.show', $scan) }}"
+                    <a href="{{ route('scan.show', $scan) }}" aria-label="Details"
                        class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-sky-300/30 bg-sky-400/10 text-sky-200 text-xs font-medium hover:bg-sky-400/20 hover:border-sky-300/50 transition whitespace-nowrap">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-7.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                        Details
+                        <span class="hidden sm:inline">Details</span>
                     </a>
                 </div>
             </div>

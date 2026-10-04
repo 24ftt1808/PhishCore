@@ -14,11 +14,11 @@
     $currentStatus = $filters['status'] ?? 'all';
 
     $statCards = [
-        ['label' => 'TOTAL CASES', 'value' => $stats['total'], 'status' => 'all', 'rgb' => '167,139,250', 'text' => 'text-white', 'icon' => 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z'],
-        ['label' => 'ACTIVE', 'value' => $stats['active'], 'status' => 'active', 'rgb' => '56,189,248', 'text' => 'text-sky-300', 'icon' => 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z'],
-        ['label' => 'TAKEDOWN REQUESTED', 'value' => $stats['takedown_requested'], 'status' => 'takedown_requested', 'rgb' => '251,146,60', 'text' => 'text-orange-400', 'icon' => 'M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5'],
-        ['label' => 'TAKEDOWN CONFIRMED', 'value' => $stats['takedown_confirmed'], 'status' => 'takedown_confirmed', 'rgb' => '52,211,153', 'text' => 'text-emerald-400', 'icon' => 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
-        ['label' => 'COMPLETED', 'value' => $stats['completed'], 'status' => 'completed', 'rgb' => '148,163,184', 'text' => 'text-slate-200', 'icon' => 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+        ['label' => 'TOTAL CASES', 'short' => 'Total cases', 'value' => $stats['total'], 'status' => 'all', 'rgb' => '167,139,250', 'text' => 'text-white', 'icon' => 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z'],
+        ['label' => 'ACTIVE', 'short' => 'Active', 'value' => $stats['active'], 'status' => 'active', 'rgb' => '56,189,248', 'text' => 'text-sky-300', 'icon' => 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z'],
+        ['label' => 'TAKEDOWN REQUESTED', 'short' => 'Requested', 'value' => $stats['takedown_requested'], 'status' => 'takedown_requested', 'rgb' => '251,146,60', 'text' => 'text-orange-400', 'icon' => 'M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5'],
+        ['label' => 'TAKEDOWN CONFIRMED', 'short' => 'Confirmed', 'value' => $stats['takedown_confirmed'], 'status' => 'takedown_confirmed', 'rgb' => '52,211,153', 'text' => 'text-emerald-400', 'icon' => 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
+        ['label' => 'COMPLETED', 'short' => 'Completed', 'value' => $stats['completed'], 'status' => 'completed', 'rgb' => '148,163,184', 'text' => 'text-slate-200', 'icon' => 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
     ];
 
     $statusChips = ['all' => 'All', 'active' => 'Active', 'completed' => 'Completed', 'takedown_requested' => 'Requested', 'takedown_confirmed' => 'Confirmed'];
@@ -47,6 +47,14 @@
         .h-kbd { font-size: .7rem; color: #94a3b8; border: 1px solid rgba(148, 163, 184, .3); border-radius: .4rem; padding: .05rem .4rem; }
 
         .h-chip { display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .8rem; border-radius: 999px; font-size: .78rem; font-weight: 600; color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .22); background: rgba(8, 15, 32, .35); transition: background-color .15s, border-color .15s, color .15s; white-space: nowrap; }
+        .h-chip { flex-shrink: 0; white-space: nowrap; }
+        .um-scroll { scrollbar-width: none; }
+        .um-scroll::-webkit-scrollbar { display: none; }
+        @media (max-width: 639px) {
+            .h-tile { width: 2.1rem; height: 2.1rem; border-radius: .65rem; }
+            .h-tile svg { width: 1rem; height: 1rem; }
+            .h-chip { padding: .38rem .7rem; font-size: .75rem; }
+        }
         .h-chip:hover { color: #fff; border-color: rgba(148, 163, 184, .45); }
         .h-chip-on { color: #fff; background: rgba(167, 139, 250, .18); border-color: rgba(167, 139, 250, .55); }
         .h-chip-n { font-size: .7rem; font-weight: 700; color: #94a3b8; }
@@ -67,23 +75,23 @@
         @media (prefers-reduced-motion: reduce) { .h-in { animation: none; } .h-stat:hover { transform: none; } }
     </style>
 
-    <div class="h-in mb-6">
+    <div class="h-in mb-6 md:max-xl:landscape:mb-4">
         <h1 class="text-2xl font-bold text-white mb-1">Investigations</h1>
         <p class="text-slate-300 text-sm">Track and manage takedown progress across all reported threats.</p>
     </div>
 
     {{-- STATS (click to filter) --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 md:max-xl:landscape:mb-4">
         @foreach ($statCards as $card)
             <a href="{{ route('investigations.index', array_filter(['status' => $card['status'] === 'all' ? null : $card['status']])) }}"
-               class="h-card h-stat h-in p-5 {{ $loop->first ? 'col-span-2 lg:col-span-1' : '' }} {{ $currentStatus === $card['status'] ? 'h-stat-on' : '' }}"
+               class="h-card h-stat h-in p-3.5 sm:p-5 md:max-xl:p-3.5 {{ $loop->first ? 'col-span-2 md:col-span-1' : '' }} {{ $currentStatus === $card['status'] ? 'h-stat-on' : '' }}"
                style="--c: {{ $card['rgb'] }}; --d: {{ $loop->index * 0.06 }}s">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-xs font-medium tracking-wide text-slate-300 mb-2">{{ $card['label'] }}</p>
-                        <p class="text-3xl font-bold {{ $card['text'] }}">{{ $card['value'] }}</p>
+                <div class="flex items-center sm:items-start justify-between gap-2 sm:gap-3 md:max-xl:flex-col-reverse md:max-xl:items-start md:max-xl:gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[11px] sm:text-xs md:max-xl:text-[10.5px] font-medium tracking-wide md:max-xl:tracking-normal md:max-xl:leading-tight text-slate-300 mb-0.5 sm:mb-2 md:max-xl:mb-1"><span class="sm:hidden">{{ strtoupper($card['short']) }}</span><span class="hidden sm:inline">{{ $card['label'] }}</span></p>
+                        <p class="text-2xl sm:text-3xl font-bold leading-none sm:leading-normal {{ $card['text'] }}">{{ $card['value'] }}</p>
                     </div>
-                    <span class="h-tile">
+                    <span class="h-tile shrink-0 md:max-xl:!w-8 md:max-xl:!h-8">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $card['icon'] }}" /></svg>
                     </span>
                 </div>
@@ -92,7 +100,7 @@
     </div>
 
     {{-- SEARCH + STATUS --}}
-    <form method="GET" action="{{ route('investigations.index') }}" class="h-card h-in p-4 sm:p-5 mb-6" style="--d:.14s"
+    <form method="GET" action="{{ route('investigations.index') }}" class="h-card h-in p-4 sm:p-5 mb-6 md:max-xl:landscape:p-3.5 md:max-xl:landscape:mb-4" style="--d:.14s"
           x-data
           @keydown.window="if ($event.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) { $event.preventDefault(); $refs.q.focus() }">
         <input type="hidden" name="status" value="{{ $currentStatus }}">
@@ -103,7 +111,7 @@
         <label class="h-search">
             <svg class="w-5 h-5 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
             <input x-ref="q" type="text" name="search" value="{{ $filters['search'] ?? '' }}" autocomplete="off"
-                   placeholder="Search by URL, email, or phone number">
+                   placeholder="Search cases">
             @if (filled($filters['search'] ?? null))
                 <a href="{{ route('investigations.index', array_filter(['status' => $currentStatus === 'all' ? null : $currentStatus])) }}" class="p-1.5 text-slate-400 hover:text-white transition-colors" title="Clear search">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -114,7 +122,7 @@
             <button type="submit" class="h-btn h-btn-main !py-2">Search</button>
         </label>
 
-        <div class="flex flex-wrap items-center gap-2 mt-4">
+        <div class="um-scroll flex items-center gap-2 mt-3.5 sm:mt-4 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
             @foreach ($statusChips as $key => $label)
                 <button type="submit" name="status" value="{{ $key }}" class="h-chip {{ $currentStatus === $key ? 'h-chip-on' : '' }}">
                     <span class="w-1.5 h-1.5 rounded-full {{ $chipDots[$key] }}"></span>
@@ -123,14 +131,14 @@
                 </button>
             @endforeach
             @if (filled($filters['search'] ?? null) || $currentStatus !== 'all')
-                <a href="{{ route('investigations.index') }}" class="ml-1 text-xs font-semibold text-slate-300 hover:text-white underline-offset-2 hover:underline">Reset</a>
+                <a href="{{ route('investigations.index') }}" class="ml-1 shrink-0 text-xs font-semibold text-slate-300 hover:text-white underline-offset-2 hover:underline">Reset</a>
             @endif
         </div>
     </form>
 
     {{-- COUNT + ROWS --}}
-    <div class="flex items-center justify-between flex-wrap gap-2 mb-3 text-sm text-slate-300">
-        <span>Showing {{ $investigations->firstItem() ?? 0 }}–{{ $investigations->lastItem() ?? 0 }} of {{ $investigations->total() }} total cases</span>
+    <div class="flex items-center justify-between gap-2 mb-3 text-sm text-slate-300">
+        <span><span class="hidden sm:inline">Showing </span>{{ $investigations->firstItem() ?? 0 }}–{{ $investigations->lastItem() ?? 0 }} of {{ $investigations->total() }}<span class="hidden sm:inline"> total</span> cases</span>
         <form method="GET" action="{{ route('investigations.index') }}" class="flex items-center gap-2">
             @foreach ($filters as $key => $value)
                 @if ($key !== 'rows' && $value !== null)
@@ -155,15 +163,15 @@
     {{-- TABLE (desktop) --}}
     <div class="h-card h-in overflow-hidden hidden md:block" style="--d:.2s">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm min-w-[820px]">
+            <table class="w-full text-sm xl:min-w-[820px]">
                 <thead>
                     <tr class="border-b border-slate-500/25 text-left text-xs font-medium tracking-wide text-slate-300">
-                        <th class="px-5 py-3">REPORTED ITEM</th>
-                        <th class="px-5 py-3">STATUS</th>
-                        <th class="px-5 py-3">ASSIGNED TO</th>
-                        <th class="px-5 py-3">OPENED</th>
-                        <th class="px-5 py-3">RESOLVED</th>
-                        <th class="px-5 py-3"></th>
+                        <th class="px-3 xl:px-5 py-3">REPORTED ITEM</th>
+                        <th class="px-3 xl:px-5 py-3">STATUS</th>
+                        <th class="px-3 xl:px-5 py-3">ASSIGNED TO</th>
+                        <th class="px-3 xl:px-5 py-3">OPENED</th>
+                        <th class="px-3 xl:px-5 py-3 md:max-xl:hidden">RESOLVED</th>
+                        <th class="px-3 xl:px-5 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-500/20">
@@ -189,18 +197,18 @@
                             $assigneeInitials = $assignee ? collect(explode(' ', $assignee))->map(fn ($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('') : null;
                         @endphp
                         <tr class="h-row">
-                            <td class="px-5 py-4 w-full max-w-0">
+                            <td class="px-3 xl:px-5 py-4 md:max-xl:landscape:py-2.5 w-full max-w-0 md:max-xl:min-w-[10rem]">
                                 <p class="flex items-center gap-2.5 min-w-0" title="{{ $itemLabel }}">
                                     <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
                                     <span class="truncate {{ $isMono ? 'h-url' : '' }} text-slate-100">@if ($scheme)<span class="text-slate-400">{{ $scheme }}</span>@endif{{ $rest }}</span>
                                 </p>
                             </td>
-                            <td class="px-5 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold {{ $badge['text'] }}">
+                            <td class="px-3 xl:px-5 py-4 md:max-xl:landscape:py-2.5 whitespace-nowrap md:max-xl:whitespace-normal">
+                                <span class="inline-flex items-center gap-1.5 text-xs font-semibold md:max-xl:leading-tight {{ $badge['text'] }}">
                                     <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
                                 </span>
                             </td>
-                            <td class="px-5 py-4 whitespace-nowrap">
+                            <td class="px-3 xl:px-5 py-4 md:max-xl:landscape:py-2.5 whitespace-nowrap">
                                 @if ($assignee)
                                     <span class="flex items-center gap-2 text-slate-100">
                                         @if ($assigneePhoto)
@@ -208,7 +216,7 @@
                                         @else
                                             <span class="w-6 h-6 rounded-full bg-violet-500/25 border border-violet-400/40 text-violet-100 text-[10px] font-bold grid place-items-center">{{ $assigneeInitials }}</span>
                                         @endif
-                                        {{ $assignee }}
+                                        <span class="md:max-xl:max-w-[6.5rem] md:max-xl:truncate">{{ $assignee }}</span>
                                     </span>
                                 @else
                                     <span class="flex items-center gap-2 text-slate-400">
@@ -217,11 +225,17 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-5 py-4 text-slate-300 whitespace-nowrap">{{ $investigation->created_at->format('Y-m-d H:i') }}</td>
-                            <td class="px-5 py-4 text-slate-300 whitespace-nowrap">{{ $investigation->resolved_at?->format('Y-m-d H:i') ?? '—' }}</td>
-                            <td class="px-5 py-4 text-right">
+                            <td class="px-3 xl:px-5 py-4 md:max-xl:landscape:py-2.5 text-slate-300 whitespace-nowrap">
+                                <span class="block xl:inline">{{ $investigation->created_at->format('Y-m-d') }}</span>
+                                <span class="block xl:inline text-xs xl:text-sm text-slate-400 xl:text-slate-300">{{ $investigation->created_at->format('H:i') }}</span>
+                                @if ($investigation->resolved_at)
+                                    <span class="hidden md:max-xl:block text-xs text-emerald-300/80 mt-0.5">Resolved {{ $investigation->resolved_at->format('Y-m-d') }}</span>
+                                @endif
+                            </td>
+                            <td class="px-3 xl:px-5 py-4 md:max-xl:landscape:py-2.5 text-slate-300 whitespace-nowrap md:max-xl:hidden">{{ $investigation->resolved_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                            <td class="px-3 xl:px-5 py-4 md:max-xl:landscape:py-2.5 text-right">
                                 <a href="{{ route('scan.show', $report) }}" class="h-btn h-btn-ghost !py-1.5 !px-3 !text-xs whitespace-nowrap">
-                                    View Case <span aria-hidden="true">→</span>
+                                    View<span class="hidden xl:inline"> Case</span> <span aria-hidden="true">→</span>
                                 </a>
                             </td>
                         </tr>
@@ -253,11 +267,11 @@
                 $iconPath = $typeIcons[$report->type] ?? $typeIcons['url'];
             @endphp
             <a href="{{ route('scan.show', $report) }}" class="h-card h-in block p-4" style="--d: {{ min($loop->index, 6) * 0.04 }}s">
-                <p class="text-slate-100 text-sm flex items-start gap-2 min-w-0 mb-3">
+                <p class="text-slate-100 text-sm flex items-start gap-2 min-w-0 mb-2.5">
                     <svg class="w-4 h-4 text-slate-300 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
                     <span class="break-all {{ $isMono ? 'h-url' : '' }}">{{ $itemLabel }}</span>
                 </p>
-                <div class="flex items-center justify-between gap-3 mb-3">
+                <div class="flex items-center justify-between gap-3 mb-2.5 pb-2.5 border-b border-slate-500/20">
                     <span class="inline-flex items-center gap-1.5 text-xs font-semibold {{ $badge['text'] }}">
                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
                     </span>

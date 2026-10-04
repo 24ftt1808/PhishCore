@@ -125,6 +125,8 @@ test('checkPhoneNumber flags a number with a repeated single digit', function ()
 // --- checkBlacklist / checkVirusTotal (no API key configured in tests) ---
 
 test('checkBlacklist returns unavailable when no API key is configured', function () {
+    config(['services.google_safe_browsing.key' => null]);
+
     $result = $this->engine->checkBlacklist('https://example.com');
 
     expect($result['flagged'])->toBeFalse();
@@ -132,6 +134,8 @@ test('checkBlacklist returns unavailable when no API key is configured', functio
 });
 
 test('checkVirusTotal returns unavailable when no API key is configured', function () {
+    config(['services.virustotal.key' => null]);
+
     $result = $this->engine->checkVirusTotal('https://example.com');
 
     expect($result['flagged'])->toBeFalse();

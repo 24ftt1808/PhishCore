@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Analysis;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +18,17 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        $analyses = fn () => Analysis::whereHas('report', fn ($q) => $q->where('user_id', $user->id));
+
         return view('settings', [
-            'user' => $request->user(),
+            'user' => $user,
+            'activity' => [
+                'scans' => $analyses()->count(),
+                'phishing' => $analyses()->where('verdict', 'phishing')->count(),
+                'clean' => $analyses()->where('verdict', 'clean')->count(),
+                'last_scan' => $analyses()->latest()->value('created_at'),
+            ],
         ]);
     }
 

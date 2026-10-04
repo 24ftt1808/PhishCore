@@ -23,6 +23,7 @@ class UserManagementController extends Controller
             'total' => $statsBase()->count(),
             'active' => $statsBase()->whereNull('suspended_at')->count(),
             'admins' => $statsBase()->where('role', 'admin')->count(),
+            'team' => $statsBase()->where('is_team_member', true)->count(),
             'suspended' => $statsBase()->whereNotNull('suspended_at')->count(),
         ];
 
@@ -37,7 +38,9 @@ class UserManagementController extends Controller
         }
 
         $role = $request->input('role', 'all');
-        if ($role !== 'all') {
+        if ($role === 'team') {
+            $query->where('is_team_member', true);
+        } elseif ($role !== 'all') {
             $query->where('role', $role);
         }
 
@@ -47,8 +50,6 @@ class UserManagementController extends Controller
         } elseif ($status === 'suspended') {
             $query->whereNotNull('suspended_at');
         }
-
-        
 
         $rows = (int) $request->input('rows', 8);
         $users = $query->orderBy('name')->paginate($rows)->withQueryString();

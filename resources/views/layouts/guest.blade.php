@@ -66,7 +66,7 @@
                     </div>
 
                     <div class="grid grid-cols-3 gap-3">
-                        @foreach ([['489', 'URLS SCANNED'], ['97.4%', 'ACCURACY'], ['2.1s', 'AVG SCAN TIME']] as $i => $stat)
+                        @foreach ([[number_format($guestStats['scans']), 'SCANS COMPLETED'], [number_format($guestStats['threats']), 'THREATS DETECTED'], [$guestStats['avgSeconds'] > 0 ? $guestStats['avgSeconds'] . 's' : '-', 'AVG SCAN TIME']] as $i => $stat)
                             <div class="auth-in glass-card py-5 px-2" style="--d:{{ 0.3 + $i * 0.1 }}s">
                                 <p class="text-2xl font-bold text-sky-300 tabular-nums">{{ $stat[0] }}</p>
                                 <p class="text-[10px] tracking-wider text-slate-400 mt-1.5">{{ $stat[1] }}</p>

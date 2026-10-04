@@ -48,13 +48,6 @@
     .sc-input::placeholder { color: #8b9ab1; }
     .sc-input:focus { outline: none; border-color: rgba(56, 189, 248, .7); box-shadow: 0 0 0 3px rgba(56, 189, 248, .15); }
 
-    /* hover glow for the four info cards: a soft light that follows the cursor, plus a faint halo */
-    .sc-glow { position: relative; overflow: hidden; }
-    .sc-glow::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
-                       background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(56, 189, 248, .2), transparent 65%); }
-    .sc-glow > * { position: relative; z-index: 1; }
-    .sc-glow:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 0 32px -8px rgba(56, 189, 248, .55); }
-    .sc-glow:hover::before { opacity: 1; }
 
     /* tab slider: the outer pill travels with a soft overshoot, the inner one stretches toward where it is going */
     .sc-pill { transition: transform .5s cubic-bezier(.3, 1.25, .5, 1); will-change: transform; }
@@ -79,7 +72,7 @@
     .sc-sweep { animation: sc-sweep 1.1s ease-in-out infinite; }
     @keyframes sc-sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
-    @media (prefers-reduced-motion: reduce) { .sc-in, .sc-pill, .sc-sweep, .scanner-border-glow.is-scanning, .scanner-box.is-scanning { animation: none; transition: none; } .sc-lift:hover { transform: none; } .sc-glow::before { display: none; } }
+    @media (prefers-reduced-motion: reduce) { .sc-in, .sc-pill, .sc-sweep, .scanner-border-glow.is-scanning, .scanner-box.is-scanning { animation: none; transition: none; } .sc-lift:hover { transform: none; } }
 </style>
 
 <div class="mb-10"
@@ -303,25 +296,21 @@
 <h2 class="text-xl font-bold text-white mt-10 mb-1">How PhishCore Checks Reports</h2>
 <p class="text-sm text-slate-300 mb-5">Every scan runs through the detection layers relevant to what you submitted.</p>
 
-<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+<div class="sc-card sc-card-sm sc-in divide-y divide-white/10 overflow-hidden" style="--d:.12s">
     @foreach ([
-        ['SSL Certificate', 'Checks for a valid, trusted HTTPS certificate, and flags name mismatches or expiry.', 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z', ['url', 'screenshot']],
-        ['Domain Age', 'Domains registered in the last 30 days are a strong phishing signal.', 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5', ['url', 'email', 'screenshot']],
-        ['URL & Sender Analysis', 'Spots IP-based addresses, lookalike brand names and odd patterns in links and email domains.', 'M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5', ['url', 'email']],
-        ['Blacklist, Phone & OCR', 'Checks Google Safe Browsing, phone country codes, and text read from screenshots.', 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z', ['url', 'phone', 'screenshot']],
-    ] as $i => [$title, $text, $path, $applies])
+        ['SSL Certificate', 'Checks for a valid, trusted HTTPS certificate, and flags name mismatches or expiry.', ['url', 'screenshot']],
+        ['Domain Age', 'Domains registered in the last 30 days are a strong phishing signal.', ['url', 'email', 'screenshot']],
+        ['URL & Sender Analysis', 'Spots IP-based addresses, lookalike brand names and odd patterns in links and email domains.', ['url', 'email']],
+        ['Blacklist, Phone & OCR', 'Checks Google Safe Browsing, phone country codes, and text read from screenshots.', ['url', 'phone', 'screenshot']],
+    ] as $i => [$title, $text, $applies])
         @php $appliesJs = json_encode($applies); @endphp
-        <div class="sc-card sc-card-sm sc-lift sc-glow sc-in p-6 flex flex-col transition-opacity duration-300"
-             @mousemove="const r = $el.getBoundingClientRect(); $el.style.setProperty('--mx', ($event.clientX - r.left) + 'px'); $el.style.setProperty('--my', ($event.clientY - r.top) + 'px')"
-             :class="{{ $appliesJs }}.includes(tab) ? '' : 'opacity-70'"
-             :style="{{ $appliesJs }}.includes(tab) ? 'border-color: rgba(125, 211, 252, .38)' : ''"
-             style="--d: {{ 0.12 + $i * 0.06 }}s">
-            <span class="sc-tile mb-4">
-                <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}" /></svg>
-            </span>
-            <h3 class="text-white font-semibold mb-2">{{ $title }}</h3>
-            <p class="text-sm text-slate-300 leading-relaxed">{{ $text }}</p>
-            <p class="mt-auto pt-5 text-[10px] tracking-[0.12em] text-slate-500">
+        <div class="relative flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 pl-5 sm:pl-6 pr-5 sm:pr-6 py-4 transition-opacity duration-300"
+             :class="{{ $appliesJs }}.includes(tab) ? '' : 'opacity-60'">
+            <span class="absolute left-0 inset-y-0 w-0.5 bg-sky-300 transition-opacity duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'opacity-100' : 'opacity-0'"></span>
+            <span class="hidden sm:block w-6 shrink-0 font-mono text-xs tabular-nums transition-colors duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'text-sky-300' : 'text-slate-500'">{{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}</span>
+            <h3 class="sm:w-52 shrink-0 text-sm font-semibold text-white">{{ $title }}</h3>
+            <p class="flex-1 text-sm text-slate-300 leading-relaxed">{{ $text }}</p>
+            <p class="shrink-0 mt-1 sm:mt-0 sm:w-56 sm:text-right text-[11px] tracking-[0.1em] text-slate-400">
                 @foreach ($applies as $t)
                     <span class="transition-colors duration-300" :class="tab === '{{ $t }}' ? 'text-sky-300 font-semibold' : ''">{{ strtoupper($tabLabels[$t]) }}</span>@if (! $loop->last)<span class="mx-1.5 text-slate-600">&middot;</span>@endif
                 @endforeach

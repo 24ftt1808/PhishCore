@@ -17,7 +17,7 @@
     {{-- Same animated background as the public pages, dimmed so data stays readable --}}
     <div class="hero-aurora dash-aurora" aria-hidden="true" style="opacity:.55"><span></span><span></span><span></span></div>
 
-    <div class="relative z-10 flex lg:h-screen dash-scope" x-data="{ sidebarOpen: false }">
+    <div class="relative z-10 flex lg:h-screen dash-scope" x-data="{ sidebarOpen: false, logoutOpen: false }" @keydown.escape.window="logoutOpen = false">
 
         {{-- MOBILE TOP BAR --}}
         <div class="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 side-bg border-b">
@@ -145,6 +145,37 @@
             .side-out:hover .side-ic { transform: scale(1.1); background-color: rgba(248, 113, 113, .15); color: #fca5a5; }
 
             @media (prefers-reduced-motion: reduce) { .side-dot, .side-link:hover .side-ic svg { animation: none !important; } .side-link:hover .side-ic, .side-link:hover .side-label { transform: none; } }
+                    /* signed-in user card: opens Settings, and the log out row is tinted so it reads as its own action */
+            .side-user { display: flex; align-items: center; gap: .75rem; padding: .6rem .75rem; border-radius: .9rem; border: 1px solid rgba(125, 211, 252, .12); background: linear-gradient(135deg, rgba(56, 189, 248, .09), rgba(56, 189, 248, .03)); transition: border-color .2s, background-color .2s; }
+            .side-user:hover { border-color: rgba(125, 211, 252, .3); background: linear-gradient(135deg, rgba(56, 189, 248, .14), rgba(56, 189, 248, .05)); }
+            .side-user-go { color: #7dd3fc; opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .2s; }
+            .side-user:hover .side-user-go { opacity: .9; transform: none; }
+            .side-out { margin-top: .1rem; }
+            .side-out .side-ic { background-color: rgba(248, 113, 113, .1); color: #fca5a5; }
+
+            /* log out confirmation: a small frosted-glass bubble that grows out of the button */
+            .lo-pop { position: absolute; left: 0; right: 0; bottom: calc(100% + .5rem); z-index: 20; padding: .9rem .9rem .8rem; border-radius: 1.1rem; overflow: hidden; transform-origin: 50% 100%; will-change: transform, opacity;
+                background: linear-gradient(160deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .06) 50%, rgba(56, 189, 248, .08)), rgba(8, 17, 40, .6);
+                border: 1px solid rgba(255, 255, 255, .22);
+                box-shadow: 0 18px 36px -14px rgba(0, 0, 0, .75), inset 0 1px 0 rgba(255, 255, 255, .35);
+                -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+                animation: lo-pop .55s cubic-bezier(.3, 1.3, .5, 1); }
+            @keyframes lo-pop {
+                0% { opacity: 0; transform: translateY(18px) scale(.55, .2); border-radius: 2rem; }
+                55% { opacity: 1; transform: translateY(-3px) scale(1.04, 1.05); }
+                78% { transform: translateY(1px) scale(.99, .98); }
+                100% { opacity: 1; transform: none; }
+            }
+            @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .lo-pop { background: #10234a; } }
+            .lo-gloss { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 70% at 20% 0%, rgba(255, 255, 255, .16), transparent 55%); }
+            .lo-pop > *:not(.lo-gloss) { position: relative; }
+            .lo-actions { display: flex; gap: .5rem; margin-top: .75rem; }
+            .lo-btn { flex: 1; padding: .45rem .5rem; border-radius: .7rem; font-size: .8rem; font-weight: 600; transition: background-color .15s, border-color .15s; }
+            .lo-btn-ghost { color: #e2e8f0; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .2); }
+            .lo-btn-ghost:hover { background: rgba(255, 255, 255, .12); }
+            .lo-btn-out { color: #fecaca; background: rgba(248, 113, 113, .2); border: 1px solid rgba(248, 113, 113, .5); }
+            .lo-btn-out:hover { background: rgba(248, 113, 113, .32); }
+            @media (prefers-reduced-motion: reduce) { .lo-pop { animation: none; } .lo-btn { transition: none; } }
         </style>
 
         <aside
@@ -233,25 +264,36 @@
             </div>
 
             <div class="p-3 border-t" style="border-color: rgba(125, 211, 252, .12)">
-                <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-sky-200/10 bg-sky-300/[0.06]">
-                    <span class="relative w-9 h-9 shrink-0">
+                <a href="{{ route('profile.edit') }}" class="side-user" title="Open settings">
+                    <span class="relative w-10 h-10 shrink-0">
                         @if ($u->photoUrl())
-                            <img src="{{ $u->photoUrl() }}" class="w-9 h-9 rounded-full object-cover ring-2 ring-sky-400/40 shadow-[0_0_14px_rgba(56,189,248,0.35)]">
+                            <img src="{{ $u->photoUrl() }}" alt="" class="w-10 h-10 rounded-full object-cover ring-2 ring-sky-400/40">
                         @else
-                            <span class="w-9 h-9 rounded-full bg-sky-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-sky-300/40 shadow-[0_0_14px_rgba(56,189,248,0.35)]">
+                            <span class="w-10 h-10 rounded-full bg-sky-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-sky-300/40">
                                 {{ collect(explode(' ', $u->name))->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('') }}
                             </span>
                         @endif
-                        <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
+                        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
                     </span>
-                    <span class="leading-tight overflow-hidden">
-                        <span class="block text-sm font-medium text-white truncate">{{ $u->name }}</span>
-                        <span class="block text-xs text-sky-300/80">{{ $roleLabel }}</span>
+                    <span class="leading-tight min-w-0 flex-1">
+                        <span class="block text-sm font-semibold text-white truncate">{{ $u->name }}</span>
+                        <span class="block text-xs text-sky-300/80 truncate">{{ $roleLabel }}</span>
                     </span>
-                </div>
-                <form method="POST" action="{{ route('logout') }}" class="mt-2">
+                    <svg class="side-user-go w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                </a>
+                <form method="POST" action="{{ route('logout') }}" class="mt-2 relative">
                     @csrf
-                    <button type="submit" data-anim="out" class="side-link side-out w-full text-slate-300">
+                    <div x-show="logoutOpen" x-cloak @click.outside="logoutOpen = false" class="lo-pop" role="dialog" aria-labelledby="lo-title"
+                         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90">
+                        <span class="lo-gloss" aria-hidden="true"></span>
+                        <p id="lo-title" class="text-sm font-semibold text-white">Log out of PhishCore?</p>
+                        <p class="text-xs text-slate-300 mt-0.5">You will need to sign in again.</p>
+                        <div class="lo-actions">
+                            <button type="button" @click="logoutOpen = false" class="lo-btn lo-btn-ghost">Stay</button>
+                            <button type="submit" class="lo-btn lo-btn-out">Log out</button>
+                        </div>
+                    </div>
+                    <button type="button" @click.stop="logoutOpen = ! logoutOpen" :aria-expanded="logoutOpen" data-anim="out" class="side-link side-out w-full text-slate-300">
                         <span class="side-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg></span>
                         <span class="side-label">Log Out</span>
                     </button>

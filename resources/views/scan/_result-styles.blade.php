@@ -1,4 +1,7 @@
 <style>
+    /* verdict headline uses the same monospace face as the scanned URL */
+    .r-headline { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: -.03em; }
+
     /* result page panels: gradient + hairline border, no blur filters, transform/opacity animation only */
     .r-card { background: linear-gradient(180deg, rgba(24, 40, 76, .62), rgba(14, 25, 50, .62)); border: 1px solid rgba(148, 163, 184, .18); border-radius: 1.1rem; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
     .r-hero { background: linear-gradient(135deg, rgba(var(--c), .16), rgba(14, 25, 50, .66) 58%); border-color: rgba(var(--c), .32); }
@@ -13,6 +16,8 @@
     @keyframes r-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
     .r-grow { transform-origin: left; animation: r-grow .9s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, .3s); }
     @keyframes r-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .r-pin { animation: r-pin .9s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, .3s); }
+    @keyframes r-pin { from { transform: translateX(-100%); } to { transform: translateX(var(--to)); } }
     .r-arc { animation: r-arc 1.2s cubic-bezier(.2, .9, .3, 1) .25s both; }
     @keyframes r-arc { from { stroke-dashoffset: var(--from); } to { stroke-dashoffset: var(--to); } }
 
@@ -23,5 +28,18 @@
     .r-btn-ghost { color: #e2e8f0; border: 1px solid rgba(148, 163, 184, .3); background: rgba(148, 163, 184, .06); }
     .r-btn-ghost:hover { background: rgba(148, 163, 184, .13); border-color: rgba(148, 163, 184, .5); }
 
-    @media (prefers-reduced-motion: reduce) { .r-in, .r-grow, .r-arc { animation: none; } .r-lift:hover, .r-btn:hover { transform: none; } }
+    /* verdict card: facts strip (2 columns on phones, one per fact from sm up) and a soft live-dot ping */
+    .r-facts > div:nth-child(even) { border-left: 1px solid rgba(255, 255, 255, .1); }
+    .r-facts > div:nth-child(n+3) { border-top: 1px solid rgba(255, 255, 255, .1); }
+    .r-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    @media (min-width: 640px) {
+        .r-facts > div:last-child:nth-child(odd) { grid-column: auto; }
+        .r-facts { grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); }
+        .r-facts > div { border-top: 0 !important; }
+        .r-facts > div + div { border-left: 1px solid rgba(255, 255, 255, .1); }
+    }
+    .r-ping { animation: r-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite; }
+    @keyframes r-ping { 0% { transform: scale(1); opacity: .5; } 70%, 100% { transform: scale(2.4); opacity: 0; } }
+
+    @media (prefers-reduced-motion: reduce) { .r-in, .r-grow, .r-arc, .r-ping { animation: none; } .r-pin { transform: translateX(var(--to)); } .r-lift:hover, .r-btn:hover { transform: none; } }
 </style>

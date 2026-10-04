@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Analysis;
+use App\Models\Report;
 use App\Models\User;
 
 test('profile page is displayed', function () {
@@ -82,4 +84,17 @@ test('correct password must be provided to delete account', function () {
         ->assertRedirect('/profile');
 
     $this->assertNotNull($user->fresh());
+});
+
+test('profile page shows the user\'s scan activity', function () {
+    $user = User::factory()->create();
+    $report = Report::factory()->create(['user_id' => $user->id]);
+    Analysis::factory()->create(['report_id' => $report->id, 'verdict' => 'phishing']);
+    Analysis::factory()->create(['report_id' => $report->id, 'verdict' => 'clean']);
+    Analysis::factory()->create(['verdict' => 'phishing']);
+
+    $this->actingAs($user)
+        ->get('/profile')
+        ->assertOk()
+        ->assertViewHas('activity', fn (array $a) => $a['scans'] === 2 && $a['phishing'] === 1 && $a['clean'] === 1);
 });

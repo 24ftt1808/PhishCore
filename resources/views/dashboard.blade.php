@@ -55,6 +55,9 @@
         @keyframes d-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
         .d-row { transition: background-color .2s; }
+        .d-url { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .8125rem; letter-spacing: -.01em; }
+        .d-view { display: inline-flex; align-items: center; gap: .3rem; padding: .4rem .8rem; border-radius: .7rem; font-size: .75rem; font-weight: 600; color: #e2e8f0; border: 1px solid rgba(148, 163, 184, .3); transition: background-color .15s, border-color .15s; }
+        .d-view:hover { background: rgba(255, 255, 255, .06); border-color: rgba(148, 163, 184, .5); }
         .d-row:hover { background-color: rgba(125, 211, 252, .06); }
         .d-arrow { transition: transform .25s cubic-bezier(.34, 1.4, .64, 1); }
         a:hover > .d-arrow, .d-link:hover .d-arrow { transform: translateX(4px); }
@@ -83,13 +86,13 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         @foreach ($cards as $i => $card)
             <div class="d-in d-card d-lift p-4 sm:p-5" style="--c: {{ $card['rgb'] }}; --d: {{ $i * 0.07 }}s">
-                <div class="flex items-center gap-3 mb-5">
+                <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center mb-4 sm:mb-5">
                     <span class="d-tile shrink-0 {{ $card['tile'] }}">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $card['icon'] }}" /></svg>
                     </span>
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold text-slate-100 truncate">{{ $card['title'] }}</p>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider truncate">{{ $card['tag'] }}</p>
+                        <p class="text-xs font-semibold text-slate-100 sm:truncate">{{ $card['title'] }}</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-wider sm:truncate">{{ $card['tag'] }}</p>
                     </div>
                 </div>
 
@@ -164,15 +167,15 @@
     </div>
 
     {{-- DETECTION OVERVIEW + BREAKDOWN --}}
-    <div class="grid xl:grid-cols-3 gap-4 mb-6">
-        <div class="d-in d-card p-5 sm:p-6 xl:col-span-2" style="--d:.3s">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+        <div class="d-in d-card min-w-0 p-5 sm:p-6 xl:col-span-2" style="--d:.3s">
             <div class="flex items-start justify-between gap-3 mb-1">
                 <h2 class="text-white font-semibold">Detection Overview</h2>
                 <span class="text-xs text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full whitespace-nowrap">{{ $weekRangeLabel }}</span>
             </div>
             <p class="text-sm text-slate-300 mb-5">Safe, Suspicious and Phishing results by day</p>
 
-            <div class="relative h-56 sm:h-64"><canvas id="weekChart"></canvas></div>
+            <div class="relative h-56 sm:h-64 min-w-0"><canvas id="weekChart"></canvas></div>
 
             <div class="flex items-center justify-center gap-5 mt-4 text-xs text-slate-200">
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Safe</span>
@@ -181,7 +184,7 @@
             </div>
         </div>
 
-        <div class="d-in d-card p-5 sm:p-6 flex flex-col" style="--d:.36s">
+        <div class="d-in d-card min-w-0 p-5 sm:p-6 flex flex-col" style="--d:.36s">
             <h2 class="text-white font-semibold">This Week</h2>
             <p class="text-sm text-slate-300 mb-4">Share of each verdict</p>
 
@@ -243,33 +246,36 @@
                                     'screenshot' => 'Uploaded screenshot',
                                     default => $scan->url,
                                 };
+                                $isMono = $scan->type !== 'screenshot';
+                                $scheme = '';
+                                $rest = (string) $itemLabel;
+                                if ($scan->type === 'url' && preg_match('#^(https?://)(.*)$#i', $rest, $m)) {
+                                    [$scheme, $rest] = [$m[1], $m[2]];
+                                }
                                 $iconPath = $typeIcons[$scan->type] ?? $typeIcons['url'];
                             @endphp
                             <tr class="d-row">
-                                <td class="py-3 pr-4">
-                                    <span class="flex items-center gap-3 max-w-[260px]">
-                                        <span class="w-8 h-8 shrink-0 grid place-items-center rounded-lg bg-white/5 border border-white/10 text-sky-300">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
-                                        </span>
-                                        <span class="truncate text-slate-100">{{ $itemLabel }}</span>
-                                    </span>
+                                <td class="py-3.5 pr-4 w-full max-w-0">
+                                    <p class="flex items-center gap-2.5 min-w-0" title="{{ $itemLabel }}">
+                                        <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
+                                        <span class="truncate {{ $isMono ? 'd-url' : '' }} text-slate-100">@if ($scheme)<span class="text-slate-400">{{ $scheme }}</span>@endif{{ $rest }}</span>
+                                    </p>
                                 </td>
-                                <td class="py-3 pr-4">
-                                    <span class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border {{ $badge['bg'] }} {{ $badge['text'] }}">
+                                <td class="py-3.5 pr-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold {{ $badge['text'] }}">
                                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $badge['label'] }}
                                     </span>
                                 </td>
-                                <td class="py-3 pr-4">
+                                <td class="py-3.5 pr-4">
                                     <span class="flex items-center gap-2.5">
-                                        <span class="w-8 font-semibold tabular-nums {{ $sc['text'] }}">{{ $score }}</span>
+                                        <span class="w-7 font-semibold tabular-nums {{ $sc['text'] }}">{{ $score }}</span>
                                         <span class="hidden md:block w-20 h-1.5 rounded-full bg-white/10 overflow-hidden"><span class="block h-full rounded-full {{ $sc['bar'] }}" style="width: {{ min(max((int) $score, 0), 100) }}%"></span></span>
                                     </span>
                                 </td>
-                                <td class="py-3 pr-4 text-slate-300 tabular-nums">{{ $scan->created_at->format('Y-m-d H:i') }}</td>
-                                <td class="py-3 text-right">
-                                    <a href="{{ route('scan.show', $scan) }}"
-                                       class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-sky-300/30 bg-sky-400/10 text-sky-200 text-xs font-medium hover:bg-sky-400/20 hover:border-sky-300/50 transition whitespace-nowrap">
-                                        View Details
+                                <td class="py-3.5 pr-4 text-slate-300 tabular-nums whitespace-nowrap">{{ $scan->created_at->format('Y-m-d H:i') }}</td>
+                                <td class="py-3.5 text-right">
+                                    <a href="{{ route('scan.show', $scan) }}" class="d-view whitespace-nowrap">
+                                        View Details <span aria-hidden="true">→</span>
                                     </a>
                                 </td>
                             </tr>

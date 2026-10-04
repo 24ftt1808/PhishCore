@@ -33,67 +33,100 @@
     $topReason = collect($analysis->flags ?? [])->filter(fn ($check) => is_array($check))->sortByDesc('points')->first();
 @endphp
 
-{{-- VERDICT HERO --}}
-<div class="r-card r-hero r-in p-6 sm:p-8 mb-6" style="--c: {{ $style['rgb'] }}; --d:.15s">
-    <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-        <div class="flex items-start gap-4">
-            <span class="r-tile" style="width:2.9rem;height:2.9rem">
-                <svg class="w-6 h-6 {{ $style['text'] }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-            </span>
-            <div>
-                <p class="{{ $style['text'] }} font-bold text-base tracking-wide">{{ $style['label'] }}</p>
-                <p class="text-xs text-slate-300 mt-1">
-                    Scanned {{ $report->created_at->format('j F Y \a\t g:i A') }}
-                    @if ($report->user)
-                        &middot; by {{ $report->user->name }}
-                    @endif
-                </p>
-            </div>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-[11px] font-mono text-slate-300 px-2.5 py-1.5 rounded-full border border-slate-600/50 bg-slate-900/40">{{ $refId }}</span>
-            <span class="text-xs font-semibold px-3 py-1.5 rounded-full {{ $style['threatBg'] }}">{{ $style['threat'] }}</span>
-        </div>
-    </div>
+@php
+    $headline = match ($analysis->verdict) {
+        'phishing' => 'Phishing detected',
+        'suspicious' => 'This looks suspicious',
+        'review' => 'Needs a manual review',
+        default => 'This appears safe',
+    };
+    $verdictIcon = match ($analysis->verdict) {
+        'clean' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',
+        'review' => 'M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z',
+        default => 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
+    };
+    $checkList = collect($analysis->flags ?? [])->filter(fn ($check) => is_array($check));
+    $heroVt = $ctiLookup?->raw_response['data']['attributes']['last_analysis_stats'] ?? null;
+    $heroVtTotal = $heroVt ? array_sum(array_map('intval', $heroVt)) : 0;
+    $heroFacts = array_values(array_filter([
+        ['Checks flagged', $checkList->where('points', '>', 0)->count() . ' of ' . $checkList->count(), $checkList->where('points', '>', 0)->isNotEmpty() ? $style['text'] : 'text-white'],
+        $heroVtTotal > 0 ? ['Security vendors', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) . ' of ' . $heroVtTotal . ' flagged', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) > 0 ? 'text-red-300' : 'text-emerald-300'] : null,
+        $analysis->domain_age_days !== null ? ['Domain age', number_format($analysis->domain_age_days) . ' days', $analysis->domain_age_days < 30 ? 'text-orange-300' : 'text-white'] : null,
+        $analysis->duration_ms !== null ? ['Scan time', round($analysis->duration_ms / 1000, 1) . 's', 'text-white'] : null,
+    ]));
+@endphp
 
-    <div class="grid md:grid-cols-3 gap-8 items-center">
-        <div class="md:col-span-2 space-y-4 min-w-0">
-            <div>
-                <p class="text-xs font-medium tracking-wide text-slate-300 mb-2 flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $typeIcons[$report->type] ?? $typeIcons['url'] }}" /></svg>
-                    {{ $typeLabel }}
-                </p>
-                <div class="r-well px-4 py-3 text-sm text-slate-100 font-mono break-all">
-                    {{ $typeValue }}
+{{-- VERDICT HERO --}}
+<section class="r-card r-hero r-in mb-6 overflow-hidden" style="--c: {{ $style['rgb'] }}; --d:.15s">
+    <div class="p-6 sm:p-8 grid lg:grid-cols-[minmax(0,1fr)_17rem] gap-x-10 gap-y-7">
+        <div class="min-w-0">
+            <div class="flex items-start gap-4">
+                <span class="r-tile" style="width:3rem;height:3rem">
+                    <svg class="w-6 h-6 {{ $style['text'] }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $verdictIcon }}" />
+                    </svg>
+                </span>
+                <div class="min-w-0">
+                    <h2 class="r-headline text-xl sm:text-2xl lg:text-3xl font-bold break-words {{ $style['text'] }} leading-tight">{{ $headline }}</h2>
+                    <p class="mt-1 text-xs text-slate-400">
+                        <span class="font-mono">{{ $refId }}</span> &middot; Scanned {{ $report->created_at->format('j F Y \a\t g:i A') }}@if ($report->user) &middot; by {{ $report->user->name }}@endif
+                    </p>
                 </div>
             </div>
 
             @if ($topReason && ($topReason['points'] ?? 0) > 0)
-                <div class="flex items-start gap-3 r-well px-4 py-3" style="border-color: rgba({{ $style['rgb'] }}, .3)">
-                    <svg width="18" height="18" class="{{ $style['text'] }} shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12V16.5zm9-4.5a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p class="text-sm text-slate-100 leading-relaxed">{{ $topReason['message'] }}</p>
-                </div>
+                <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $topReason['message'] }}</p>
             @endif
+
+            <div class="mt-6">
+                <p class="text-[11px] tracking-[0.14em] text-slate-400 mb-1.5">{{ $typeLabel }}</p>
+                <div class="r-well flex items-center gap-3 px-4 py-3">
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $typeIcons[$report->type] ?? $typeIcons['url'] }}" /></svg>
+                    <p class="flex-1 min-w-0 font-mono text-sm text-white break-all">{{ $typeValue }}</p>
+                </div>
+            </div>
         </div>
 
-        <div class="flex flex-col items-center">
-            <svg width="176" height="96" viewBox="0 0 200 110" style="overflow: visible;">
+        <div class="lg:border-l lg:border-white/10 lg:pl-10 flex flex-col items-center justify-center">
+            <svg width="200" height="110" viewBox="0 0 200 110" style="overflow: visible;">
                 <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(148,163,184,.2)" stroke-width="14" stroke-linecap="round" />
                 <path class="r-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="{{ $style['ring'] }}" stroke-width="14" stroke-linecap="round"
                       stroke-dasharray="{{ $arcLength }}" stroke-dashoffset="{{ $arcOffset }}" style="--from: {{ $arcLength }}; --to: {{ $arcOffset }}" />
             </svg>
-            <div style="margin-top: -32px;" class="text-center">
-                <span class="block text-3xl font-bold text-white">{{ $analysis->risk_score }}</span>
+            <div style="margin-top: -40px;" class="text-center">
+                <span class="block text-4xl font-bold text-white tabular-nums">{{ $analysis->risk_score }}</span>
             </div>
-            <p class="text-[11px] tracking-wide text-slate-300 mt-1">RISK SCORE / 100</p>
+            <p class="text-[11px] tracking-[0.14em] text-slate-300 mt-2">RISK SCORE / 100</p>
             <p class="text-xs font-bold tracking-wide {{ $style['text'] }} mt-0.5">{{ $severityLabel }}</p>
         </div>
     </div>
-</div>
+
+    <div class="r-facts grid grid-cols-2 border-t border-white/10 bg-black/10" style="--n: {{ max(count($heroFacts), 1) }}">
+        @foreach ($heroFacts as [$factLabel, $factValue, $factText])
+            <div class="px-6 sm:px-8 py-3.5">
+                <p class="text-[11px] tracking-[0.12em] text-slate-400">{{ strtoupper($factLabel) }}</p>
+                <p class="mt-1 text-sm font-semibold tabular-nums {{ $factText }}">{{ $factValue }}</p>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="flex flex-wrap gap-3 px-6 sm:px-8 py-4 border-t border-white/10">
+        <a href="{{ route('scan.index') }}" class="r-btn r-btn-main">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+            {{ $scanAnotherLabel }}
+        </a>
+        <span class="r-btn r-btn-ghost opacity-60 cursor-not-allowed" title="Coming soon">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+            Download PDF Report
+        </span>
+        @guest
+            <a href="{{ route('register') }}" class="r-btn r-btn-ghost">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg>
+                Create Account to Save History
+            </a>
+        @endguest
+    </div>
+</section>
 
 {{-- CTI / VIRUSTOTAL --}}
 @if ($ctiLookup)
@@ -222,24 +255,6 @@
         </div>
     </div>
 @endif
-
-{{-- ACTIONS --}}
-<div class="r-in flex flex-wrap gap-3 mb-10" style="--d:.35s">
-    <a href="{{ route('scan.index') }}" class="r-btn r-btn-main">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-        {{ $scanAnotherLabel }}
-    </a>
-    <span class="r-btn r-btn-ghost opacity-60 cursor-not-allowed" title="Coming soon">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-        Download PDF Report
-    </span>
-    @guest
-        <a href="{{ route('register') }}" class="r-btn r-btn-ghost">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg>
-            Create Account to Save History
-        </a>
-    @endguest
-</div>
 
 {{-- DETECTION DETAILS --}}
 <h2 class="text-lg font-bold text-white mb-1">Detection Details</h2>

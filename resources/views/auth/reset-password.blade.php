@@ -23,22 +23,19 @@
         </svg>
     </div>
 
-    <h1 class="text-3xl font-bold text-white mb-1">Forgot your password?</h1>
-    <p class="text-slate-400 mb-8">Enter your registered email address and we'll send you instructions to reset your password.</p>
+    <h1 class="text-3xl font-bold text-white mb-1">Set a new password</h1>
+    <p class="text-slate-400 mb-8">Choose a strong new password for your PhishCore account.</p>
 
-    {{-- Session Status --}}
-    @if (session('status'))
-        <div class="mb-4 text-sm font-medium text-green-400">
-            {{ session('status') }}
-        </div>
-    @endif
-
-    <form method="POST" action="{{ route('password.email') }}" class="space-y-5">
+    <form method="POST" action="{{ route('password.store') }}" class="space-y-5" x-data="{ showPassword: false, showConfirm: false }">
         @csrf
 
+        {{-- Password Reset Token --}}
+        <input type="hidden" name="token" value="{{ $request->route('token') }}">
+
+        {{-- Email --}}
         <div>
             <label for="email" class="block text-xs tracking-wide text-slate-400 mb-2">EMAIL ADDRESS</label>
-            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
+            <input id="email" type="email" name="email" value="{{ old('email', $request->email) }}" required autofocus autocomplete="username"
                    placeholder="yourname@example.com"
                    class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
             @error('email')
@@ -46,20 +43,53 @@
             @enderror
         </div>
 
+        <div>
+            <label for="password" class="block text-xs tracking-wide text-slate-400 mb-2">NEW PASSWORD</label>
+            <div class="relative">
+                <input :type="showPassword ? 'text' : 'password'" id="password" name="password" required autocomplete="new-password"
+                       placeholder="••••••••"
+                       class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                <button type="button" @click="showPassword = !showPassword"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                </button>
+            </div>
+            @error('password')
+                <p class="mt-1 text-xs text-red-400">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="password_confirmation" class="block text-xs tracking-wide text-slate-400 mb-2">CONFIRM NEW PASSWORD</label>
+            <div class="relative">
+                <input :type="showConfirm ? 'text' : 'password'" id="password_confirmation" name="password_confirmation" required autocomplete="new-password"
+                       placeholder="••••••••"
+                       class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-sky-500 transition">
+                <button type="button" @click="showConfirm = !showConfirm"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                </button>
+            </div>
+            @error('password_confirmation')
+                <p class="mt-1 text-xs text-red-400">{{ $message }}</p>
+            @enderror
+        </div>
+
         <button type="submit"
                 class="w-full py-3 rounded-lg bg-gradient-to-r from-sky-400 to-blue-600 text-white font-medium hover:opacity-90 transition">
-            Send Reset Link
+            Reset Password
         </button>
-
-        <p class="text-center text-sm text-slate-400">
-            Remember your password?
-            <a href="{{ route('login') }}" class="text-sky-400 hover:text-sky-300">Sign in</a>
-        </p>
 
         <div class="flex items-start gap-3 bg-slate-900/60 border border-slate-800 rounded-lg px-4 py-3 mt-6">
             <span class="text-sky-400 mt-0.5">🔒</span>
             <p class="text-xs text-slate-500">
-                For your security, the reset link will expire after 15 minutes.
+                This reset link can only be used once. If it has expired, request a new one from the sign-in page.
             </p>
         </div>
     </form>

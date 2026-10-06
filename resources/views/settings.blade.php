@@ -223,13 +223,13 @@
 
     <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[this.tab === 'profile' ? 'tProfile' : 'tSecurity']; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
 
-        <div class="s-in mb-2 sm:mb-6 xl:col-start-2 xl:row-start-1">
+        <div class="s-in mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
             <p class="text-slate-300 text-sm">Manage your account and security preferences.</p>
         </div>
 
         {{-- ID BADGE --}}
-        <aside class="relative z-20 mb-6 xl:mb-0 xl:col-start-1 xl:row-start-1 xl:row-span-2" x-data="idBadge()">
+        <aside class="relative z-20 mx-auto w-full mb-6 xl:mb-0 xl:col-start-1 xl:row-start-1 xl:row-span-2" x-data="idBadge()">
             <div class="b-drop b-persp" @mousemove="if (drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
                  @mouseleave="if (drag || raf) return; rx = 0; ry = 0; hold = false">
                 
@@ -365,7 +365,7 @@
         </aside>
 
         {{-- RIGHT SIDE --}}
-        <div class="min-w-0 xl:col-start-2 xl:row-start-2">
+        <div class="min-w-0 w-full max-w-3xl mx-auto xl:max-w-none xl:mx-0 xl:col-start-2 xl:row-start-2">
             <div class="s-in s-tabs" style="--d:.08s">
                 <span class="s-pill" x-ref="pill" aria-hidden="true"></span>
                 <button type="button" x-ref="tProfile" @click="tab = 'profile'" class="s-tab" :class="tab === 'profile' ? 's-tab-on' : ''">

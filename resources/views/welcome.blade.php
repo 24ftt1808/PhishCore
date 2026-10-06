@@ -14,11 +14,11 @@
             PhishCore helps anyone analyse suspicious links, emails, phone numbers and screenshots &mdash; identifying phishing threats and protecting sensitive information.
         </p>
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <a href="{{ route('register') }}" class="btn-primary !rounded-lg !px-6 !py-3.5 md:!py-3">
+            <a href="{{ route('register') }}" class="btn-liquid btn-liquid--primary">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
                 Start Scanning
             </a>
-            <a href="#how-it-works" class="btn-ghost !rounded-lg !px-6 !py-3.5 md:!py-3">
+            <a href="#how-it-works" class="btn-liquid">
                 Learn How It Works
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </a>

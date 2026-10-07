@@ -1,0 +1,13 @@
+# Emails for the email scan test. Format: label|group|sender|subject|body
+# label is scam or legit. Lines starting with # are ignored. The body is the last field and may contain "|".
+# These are made-up examples written to look like real campaigns. None of the addresses is a verified real sender.
+scam|crypto|support@claim-airdrop-rewards.com|Your Airdrop is ready|Congratulations! Your Airdrop is ready. Click this button to claim your tokens. Connect Wallet to receive them.
+scam|brand|info@coinbase-account-help.com|Verify your account to continue using Coinbase|Dear user, your Coinbase account is now locked. Verify your account within 24 hours to restore access.
+scam|brand|security@paypal-secure-verify.com|Account suspended|URGENT: your PayPal account has been suspended. Verify your account within 24 hours. Click here to confirm your password.
+scam|brand|noreply@dhl-parcel-track.top|Parcel held|Your DHI parcel is held at customs. A customs fee is required. Click below to pay.
+scam|advance-fee|kayafontane56@gmail.com|Dear Friend|Dear Friend, God bless you. I am contacting you for the second time about my late father's inheritance of $4,500,000.
+scam|portuguese|sac9283@recompensa-pontos.com|Voce tem pontos acumulados|Caro cliente, voce tem pontos acumulados que estao proximos de expirar. Resgate agora seus pontos.
+legit|bank|statements@bibd.com.bn|Your e-statement|Your BIBD e-statement for September is now available. Please log in to the BIBD app to view it.
+legit|personal|mum@gmail.com|Dinner|Dinner at 7 tonight. Can you pick up some milk on the way home?
+legit|work|alice@polibrunei.edu.bn|Meeting notes|Dear friends and colleagues, the weekly status update is below. Please send your follow-ups by Friday.
+legit|newsletter|news@canva.com|Your design is ready|Canva: your design is ready. Download your file or click here to edit it again.

@@ -14,3 +14,4 @@ legit|email|scan-screenshots/legit-03-school-email.png
 legit|email|scan-screenshots/legit-04-receipt-email.png
 legit|blank|scan-screenshots/unknown-01-no-text.png
 scam|real|scan-screenshots/real-01-redlight.png
+scam|real|scan-screenshots/real-02-meta.png

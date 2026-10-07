@@ -33,3 +33,6 @@ scan-list.txt
 
 feed2.txt
 scan-list.holdout.txt
+
+feed3.txt
+scan-list.full.txt

@@ -1,0 +1,42 @@
+# Harder legitimate list: real sites that look risky to PhishCore's checks.
+# Format: label|group|url
+#
+# Groups:
+#   hosted         Real sites on free hosting (github.io, netlify.app, vercel.app)
+#   brand-hosted   Real company open-source pages on github.io. The hostname or page
+#                  mentions a big brand, which a brand-impersonation check might flag.
+#   redirects      Real sites that redirect to a different domain on purpose.
+#   brunei-small   Smaller Brunei sites that are NOT on the engine's official-domain list.
+#   global-small   Smaller international sites.
+#
+# Every URL below was opened on 2026-10-07 and was a working, genuine site.
+# Sites change, so if one fails on your run, delete its line and note it.
+# Add your own real sites at the bottom, especially ones on pages.dev, Wix, Weebly or WordPress.
+
+legit|hosted|https://pabdue.github.io/
+legit|hosted|https://eleventy-base-blog.netlify.app/
+legit|hosted|https://gatsby-starter-blog-demo.netlify.app/
+legit|hosted|https://nextjs-commerce.vercel.app/
+legit|hosted|https://octocat.github.io/
+
+legit|brand-hosted|https://microsoft.github.io/
+legit|brand-hosted|https://google.github.io/
+legit|brand-hosted|https://spotify.github.io/
+legit|brand-hosted|https://netflix.github.io/
+
+legit|redirects|https://swr.vercel.app/
+legit|redirects|https://googleblog.blogspot.com/
+
+legit|brunei-small|https://bruneiastronomy.org/
+legit|brunei-small|https://bizbrunei.com/
+legit|brunei-small|https://borneoinsidersguide.com/
+legit|brunei-small|https://openbrunei.org/
+legit|brunei-small|https://green-brunei.com/
+legit|brunei-small|https://www.bruneitourism.com/
+legit|brunei-small|https://stgeorges.edu.bn/
+legit|brunei-small|https://pb.edu.bn/
+legit|brunei-small|https://www.bsm.com.bn/
+
+legit|global-small|https://zafigo.com/
+
+# Add your own below (same format):

@@ -160,3 +160,106 @@ test('a datacenter-only address still scores 5 and a clean address scores 0', fu
     expect($this->engine->checkIpReputation('https://example.com')['points'])->toBe(5)
         ->and($this->engine->checkIpReputation('https://example.com')['points'])->toBe(0);
 })->skip(fn () => gethostbyname('example.com') === 'example.com', 'needs DNS to resolve example.com');
+
+// --- free hosting: brand in the path, official brand pages, shared IPs ---
+
+test('a well-known brand in the path of a free-hosting page adds points, a plain page does not', function () {
+    expect($this->engine->checkFreeHostingPlatform('https://someone.github.io/Amazon-Clone')['points'])->toBe(25)
+        ->and($this->engine->checkFreeHostingPlatform('https://someone.github.io/DHL')['points'])->toBe(25)
+        ->and($this->engine->checkFreeHostingPlatform('https://someone.github.io/spotify-clone')['points'])->toBe(25)
+        ->and($this->engine->checkFreeHostingPlatform('https://someone.github.io/Tiktokshop-byte/de.html')['points'])->toBe(25)
+        ->and($this->engine->checkFreeHostingPlatform('https://someone.github.io/')['points'])->toBe(10)
+        ->and($this->engine->checkFreeHostingPlatform('https://example.com/Amazon-Clone')['points'])->toBe(0);
+});
+
+test('brand words inside longer words do not count as a brand in the path', function () {
+    expect($this->engine->checkFreeHostingPlatform('https://someone.github.io/setups-and-groups')['points'])->toBe(10)
+        ->and($this->engine->checkFreeHostingPlatform('https://someone.github.io/pineapple-recipes')['points'])->toBe(10);
+});
+
+test('the verified official github.io pages are recognised and fakes are not', function () {
+    foreach (['microsoft.github.io', 'google.github.io', 'spotify.github.io', 'netflix.github.io', 'googleblog.blogspot.com', 'blog.google'] as $host) {
+        expect(callPrivate($this->engine, 'isOfficialBrandDomain', $host))->toBeTrue($host);
+    }
+
+    foreach (['amazon.github.io', 'paypal.github.io', 'microsoft.github.io.evil.com', 'notgoogle.github.io'] as $host) {
+        expect(callPrivate($this->engine, 'isOfficialBrandDomain', $host))->toBeFalse($host);
+    }
+
+    expect($this->engine->checkUrlSyntax('https://microsoft.github.io/')['points'])->toBe(0)
+        ->and($this->engine->checkUrlSyntax('https://microsoft-support.github.io/')['flagged'])->toBeTrue()
+        ->and($this->engine->checkUrlSyntax('https://paypal.github.io/login')['flagged'])->toBeTrue();
+});
+
+test('a meta-refresh on an official brand page is ignored but not on other sites', function () {
+    $html = '<meta http-equiv="refresh" content="0; url=https://opensource.microsoft.com">';
+
+    expect(callPrivate($this->engine, 'checkMetaRefresh', $html, 'microsoft.github.io')['points'])->toBe(0)
+        ->and(callPrivate($this->engine, 'checkMetaRefresh', $html, 'evil.example')['points'])->toBe(15);
+});
+
+test('a redirect from an official brand page costs nothing, from other sites it still does', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'googleblog.blogspot.com*' => Http::response('', 302, ['Location' => 'https://blog.google/']),
+        'swr.vercel.app*' => Http::response('', 302, ['Location' => 'https://vercel.com/oss/swr']),
+        'evil.example*' => Http::response('', 302, ['Location' => 'https://paypal.com/']),
+        '*' => Http::response('ok', 200),
+    ]);
+
+    expect($this->engine->checkRedirectChain('https://googleblog.blogspot.com/')['points'])->toBe(0)
+        ->and($this->engine->checkRedirectChain('https://swr.vercel.app/')['points'])->toBe(20)
+        ->and($this->engine->checkRedirectChain('https://evil.example/')['points'])->toBe(20);
+});
+
+test('the proxy flag is ignored on a shared free-hosting address but counts elsewhere', function () {
+    Http::fake(['ip-api.com/*' => Http::response(['status' => 'success', 'country' => 'US', 'isp' => 'Shared', 'proxy' => true, 'hosting' => false, 'query' => '1.2.3.4'])]);
+
+    expect($this->engine->checkIpReputation('https://octocat.github.io/')['points'])->toBe(0)
+        ->and($this->engine->checkIpReputation('https://github.com/')['points'])->toBe(10);
+})->skip(fn () => gethostbyname('octocat.github.io') === 'octocat.github.io' || gethostbyname('github.com') === 'github.com', 'needs DNS');
+
+// --- brand mentions and iframe sizes on real pages (found on stgeorges.edu.bn) ---
+
+test('iframes with marginwidth or marginheight of 0 are not treated as hidden', function () {
+    $html = '<iframe id="web-visitor-counter" width="78px" height="16px" border="0" marginwidth="0" marginheight="0" hspace="0" vspace="0" frameborder="0" src="https://example.com/counter"></iframe>';
+
+    expect(hiddenIframePoints($this->engine, $html))->toBe(0)
+        ->and(hiddenIframePoints($this->engine, '<iframe src="https://evil.example/x" width="0" height="0"></iframe>'))->toBe(20);
+});
+
+test('a school page that lists Microsoft software and has a login box is not brand impersonation', function () {
+    Http::fake(['*' => Http::response(
+        '<html><head><title>St. George\'s School</title></head><body><h1>Welcome</h1>'
+        .'<input id="login-box" type="password" name="waPassword" />'
+        .'<p>The school has a Computer Laboratory and software applications, including Microsoft Paint, Microsoft PowerPoint, Microsoft Excel and GIMP for students.</p></body></html>',
+        200
+    )]);
+
+    expect($this->engine->checkPageContent('https://school.example/')['points'])->toBe(0);
+});
+
+test('a login page that names the brand in its title, logo, or login prompt is still flagged', function () {
+    $pages = [
+        '<html><head><title>Netflix - Update payment</title></head><body><form><input type="password" name="p"></form></body></html>',
+        '<html><head><title>Welcome</title></head><body><p>Please log in to your PayPal account to continue.</p><form><input type="password" name="p"></form></body></html>',
+        '<html><head><title>Sign in</title></head><body><img src="logo.png" alt="Microsoft"><form><input type="password" name="p"></form><p>(c) Microsoft</p></body></html>',
+    ];
+
+    // One fake with a response per page: a second Http::fake() call would not override the first.
+    $responses = Http::sequence();
+    foreach ($pages as $html) {
+        $responses->push($html, 200);
+    }
+    Http::fake(['*' => $responses]);
+
+    foreach ($pages as $html) {
+        expect($this->engine->checkPageContent('https://evil.example/login')['points'])->toBeGreaterThanOrEqual(30);
+    }
+});
+
+test('a brand mention on its own official domain is still not flagged', function () {
+    Http::fake(['*' => Http::response('<html><head><title>Sign in to PayPal</title></head><body><form><input type="password" name="p"></form></body></html>', 200)]);
+
+    expect($this->engine->checkPageContent('https://www.paypal.com/signin')['points'])->toBe(0);
+});

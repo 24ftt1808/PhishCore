@@ -61,13 +61,18 @@ class AnalysisEngine
         'fedex' => ['fedex.com'],
         'ups' => ['ups.com'],
         'paypal' => ['paypal.com'],
-        'google' => ['google.com', 'gmail.com'],
+        // google.github.io, googleblog.blogspot.com and blog.google are
+        // Google's own pages; microsoft/netflix/spotify .github.io are those
+        // companies' official open-source pages. Each was opened and confirmed
+        // before adding, because GitHub account names are first come first
+        // served and other brands' same-named accounts may belong to someone else.
+        'google' => ['google.com', 'gmail.com', 'blog.google', 'googleblog.blogspot.com', 'google.github.io'],
         'facebook' => ['facebook.com', 'fb.com'],
         'apple' => ['apple.com', 'icloud.com'],
-        'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com'],
+        'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com', 'microsoft.github.io'],
         'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
         'amazon' => ['amazon.com'],
-        'netflix' => ['netflix.com'],
+        'netflix' => ['netflix.com', 'netflix.github.io'],
         'maybank' => ['maybank2u.com.my', 'maybank.com'],
         'bibd' => ['bibd.com.bn'],
         // Crypto/wallets — domains verified via web search before adding,
@@ -102,7 +107,7 @@ class AnalysisEngine
         'whatsapp' => ['whatsapp.com'],
         'linkedin' => ['linkedin.com'],
         'tiktok' => ['tiktok.com'],
-        'spotify' => ['spotify.com'],
+        'spotify' => ['spotify.com', 'spotify.github.io'],
         'adobe' => ['adobe.com'],
         'dropbox' => ['dropbox.com'],
         'steam' => ['steampowered.com'],
@@ -562,7 +567,15 @@ class AnalysisEngine
             $reasons = [];
             $points = 0;
 
-            if ($isProxy) {
+            // On a free hosting platform the IP is shared by every site on it.
+            // ip-api marks those shared IPs as proxies (github.com and every
+            // github.io page get the flag), which says nothing about this one
+            // site; the hosting-platform check already covers the platform.
+            $sharedPlatform = $this->checkFreeHostingPlatform($url)['platform'];
+
+            if ($isProxy && $sharedPlatform !== null) {
+                $reasons[] = "IP address is flagged as a proxy but is shared by all sites on \"{$sharedPlatform}\", so it says nothing about this site";
+            } elseif ($isProxy) {
                 // Lowered from 20 after the accuracy test (scan:batch): ip-api
                 // marks shared platform IPs as proxies, so github.com and
                 // moh.gov.bn scored 25 and were flagged, and 6 of the 8 scams
@@ -665,7 +678,11 @@ class AnalysisEngine
         $normalizeHost = fn (?string $h) => preg_replace('/^www\./', '', strtolower($h ?? ''));
 
         if ($finalHost && $originalHost && $normalizeHost($finalHost) !== $normalizeHost($originalHost)) {
-            if ($this->isBruneiGovernmentHost($originalHost) && $this->isBruneiGovernmentHost($finalHost)) {
+            if ($this->isOfficialBrandDomain((string) $originalHost)) {
+                // Domains on the curated official list cannot be registered by a
+                // scammer, so where they send visitors is the owner's choice.
+                $reasons[] = "URL redirects to {$finalHost}; the submitted domain is on PhishCore's official-domain list";
+            } elseif ($this->isBruneiGovernmentHost($originalHost) && $this->isBruneiGovernmentHost($finalHost)) {
                 // e.g. www.mofe.gov.bn -> www.mof.gov.bn after a ministry rename.
                 $reasons[] = "URL redirects to another .gov.bn domain ({$finalHost}); redirects between Brunei government sites are normal";
             } else {
@@ -716,10 +733,23 @@ class AnalysisEngine
 
         foreach ($freeHostSuffixes as $suffix) {
             if ($host === $suffix || str_ends_with($host, '.'.$suffix)) {
+                $points = 10;
+                $reasons = ["Hosted on \"{$suffix}\", a free website-builder/hosting platform commonly used for disposable phishing pages — legitimate small projects also use these, so this is a supporting signal only"];
+
+                // On a free platform the subdomain is whoever signed up, so a
+                // famous brand in the PATH (github.io/Amazon-Clone, /DHL,
+                // /Netflix) is the usual shape of a fake page copying that brand.
+                // A brand's own official pages are skipped.
+                $brand = $this->brandInPath((string) parse_url($url, PHP_URL_PATH));
+                if ($brand !== null && ! $this->isOfficialBrandDomain($host)) {
+                    $points += 15;
+                    $reasons[] = "The page address on this free platform names a well-known brand (\"{$brand}\") that the site does not belong to";
+                }
+
                 return [
                     'flagged' => true,
-                    'points' => 10,
-                    'reasons' => ["Hosted on \"{$suffix}\", a free website-builder/hosting platform commonly used for disposable phishing pages — legitimate small projects also use these, so this is a supporting signal only"],
+                    'points' => $points,
+                    'reasons' => $reasons,
                     'platform' => $suffix,
                 ];
             }
@@ -951,7 +981,10 @@ class AnalysisEngine
         // impersonates a brand AND asks for a password together — an
         // informational page about that brand does not do both.
         if ($hasSensitiveField) {
-            $brandDetection = $this->detectBrandExactMatch($combinedText);
+            $brandDetection = $this->detectBrandExactMatch(
+                $combinedText,
+                fn (string $brand) => $this->brandIsPageIdentityOrLoginPrompt($brand, $title, $html, $bodyText)
+            );
             if ($brandDetection['brand']) {
                 $brandMismatch = $this->checkPageBrandMismatch($brandDetection['brand'], $brandDetection['surface'], $host);
                 if ($brandMismatch['flagged']) {
@@ -1091,6 +1124,10 @@ class AnalysisEngine
 
         $normalize = fn (?string $h) => preg_replace('/^www\./', '', strtolower($h ?? ''));
 
+        if ($this->isOfficialBrandDomain($pageHost)) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+        }
+
         if ($targetHost && $normalize($targetHost) !== $normalize($pageHost)) {
             return [
                 'flagged' => true,
@@ -1100,6 +1137,32 @@ class AnalysisEngine
         }
 
         return ['flagged' => false, 'points' => 0, 'reasons' => []];
+    }
+
+    /**
+     * The first well-known brand named as a whole word in a URL path, or null.
+     * Words are split on anything that is not a letter or digit. A brand of
+     * five letters or more also matches a word that starts with it
+     * ("tiktokshop"); shorter brands ("dhl", "ups") must match exactly so
+     * that "setups" or "groups" never count.
+     */
+    private function brandInPath(string $path): ?string
+    {
+        $words = preg_split('/[^a-z0-9]+/', strtolower($path), -1, PREG_SPLIT_NO_EMPTY);
+
+        foreach (array_keys(self::OFFICIAL_BRAND_DOMAINS) as $brand) {
+            if (! preg_match('/^[a-z0-9]+$/', $brand)) {
+                continue; // multi-word or dotted names such as "royal mail"
+            }
+
+            foreach ($words as $word) {
+                if ($word === $brand || (strlen($brand) >= 5 && str_starts_with($word, $brand))) {
+                    return $brand;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1201,7 +1264,8 @@ class AnalysisEngine
         // still counts.
         if (preg_match_all('/<iframe\b[^>]*>/i', $html, $iframeTags)) {
             foreach ($iframeTags[0] as $iframeTag) {
-                $isHidden = preg_match('/(?:width|height)\s*=\s*["\']0["\']|display\s*:\s*none|visibility\s*:\s*hidden/i', $iframeTag);
+                // (?<![\w-]) so "marginwidth=\"0\"" and "data-width=\"0\"" are not read as width="0".
+                $isHidden = preg_match('/(?<![\w-])(?:width|height)\s*=\s*["\']0["\']|display\s*:\s*none|visibility\s*:\s*hidden/i', $iframeTag);
 
                 if ($isHidden && ! $this->isTagManagerIframe($iframeTag)) {
                     $reasons[] = 'Page contains a hidden iframe (zero-size or display:none/visibility:hidden) — commonly used to load malicious content invisibly to the visitor';
@@ -1224,12 +1288,49 @@ class AnalysisEngine
     }
 
     /**
+     * Whether a brand named somewhere in a page is being USED by the page, not
+     * just mentioned. It counts when the brand is in the page's identity (title,
+     * a heading, an image's alt/title text, or a site-name meta tag), or when
+     * it sits within a few words of a login or credential word ("log in to your
+     * PayPal account"). A school page that lists "Microsoft Paint, Microsoft
+     * Excel" among its computer-lab software does neither, and was being
+     * called brand impersonation because it also has a staff login box.
+     */
+    private function brandIsPageIdentityOrLoginPrompt(string $brand, string $title, string $html, string $bodyText): bool
+    {
+        $b = preg_quote($brand, '/');
+
+        $identity = $title;
+
+        if (preg_match_all('/<h[1-3][^>]*>(.*?)<\/h[1-3]>/is', $html, $headings)) {
+            $identity .= ' '.strip_tags(implode(' ', $headings[1]));
+        }
+
+        if (preg_match_all('/<img[^>]+(?:alt|title)\s*=\s*["\']([^"\']*)["\']/i', $html, $imageText)) {
+            $identity .= ' '.implode(' ', $imageText[1]);
+        }
+
+        if (preg_match_all('/<meta[^>]+(?:og:site_name|application-name)[^>]*content\s*=\s*["\']([^"\']*)["\']/i', $html, $siteNames)) {
+            $identity .= ' '.implode(' ', $siteNames[1]);
+        }
+
+        if (preg_match('/\b'.$b.'\b/i', $identity)) {
+            return true;
+        }
+
+        $credential = '(?:sign\s*in|log\s*in|login|logon|password|passcode|verify|verification|confirm|secure|account|billing|payment|wallet|recover|unlock|suspended)';
+
+        return preg_match('/\b'.$credential.'\b(?:\W+\w+){0,6}?\W+\b'.$b.'\b/i', $bodyText) === 1
+            || preg_match('/\b'.$b.'\b(?:\W+\w+){0,6}?\W+\b'.$credential.'\b/i', $bodyText) === 1;
+    }
+
+    /**
      * Exact-only brand mention detection for page content — deliberately
      * simpler than detectBrandInText()'s fuzzy fallback. See the caller in
      * checkPageContent() for why: fuzzy matching against a full page body
      * has far more false-positive surface than short OCR/email text.
      */
-    private function detectBrandExactMatch(string $text): array
+    private function detectBrandExactMatch(string $text, ?callable $confirm = null): array
     {
         $knownBrands = [
             'dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
@@ -1256,7 +1357,7 @@ class AnalysisEngine
         $lowerText = strtolower($text);
 
         foreach ($knownBrands as $brand) {
-            if (preg_match('/\b'.preg_quote($brand, '/').'\b/', $lowerText)) {
+            if (preg_match('/\b'.preg_quote($brand, '/').'\b/', $lowerText) && ($confirm === null || $confirm($brand))) {
                 return ['brand' => $brand, 'surface' => $brand];
             }
         }
@@ -2735,4 +2836,4 @@ class AnalysisEngine
 
         return $result;
     }
-}
+}   

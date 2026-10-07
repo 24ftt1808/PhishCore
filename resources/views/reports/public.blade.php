@@ -49,12 +49,29 @@
     <section class="max-w-6xl mx-auto px-6 pt-8 md:pt-10 pb-16 md:pb-20">
 
         {{-- Header --}}
-        <div class="mb-6 md:mb-10">
-            <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4">
-                <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Community Transparency Feed
-            </span>
-            <h1 class="text-[1.7rem] md:text-3xl font-bold text-white mb-2">Public Threat Reports</h1>
-            <p class="text-slate-400 text-sm max-w-2xl leading-relaxed">Confirmed suspicious and phishing submissions across the PhishCore community. Safe results are not shown here.</p>
+        <div class="mb-6 md:mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+            <div>
+                <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Community Transparency Feed
+                </span>
+                <h1 class="text-[1.7rem] md:text-3xl font-bold text-white mb-2">Public Threat Reports</h1>
+                <p class="text-slate-400 text-sm max-w-2xl leading-relaxed">Confirmed suspicious and phishing submissions across the PhishCore community. Safe results are not shown here.</p>
+            </div>
+
+            <div class="shrink-0">
+                <p class="text-[11px] tracking-[0.14em] text-slate-400 mb-2">DOWNLOAD PHISHING FEED</p>
+                <div class="flex items-center gap-2">
+                    @foreach (['csv' => 'CSV', 'json' => 'JSON', 'txt' => 'TXT'] as $ext => $label)
+                        <a href="{{ route('reports.feed', ['format' => $ext]) }}"
+                           @if ($ext === 'csv') download @endif
+                           class="inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-xl bg-white/5 text-slate-200 border border-white/10 hover:bg-white/10 hover:border-sky-300/30 transition">
+                            <svg class="w-3.5 h-3.5 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                            {{ $label }}
+                        </a>
+                    @endforeach
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2 max-w-[17rem] leading-snug">Links only, no personal data. Automated verdicts can contain errors &mdash; verify before blocking.</p>
+            </div>
         </div>
 
         {{-- Stats --}}
@@ -90,6 +107,78 @@
                     <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                 </div>
                 <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.3rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
+            </div>
+        </div>
+
+        {{-- Trends --}}
+        @php
+            $typeMax = max(1, collect($trends['byType'])->max('count'));
+            $domainMax = max(1, collect($trends['topDomains'])->max('count') ?? 1);
+        @endphp
+        <div class="grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+            <div class="glass-panel rounded-2xl p-5 md:p-6 lg:col-span-2 flex flex-col">
+                <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-white font-semibold">Flagged reports per day</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Last 14 days &middot; {{ number_format($trends['windowTotal']) }} flagged</p>
+                    </div>
+                    <div class="flex items-center gap-4 text-xs text-slate-300">
+                        <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:#fb923c"></span>Suspicious</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:#f87171"></span>Phishing</span>
+                    </div>
+                </div>
+                <div class="relative flex-1 h-52 md:h-auto md:min-h-[15rem]">
+                    <canvas id="trendChart" role="img" aria-label="Flagged reports per day over the last 14 days, split into suspicious and phishing"></canvas>
+                </div>
+                <table class="sr-only">
+                    <caption>Flagged reports per day, last 14 days</caption>
+                    <thead><tr><th>Date</th><th>Suspicious</th><th>Phishing</th></tr></thead>
+                    <tbody>
+                        @foreach ($trends['labels'] as $i => $label)
+                            <tr><td>{{ $label }}</td><td>{{ $trends['suspicious'][$i] }}</td><td>{{ $trends['phishing'][$i] }}</td></tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="grid gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-1">
+                <div class="glass-panel rounded-2xl p-5 md:p-6">
+                    <h2 class="text-white font-semibold mb-4">By scan type</h2>
+                    <div class="space-y-3">
+                        @foreach ($trends['byType'] as $row)
+                            <div title="{{ $row['label'] }}: {{ $row['count'] }}">
+                                <div class="flex items-center justify-between text-xs mb-1.5">
+                                    <span class="text-slate-300">{{ $row['label'] }}</span>
+                                    <span class="text-slate-400 tabular-nums">{{ number_format($row['count']) }}</span>
+                                </div>
+                                <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                                    <div class="h-full rounded-full bg-sky-400" style="width: {{ $row['count'] > 0 ? max(4, round($row['count'] / $typeMax * 100)) : 0 }}%"></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 md:p-6">
+                    <h2 class="text-white font-semibold mb-4">Most reported domains</h2>
+                    @if (count($trends['topDomains']))
+                        <ol class="space-y-3">
+                            @foreach ($trends['topDomains'] as $row)
+                                <li title="{{ $row['domain'] }}: {{ $row['count'] }} report(s)">
+                                    <div class="flex items-center justify-between gap-3 text-xs mb-1.5">
+                                        <span class="text-slate-300 font-mono truncate">{{ $row['domain'] }}</span>
+                                        <span class="text-slate-400 tabular-nums shrink-0">{{ $row['count'] }}</span>
+                                    </div>
+                                    <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                                        <div class="h-full rounded-full bg-rose-400" style="width: {{ max(6, round($row['count'] / $domainMax * 100)) }}%"></div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @else
+                        <p class="text-xs text-slate-500">No flagged domains yet.</p>
+                    @endif
+                </div>
             </div>
         </div>
 
@@ -234,4 +323,45 @@
         });
     </script>
 
-</x-layouts.guest-landing>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvas = document.getElementById('trendChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            Chart.defaults.font.family = "'Manrope', system-ui, sans-serif";
+            Chart.defaults.color = '#cbd5e1';
+
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: @json($trends['labels']),
+                    datasets: [
+                        { label: 'Suspicious', data: @json($trends['suspicious']), backgroundColor: '#fb923c', borderRadius: 4, borderSkipped: false, maxBarThickness: 22 },
+                        { label: 'Phishing', data: @json($trends['phishing']), backgroundColor: '#f87171', borderRadius: 4, borderSkipped: false, maxBarThickness: 22 },
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: reduce ? false : { duration: 700 },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(8, 15, 34, .95)', borderColor: 'rgba(148, 163, 184, .25)', borderWidth: 1,
+                            titleColor: '#fff', bodyColor: '#e2e8f0', padding: 10, cornerRadius: 10, boxPadding: 4
+                        }
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, border: { color: 'rgba(148,163,184,.25)' },
+                             ticks: { color: '#cbd5e1', maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+                        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(148,163,184,.14)' }, border: { display: false },
+                             ticks: { color: '#cbd5e1', precision: 0 } }
+                    }
+                }
+            });
+        });
+    </script>
+
+</x-layouts.guest-landing>  

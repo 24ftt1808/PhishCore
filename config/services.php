@@ -39,6 +39,14 @@ return [
         'key' => env('GOOGLE_SAFE_BROWSING_API_KEY'),
     ],
 
+    // Optional extra check: a language model reads the message text. Off unless AI_TEXT_CHECK=true.
+    // PRIVACY: when on, message text is sent to Google. Free-tier data may be used by Google.
+    'ai_text' => [
+        'enabled' => env('AI_TEXT_CHECK', false),
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
+    ],
+
     'ocr_space' => [
     'key' => env('OCR_SPACE_API_KEY'),
 ],

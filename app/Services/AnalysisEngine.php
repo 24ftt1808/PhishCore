@@ -1216,6 +1216,21 @@ class AnalysisEngine
      * authorities send these through their own app or website, so the pairing
      * is worth points even when the link itself looks plain.
      */
+    /**
+     * Optional AI read of the message (see AiTextCheck). Skipped when the rules alone
+     * already say phishing, since it could add nothing useful there.
+     */
+    private function checkAiText(string $text, int $rulePoints): ?array
+    {
+        $ai = app(AiTextCheck::class);
+
+        if (! $ai->enabled() || $rulePoints >= 60) {
+            return null;
+        }
+
+        return $ai->assess($text);
+    }
+
     private function checkLinkInPressureMessage(array $contentResult, ?string $url): array
     {
         $none = ['flagged' => false, 'points' => 0, 'reasons' => []];
@@ -2310,11 +2325,11 @@ class AnalysisEngine
 
         $brandResult = $this->checkBrandSenderMismatch($brandDetection['brand'], $brandDetection['surface'], $email);
 
-        $totalPoints = min(
-            100,
-            $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
-                + $domainHistoryResult['points']
-        );
+        $rulePoints = $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
+            + $domainHistoryResult['points'];
+        $aiResult = $hasContentText ? $this->checkAiText($combinedText, $rulePoints) : null;
+
+        $totalPoints = min(100, $rulePoints + ($aiResult['points'] ?? 0));
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
         $checks = [
@@ -2327,6 +2342,9 @@ class AnalysisEngine
             $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
             if ($brandDetection['brand']) {
                 $checks[] = $this->buildCheck('Brand / Sender Correlation', $brandResult, 'HIGH RISK');
+            }
+            if ($aiResult !== null) {
+                $checks[] = $this->buildCheck('AI Message Review', $aiResult, $aiResult['verdict'] === 'scam' ? 'HIGH RISK' : 'SUSPICIOUS');
             }
         } else {
             $checks[] = [
@@ -2801,7 +2819,9 @@ class AnalysisEngine
         $brandSurfaceText = $brandDetection['surface'];
         $contentResult = $this->checkContentPatterns($text);
         $attachmentResult = $this->detectAttachment($text);
-        $hasAnyEvidence = $extractedUrl || $extractedEmail || $extractedPhone || $detectedBrand || $contentResult['flagged'] || $attachmentResult['flagged'];
+        $aiResult = $this->checkAiText($text, $contentResult['points']);
+        $hasAnyEvidence = $extractedUrl || $extractedEmail || $extractedPhone || $detectedBrand || $contentResult['flagged'] || $attachmentResult['flagged']
+            || ($aiResult['flagged'] ?? false);
 
         $checks = [];
         $totalPoints = 0;
@@ -2892,6 +2912,14 @@ class AnalysisEngine
             $signalCategories++;
         }
         $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
+
+        if ($aiResult !== null) {
+            if ($aiResult['flagged']) {
+                $totalPoints += $aiResult['points'];
+                $signalCategories++;
+            }
+            $checks[] = $this->buildCheck('AI Message Review', $aiResult, $aiResult['verdict'] === 'scam' ? 'HIGH RISK' : 'SUSPICIOUS');
+        }
 
         $pressureLink = $this->checkLinkInPressureMessage($contentResult, $extractedUrl);
         if ($pressureLink['flagged']) {

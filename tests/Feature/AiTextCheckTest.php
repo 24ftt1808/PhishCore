@@ -50,18 +50,25 @@ test('a good reply is read, sent with the key in a header, and cached', function
 
 test('errors, rate limits and unreadable replies are reported as unavailable with 0 points', function () {
     aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+        ->push([], 429)
+        ->push(['candidates' => [['content' => ['parts' => [['text' => 'not json']]]]]])
+        ->push(['error' => ['message' => 'Model not found']], 404)
+        ->push([], 500),
+    ]);
 
-    Http::fake(['*' => Http::response([], 429)]);
-    $limited = app(AiTextCheck::class)->assess('one message');
+    $limited = app(AiTextCheck::class)->assess('first message');
     expect($limited['available'])->toBeFalse()->and($limited['points'])->toBe(0)->and($limited['reason'])->toContain('busy');
 
-    Cache::flush();
-    Http::fake(['*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => 'not json']]]]]])]);
-    expect(app(AiTextCheck::class)->assess('another message')['available'])->toBeFalse();
+    $unreadable = app(AiTextCheck::class)->assess('second message');
+    expect($unreadable['available'])->toBeFalse()->and($unreadable['reason'])->toContain('could not be read');
 
-    Cache::flush();
-    Http::fake(['*' => Http::response([], 500)]);
-    expect(app(AiTextCheck::class)->assess('third message')['points'])->toBe(0);
+    $missing = app(AiTextCheck::class)->assess('third message');
+    expect($missing['available'])->toBeFalse()->and($missing['reason'])->toContain('404')->and($missing['reason'])->toContain('Model not found');
+
+    $broken = app(AiTextCheck::class)->assess('fourth message');
+    expect($broken['available'])->toBeFalse()->and($broken['points'])->toBe(0);
+    Http::assertSentCount(4);
 });
 
 test('the reply parser accepts fenced json and rejects unknown verdicts', function () {
@@ -101,4 +108,73 @@ test('with the AI check off, the email scan has no AI check at all', function ()
 
     expect(collect($result['checks'])->firstWhere('name', 'AI Message Review'))->toBeNull();
     Http::assertNothingSent();
+});
+
+function aiPageCheck(string $host, array $content, int $otherPoints): ?array
+{
+    $method = new ReflectionMethod(AnalysisEngine::class, 'checkAiPage');
+
+    return $method->invoke(app(AnalysisEngine::class), $host, $content, $otherPoints);
+}
+
+function aiPageContent(string $text = 'Verify your PayPal account now. Enter your password and card number to avoid suspension of your account.'): array
+{
+    return ['page_title' => 'Log in', 'page_text' => $text, 'has_sensitive_field' => true];
+}
+
+test('a web page verdict is worth less than the same verdict on a message', function () {
+    $ai = new AiTextCheck;
+
+    expect($ai->toResult('scam', 90, 'x', 'page')['points'])->toBe(25);
+    expect($ai->toResult('scam', 50, 'x', 'page')['points'])->toBe(15);
+    expect($ai->toResult('suspicious', 80, 'x', 'page')['points'])->toBe(8);
+    expect($ai->toResult('legitimate', 99, 'x', 'page')['points'])->toBe(0);
+    expect($ai->toResult('scam', 90, 'x', 'page')['reasons'][0])->toContain('this page');
+    expect($ai->toResult('scam', 90, 'x')['points'])->toBe(35);
+});
+
+test('the AI page review sends the domain and page text and adds points', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(aiReply('scam', 95, 'Fake PayPal login on an unrelated domain.'))]);
+
+    $result = aiPageCheck('paypal-secure-login.example', aiPageContent(), 10);
+
+    expect($result['points'])->toBe(25)->and($result['verdict'])->toBe('scam');
+    Http::assertSent(function ($request) {
+        $text = (string) data_get($request->data(), 'contents.0.parts.0.text');
+
+        return str_contains($text, 'WEB PAGE TO CHECK')
+            && str_contains($text, 'Domain: paypal-secure-login.example')
+            && str_contains($text, 'sensitive input field: yes');
+    });
+});
+
+test('the AI page review is skipped when off, for official sites, for thin pages, and when the rules already say phishing', function () {
+    Http::fake();
+
+    config(['services.ai_text.enabled' => false]);
+    expect(aiPageCheck('shady.example', aiPageContent(), 0))->toBeNull();
+
+    aiOn();
+    expect(aiPageCheck('www.paypal.com', aiPageContent(), 0))->toBeNull();
+    expect(aiPageCheck('www.jpd.gov.bn', aiPageContent(), 0))->toBeNull();
+    expect(aiPageCheck('shady.example', aiPageContent('Hello'), 0))->toBeNull();
+    expect(aiPageCheck('shady.example', [], 0))->toBeNull();
+    expect(aiPageCheck('shady.example', aiPageContent(), 60))->toBeNull();
+
+    Http::assertNothingSent();
+});
+
+test('a page that the AI calls legitimate adds nothing, and a failing AI service never breaks the scan', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+        ->push(aiReply('legitimate', 90, 'A normal shop.'))
+        ->push([], 500),
+    ]);
+
+    $shop = aiPageCheck('myshop.example', aiPageContent('Welcome to our shop. We sell shoes and bags. Free delivery over fifty dollars.'), 0);
+    expect($shop['available'])->toBeTrue()->and($shop['points'])->toBe(0);
+
+    $failed = aiPageCheck('myshop.example', aiPageContent('Welcome to our other shop. We sell hats and scarves. Free delivery over fifty dollars.'), 0);
+    expect($failed['available'])->toBeFalse()->and($failed['points'])->toBe(0);
 });

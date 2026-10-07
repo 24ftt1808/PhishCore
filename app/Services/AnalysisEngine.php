@@ -1054,6 +1054,10 @@ class AnalysisEngine
             'flagged' => $points > 0,
             'points' => min(70, $points),
             'reasons' => $reasons,
+            // Extra context for the optional AI page review. Not shown to users.
+            'page_title' => $title,
+            'page_text' => $bodyText,
+            'has_sensitive_field' => $hasSensitiveField,
         ];
     }
 
@@ -1229,6 +1233,39 @@ class AnalysisEngine
         }
 
         return $ai->assess($text);
+    }
+
+    /**
+     * Optional AI read of a web page (see AiTextCheck). Skipped when the other checks already
+     * say phishing, on official brand and Brunei government sites, and when the page has too
+     * little text to judge.
+     */
+    private function checkAiPage(string $host, array $contentResult, int $otherPoints): ?array
+    {
+        $ai = app(AiTextCheck::class);
+
+        if (! $ai->enabled() || $otherPoints >= 60) {
+            return null;
+        }
+
+        $host = strtolower((string) preg_replace('/^www\./', '', $host));
+
+        if ($this->isOfficialBrandDomain($host) || $this->isBruneiGovernmentHost($host)) {
+            return null;
+        }
+
+        $text = trim((string) ($contentResult['page_text'] ?? ''));
+
+        if (mb_strlen($text) < 40) {
+            return null;
+        }
+
+        $input = 'Domain: '.$host."\n"
+            .'Page title: '.trim((string) ($contentResult['page_title'] ?? ''))."\n"
+            .'Has a password or other sensitive input field: '.(($contentResult['has_sensitive_field'] ?? false) ? 'yes' : 'no')."\n\n"
+            ."Visible text:\n".$text;
+
+        return $ai->assess($input, 'page');
     }
 
     private function checkLinkInPressureMessage(array $contentResult, ?string $url): array
@@ -2246,12 +2283,12 @@ class AnalysisEngine
         $hostingResult = $this->checkFreeHostingPlatform($url);
         $availabilityResult = $this->checkSiteAvailability($url);
 
-        $totalPoints = min(
-            100,
-            $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
-                + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
-                + $contentResult['points'] + $hostingResult['points'] + $domainHistoryResult['points']
-        );
+        $otherPoints = $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
+            + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']
+            + $contentResult['points'] + $hostingResult['points'] + $domainHistoryResult['points'];
+        $aiPageResult = $host ? $this->checkAiPage((string) $host, $contentResult, $otherPoints) : null;
+
+        $totalPoints = min(100, $otherPoints + ($aiPageResult['points'] ?? 0));
 
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
@@ -2273,6 +2310,10 @@ class AnalysisEngine
             ],
             $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
+
+        if ($aiPageResult !== null) {
+            $checks[] = $this->buildCheck('AI Page Review', $aiPageResult, $aiPageResult['verdict'] === 'scam' ? 'HIGH RISK' : 'SUSPICIOUS');
+        }
 
         $result = [
             'risk_score' => $totalPoints,

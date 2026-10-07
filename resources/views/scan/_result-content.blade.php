@@ -42,8 +42,11 @@
         'phishing' => 'Phishing detected',
         'suspicious' => 'This looks suspicious',
         'review' => 'Needs a manual review',
-        default => 'This appears safe',
+        default => $report->type === 'url' ? 'This appears safe' : 'No threats detected',
     };
+    $cleanCaveat = ($analysis->verdict === 'clean' || ! in_array($analysis->verdict, ['phishing', 'suspicious', 'review'], true)) && $report->type !== 'url'
+        ? 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.'
+        : null;
     $verdictIcon = match ($analysis->verdict) {
         'clean' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',
         'review' => 'M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z',
@@ -77,6 +80,10 @@
                     </p>
                 </div>
             </div>
+
+            @if ($cleanCaveat)
+                <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $cleanCaveat }}</p>
+            @endif
 
             @if ($topReason && ($topReason['points'] ?? 0) > 0)
                 <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $topReason['message'] }}</p>
@@ -435,4 +442,4 @@
             @endforeach
         </div>
     </div>
-</div>  
+</div>

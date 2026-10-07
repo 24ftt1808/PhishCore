@@ -145,3 +145,22 @@ test('team members also see who handled the case and the notes', function () {
     expect($investigation['notes'])->toBe('Registrar abuse desk contacted.');
     expect($investigation['timeline'][0]['by'])->toBe('Case Handler');
 });
+test('a clean message scan says no threats detected with a caveat, a clean link keeps its wording', function () {
+    foreach (['email', 'phone', 'screenshot'] as $type) {
+        $report = scannedReport(['verdict' => 'clean', 'risk_score' => 0]);
+        $report->update(['type' => $type]);
+        $captured = capturePdfData();
+
+        $this->withSession(['guest_report_ids' => [$report->id]])->get(route('scan.pdf', $report))->assertOk();
+
+        expect($captured->data['verdict']['headline'])->toBe('No threats detected');
+        expect($captured->data['verdict']['caveat'])->toContain('not a guarantee');
+    }
+
+    $report = scannedReport(['verdict' => 'clean', 'risk_score' => 0]);
+    $report->update(['type' => 'url']);
+    $captured = capturePdfData();
+    $this->withSession(['guest_report_ids' => [$report->id]])->get(route('scan.pdf', $report))->assertOk();
+
+    expect($captured->data['verdict']['headline'])->toBe('This appears safe');
+});

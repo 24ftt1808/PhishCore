@@ -127,6 +127,9 @@
                         </td>
                     </tr>
                 </table>
+                @if (! empty($verdict['caveat']))
+                    <div class="reason">{{ $verdict['caveat'] }}</div>
+                @endif
                 @if ($topReason)
                     <div class="reason">{{ $topReason }}</div>
                 @endif

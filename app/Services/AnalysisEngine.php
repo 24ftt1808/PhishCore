@@ -1210,6 +1210,34 @@ class AnalysisEngine
     }
 
     /** True for gov.bn itself and anything under it. */
+    /**
+     * A message that pushes the reader to act (fine, threat, prize, urgency)
+     * and carries a link to a site that is not a known official domain. Real
+     * authorities send these through their own app or website, so the pairing
+     * is worth points even when the link itself looks plain.
+     */
+    private function checkLinkInPressureMessage(array $contentResult, ?string $url): array
+    {
+        $none = ['flagged' => false, 'points' => 0, 'reasons' => []];
+
+        if (! $url || ($contentResult['matched_categories'] ?? 0) < 1) {
+            return $none;
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $host = preg_replace('/^www\./', '', $host);
+
+        if ($host === '' || $this->isOfficialBrandDomain($host) || $this->isBruneiGovernmentHost($host)) {
+            return $none;
+        }
+
+        return [
+            'flagged' => true,
+            'points' => 15,
+            'reasons' => ["The message pressures the reader to act and links to \"{$host}\", which is not a known official domain"],
+        ];
+    }
+
     private function isBruneiGovernmentHost(?string $host): bool
     {
         $host = strtolower((string) $host);
@@ -1747,6 +1775,11 @@ class AnalysisEngine
                 'regex' => '/(dear friend\b(?!s)|god bless you|next of kin|inheritance|you have a donation|donation of \$|contacting you for the second time|reply urgently|powerball|meu caro amigo)/',
                 'points' => 25,
                 'label' => 'Advance-fee / "dear friend" scam language detected',
+            ],
+            'fine_lure' => [
+                'regex' => '/(traffic (violation|fine|ticket|challan|record)|red[- ]light|e-?challan|challan|speeding (fine|ticket)|parking (fine|ticket)|unpaid (toll|fine|ticket)|toll (fee|charge)|outstanding (fine|penalty)|saman (trafik|jalan raya|tertunggak|anda)|\bkompaun\b|compound (fine|notice))/',
+                'points' => 20,
+                'label' => 'Traffic-fine / penalty language detected (a common SMS scam: "violation", "e-challan", "unpaid toll", "saman")',
             ],
             'authority_threat' => [
                 'regex' => '/(notice of involvement|notis (penglibatan|siasatan)|royal brunei police|polis diraja brunei|interpol|waran (tangkap|geledah)|arrest warrant|section 420|seksyen 420|keep (this|the) matter confidential|rahsiakan (perkara|hal) ini)/',
@@ -2859,6 +2892,13 @@ class AnalysisEngine
             $signalCategories++;
         }
         $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
+
+        $pressureLink = $this->checkLinkInPressureMessage($contentResult, $extractedUrl);
+        if ($pressureLink['flagged']) {
+            $totalPoints += $pressureLink['points'];
+            $signalCategories++;
+            $checks[] = $this->buildCheck('Link in Pressure Message', $pressureLink, 'SUSPICIOUS');
+        }
 
         if ($attachmentResult['flagged']) {
             $totalPoints += $attachmentResult['points'];

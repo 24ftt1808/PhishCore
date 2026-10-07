@@ -363,3 +363,42 @@ test('senders on the official domains of the added brands are not flagged', func
     }
     expect($this->engine->checkEmailDomain('a@coinbase-support-login.com')['points'])->toBeGreaterThanOrEqual(35);
 });
+
+// --- traffic-fine and penalty text messages ---
+
+test('traffic-fine and penalty lures are flagged', function () {
+    $scams = [
+        'Your vehicle was flagged for a red light signal violation. Please verify/download the traffic records here https://example.test/14',
+        'Unpaid toll fee on your account. Pay now to avoid a penalty.',
+        'You have an outstanding fine for a parking ticket. Settle it today.',
+        'Saman trafik anda tertunggak. Bayar kompaun sekarang.',
+        'E-challan issued against your vehicle. Pay the challan online.',
+    ];
+
+    foreach ($scams as $text) {
+        expect(contentPoints($this->engine, $text))->toBeGreaterThanOrEqual(20);
+    }
+});
+
+test('ordinary talk about traffic and fines is not flagged', function () {
+    $normal = [
+        'Heavy traffic this morning so I will be late. See you at 9.',
+        'Please read the fine print before you sign. The traffic light project is on schedule.',
+        'The road works will ease the traffic near the school next month.',
+    ];
+
+    foreach ($normal as $text) {
+        expect(contentPoints($this->engine, $text))->toBeLessThan(20);
+    }
+});
+
+test('a pressure message with a link to an unknown domain adds points, but not for official domains or without a lure', function () {
+    $lure = callPrivate($this->engine, 'checkContentPatterns', 'Traffic violation recorded. Verify the traffic records here');
+    $calm = callPrivate($this->engine, 'checkContentPatterns', 'See you at dinner tonight');
+
+    expect(callPrivate($this->engine, 'checkLinkInPressureMessage', $lure, 'https://mparivahan.govt.hu/14')['points'])->toBe(15)
+        ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $lure, 'https://www.jpd.gov.bn/fines')['points'])->toBe(0)
+        ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $lure, 'https://www.paypal.com/help')['points'])->toBe(0)
+        ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $lure, null)['points'])->toBe(0)
+        ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $calm, 'https://example.test/x')['points'])->toBe(0);
+});

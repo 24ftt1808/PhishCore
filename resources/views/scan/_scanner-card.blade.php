@@ -11,7 +11,7 @@
     /* open on the tab that matches the last submission or the field that has an error */
     $startTab = 'url';
     if (old('email') || old('subject') || old('body') || $errors->has('email') || $errors->has('subject') || $errors->has('body')) $startTab = 'email';
-    elseif (old('phone') || $errors->has('phone')) $startTab = 'phone';
+    elseif (old('phone') || $errors->has('phone') || $errors->has('phone_country')) $startTab = 'phone';
     elseif ($errors->has('screenshot')) $startTab = 'screenshot';
 
     $tabIcons = [
@@ -81,6 +81,7 @@
         url: @js(old('url', '')),
         email: @js(old('email', '')),
         phone: @js(old('phone', '')),
+        phoneCountry: @js(old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION)),
         subject: @js(old('subject', '')),
         body: @js(old('body', '')),
         fileName: '', drag: false, more: {{ old('subject') || old('body') ? 'true' : 'false' }}, scanning: false,
@@ -223,10 +224,23 @@
                         {{-- Phone --}}
                         <div x-show="tab === 'phone'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
                             <label class="block text-xs tracking-wide text-slate-300 mb-2">PHONE NUMBER</label>
-                            <input type="text" name="phone" x-model="phone" :readonly="scanning" @input="clearOthers('phone')"
-                                   :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                   placeholder="+673 XXX XXXX" class="sc-input !py-4">
+                            <div class="flex gap-3">
+                                <select name="phone_country" x-model="phoneCountry" aria-label="Country of the phone number"
+                                        :class="{ 'opacity-50 pointer-events-none': scanning }"
+                                        class="sc-input !py-4 !w-40 sm:!w-60 shrink-0 truncate" style="color-scheme: dark">
+                                    @foreach (\App\Support\PhoneCountries::all() as $country)
+                                        <option value="{{ $country['code'] }}">{{ $country['code'] }} {{ $country['name'] }} (+{{ $country['dial'] }})</option>
+                                    @endforeach
+                                </select>
+                                <input type="text" name="phone" x-model="phone" :readonly="scanning" @input="clearOthers('phone')"
+                                       :class="{ 'opacity-50 pointer-events-none': scanning }"
+                                       placeholder="Phone number" class="sc-input !py-4 min-w-0 flex-1">
+                            </div>
+                            <p class="mt-2 text-xs text-slate-400">Numbers typed with a leading + and country code keep that country, whatever is selected.</p>
                             @error('phone')
+                                <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
+                            @enderror
+                            @error('phone_country')
                                 <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
                             @enderror
                         </div>

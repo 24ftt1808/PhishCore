@@ -50,6 +50,70 @@ class AnalysisEngine
         'brunei postal services' => ['post.gov.bn'],
     ];
 
+    /**
+     * Brand => official domains, shared by the page-content brand check and
+     * by checkUrlSyntax() so a brand's own site is never treated as imitating
+     * it. Add a domain here only after confirming it against the
+     * organisation's own site: a wrong entry would flag the real site.
+     */
+    private const OFFICIAL_BRAND_DOMAINS = [
+        'dhl' => ['dhl.com'],
+        'fedex' => ['fedex.com'],
+        'ups' => ['ups.com'],
+        'paypal' => ['paypal.com'],
+        'google' => ['google.com', 'gmail.com'],
+        'facebook' => ['facebook.com', 'fb.com'],
+        'apple' => ['apple.com', 'icloud.com'],
+        'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com'],
+        'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
+        'amazon' => ['amazon.com'],
+        'netflix' => ['netflix.com'],
+        'maybank' => ['maybank2u.com.my', 'maybank.com'],
+        'bibd' => ['bibd.com.bn'],
+        // Crypto/wallets — domains verified via web search before adding,
+        // not assumed, after an earlier session mistake (a wrong domain
+        // guess for politeknikbrunei.edu.bn) taught the cost of guessing.
+        'trezor' => ['trezor.io'],
+        'metamask' => ['metamask.io'],
+        'binance' => ['binance.com'],
+        'coinbase' => ['coinbase.com'],
+        'kraken' => ['kraken.com'],
+        'crypto.com' => ['crypto.com'],
+        'blockchain.com' => ['blockchain.com'],
+        'trust wallet' => ['trustwallet.com'],
+        // Regional banking — baiduri.com.bn and progresif.com confirmed
+        // via web search; both differ from a naive first guess.
+        'baiduri' => ['baiduri.com.bn'],
+        'hsbc' => ['hsbc.com', 'hsbc.com.bn'],
+        'citibank' => ['citibank.com', 'citi.com'],
+        'standard chartered' => ['sc.com'],
+        // E-commerce
+        'shopee' => ['shopee.com'],
+        'lazada' => ['lazada.com'],
+        'alibaba' => ['alibaba.com'],
+        'ebay' => ['ebay.com'],
+        // Telco
+        'progresif' => ['progresif.com'],
+        // Tech/social — steam and zoom deliberately do NOT use
+        // "brandname.com" (steampowered.com, zoom.us), confirmed before
+        // adding since a wrong domain here would flag the brand's own
+        // real site as impersonating itself.
+        'instagram' => ['instagram.com'],
+        'whatsapp' => ['whatsapp.com'],
+        'linkedin' => ['linkedin.com'],
+        'tiktok' => ['tiktok.com'],
+        'spotify' => ['spotify.com'],
+        'adobe' => ['adobe.com'],
+        'dropbox' => ['dropbox.com'],
+        'steam' => ['steampowered.com'],
+        'zoom' => ['zoom.us'],
+        'twitter' => ['twitter.com', 'x.com'],
+        // Shipping
+        'usps' => ['usps.com'],
+        'royal mail' => ['royalmail.com'],
+        'singpost' => ['singpost.com'],
+    ];
+
     public function checkUrlSyntax(string $url): array
     {
         $reasons = [];
@@ -79,8 +143,12 @@ class AnalysisEngine
         $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank'];
         $host = strtolower(parse_url($url, PHP_URL_HOST) ?? '');
         $normalizedHost = $this->normalizeForBrandMatch($host);
+        // A brand's own site can contain a brand word without imitating
+        // anything: "maybank2u.com.my" contains "bank" and is Maybank's real
+        // domain. Exact official domains (and their subdomains) are skipped.
+        $isOfficialBrandSite = $this->isOfficialBrandDomain($host);
         foreach ($brands as $brand) {
-            $matchesBrand = str_contains($normalizedHost, $brand);
+            $matchesBrand = ! $isOfficialBrandSite && str_contains($normalizedHost, $brand);
             // The legit-domain exclusion must run on the ORIGINAL host, not the
             // normalized one — otherwise a lookalike like "micros0ft.com" would
             // normalize into looking identical to "microsoft.com" and get
@@ -495,8 +563,14 @@ class AnalysisEngine
             $points = 0;
 
             if ($isProxy) {
+                // Lowered from 20 after the accuracy test (scan:batch): ip-api
+                // marks shared platform IPs as proxies, so github.com and
+                // moh.gov.bn scored 25 and were flagged, and 6 of the 8 scams
+                // that got this flag were github.io pages sharing GitHub's own
+                // address. At 10 both real sites pass and those scams are still
+                // caught by the hosting-platform check on top of this one.
                 $reasons[] = 'IP address is associated with a known proxy or VPN service, often used to mask phishing infrastructure';
-                $points += 20;
+                $points += 10;
             }
 
             if ($isHosting) {
@@ -591,8 +665,13 @@ class AnalysisEngine
         $normalizeHost = fn (?string $h) => preg_replace('/^www\./', '', strtolower($h ?? ''));
 
         if ($finalHost && $originalHost && $normalizeHost($finalHost) !== $normalizeHost($originalHost)) {
-            $reasons[] = "URL ultimately redirects to a different domain ({$finalHost}) than the one submitted ({$originalHost})";
-            $points += 20;
+            if ($this->isBruneiGovernmentHost($originalHost) && $this->isBruneiGovernmentHost($finalHost)) {
+                // e.g. www.mofe.gov.bn -> www.mof.gov.bn after a ministry rename.
+                $reasons[] = "URL redirects to another .gov.bn domain ({$finalHost}); redirects between Brunei government sites are normal";
+            } else {
+                $reasons[] = "URL ultimately redirects to a different domain ({$finalHost}) than the one submitted ({$originalHost})";
+                $points += 20;
+            }
         }
 
         if (empty($reasons)) {
@@ -681,13 +760,20 @@ class AnalysisEngine
         }
 
         try {
-            $response = Http::withOptions(['allow_redirects' => ['max' => 3]])
+            // Same browser-style User-Agent as the page-content check: many
+            // banks and CDNs drop connections from the default HTTP-client agent.
+            $response = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'])
+                ->withOptions(['allow_redirects' => ['max' => 3]])
                 ->timeout(8)
                 ->get($url);
         } catch (ConnectionException $e) {
+            // A failed connection is not proof the site is down: slow servers
+            // and bot protection cause the same error on perfectly live sites
+            // (real Brunei banks were reported "offline" this way). Only a
+            // domain that no longer resolves is reported as OFFLINE.
             return [
-                'status_label' => 'OFFLINE',
-                'reasons' => ['The domain resolves, but the server refused the connection or timed out — the site is likely offline'],
+                'status_label' => 'UNKNOWN',
+                'reasons' => ['The domain resolves, but the server did not answer in time or refused the connection. It may be offline, slow, or blocking automated requests, so its status could not be confirmed'],
             ];
         } catch (\Throwable $e) {
             return [
@@ -1017,6 +1103,83 @@ class AnalysisEngine
     }
 
     /**
+     * True when the host is, or is a subdomain of, a domain on the official
+     * brand list (the same list the page-content brand check uses).
+     */
+    private function isOfficialBrandDomain(string $host): bool
+    {
+        $host = strtolower(preg_replace('/^www\./', '', $host));
+
+        foreach (array_merge(self::OFFICIAL_BRAND_DOMAINS, self::BRUNEI_BRANDS) as $domains) {
+            foreach ($domains as $official) {
+                if ($host === $official || str_ends_with($host, '.'.$official)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** True for gov.bn itself and anything under it. */
+    private function isBruneiGovernmentHost(?string $host): bool
+    {
+        $host = strtolower((string) $host);
+
+        return $host === 'gov.bn' || str_ends_with($host, '.gov.bn');
+    }
+
+    /**
+     * Recognises the hidden iframe Google Tag Manager uses as its <noscript>
+     * fallback, in the three forms seen on real sites: a googletagmanager.com
+     * link, the same link kept in data-src (lazy loading), and a first-party
+     * path on the site's own server that carries a GTM container id.
+     *
+     * A link that merely contains "GTM-" on another site does not qualify, so
+     * a phishing page cannot use the exemption by copying the id.
+     */
+    private function isTagManagerIframe(string $tag): bool
+    {
+        $read = function (string $attribute) use ($tag): ?string {
+            // (?<![\w-]) stops "src" matching inside "data-src".
+            if (! preg_match('/(?<![\w-])'.$attribute.'\s*=\s*["\']([^"\']*)["\']/i', $tag, $m)) {
+                return null;
+            }
+
+            $value = html_entity_decode(trim($m[1]));
+
+            // about:blank and inline images (the 1x1 GIF lazy-loaders use as a
+            // placeholder) load nothing. Other data: URLs, such as data:text/html,
+            // are real content and must not be skipped.
+            if ($value === '' || strcasecmp($value, 'about:blank') === 0 || stripos($value, 'data:image/') === 0) {
+                return null;
+            }
+
+            return $value;
+        };
+
+        // The browser loads src when there is one, so src decides. data-src is
+        // only consulted when src is absent or blank (lazy-loading scripts fill
+        // src in later); otherwise a page could pair an evil src with a
+        // harmless-looking data-src to slip past the check.
+        $value = $read('src') ?? $read('data-src');
+
+        if ($value === null) {
+            return false;
+        }
+
+        $host = parse_url($value, PHP_URL_HOST);
+
+        if ($host && preg_match('/(^|\.)googletagmanager\.com$/i', $host)) {
+            return true;
+        }
+
+        return str_starts_with($value, '/')
+            && ! str_starts_with($value, '//')
+            && preg_match('/[?&]id=GTM-[A-Z0-9]+/i', $value) === 1;
+    }
+
+    /**
      * Flags two Tier-1-detectable evasion patterns that need no headless
      * browser or JS execution: (1) a hidden iframe (zero-size or
      * display:none/visibility:hidden), commonly used to load malicious
@@ -1031,9 +1194,21 @@ class AnalysisEngine
         $reasons = [];
         $points = 0;
 
-        if (preg_match('/<iframe\b[^>]*(?:width\s*=\s*["\']0["\']|height\s*=\s*["\']0["\']|display\s*:\s*none|visibility\s*:\s*hidden)[^>]*>/i', $html)) {
-            $reasons[] = 'Page contains a hidden iframe (zero-size or display:none/visibility:hidden) — commonly used to load malicious content invisibly to the visitor';
-            $points += 20;
+        // Zero-size iframes are also how Google Tag Manager's standard
+        // <noscript> snippet works, and that snippet is on a large share of
+        // legitimate sites (found when PayPal, Grab and several Brunei sites
+        // were flagged for it). Those are skipped; any other hidden iframe
+        // still counts.
+        if (preg_match_all('/<iframe\b[^>]*>/i', $html, $iframeTags)) {
+            foreach ($iframeTags[0] as $iframeTag) {
+                $isHidden = preg_match('/(?:width|height)\s*=\s*["\']0["\']|display\s*:\s*none|visibility\s*:\s*hidden/i', $iframeTag);
+
+                if ($isHidden && ! $this->isTagManagerIframe($iframeTag)) {
+                    $reasons[] = 'Page contains a hidden iframe (zero-size or display:none/visibility:hidden) — commonly used to load malicious content invisibly to the visitor';
+                    $points += 20;
+                    break;
+                }
+            }
         }
 
         if (preg_match('/eval\s*\(\s*(?:atob|unescape)\s*\(/i', $html)) {
@@ -1099,65 +1274,7 @@ class AnalysisEngine
     {
         $host = strtolower(preg_replace('/^www\./', '', $host));
 
-        $brandDomains = [
-            'dhl' => ['dhl.com'],
-            'fedex' => ['fedex.com'],
-            'ups' => ['ups.com'],
-            'paypal' => ['paypal.com'],
-            'google' => ['google.com', 'gmail.com'],
-            'facebook' => ['facebook.com', 'fb.com'],
-            'apple' => ['apple.com', 'icloud.com'],
-            'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com'],
-            'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
-            'amazon' => ['amazon.com'],
-            'netflix' => ['netflix.com'],
-            'maybank' => ['maybank2u.com.my', 'maybank.com'],
-            'bibd' => ['bibd.com.bn'],
-            // Crypto/wallets — domains verified via web search before adding,
-            // not assumed, after an earlier session mistake (a wrong domain
-            // guess for politeknikbrunei.edu.bn) taught the cost of guessing.
-            'trezor' => ['trezor.io'],
-            'metamask' => ['metamask.io'],
-            'binance' => ['binance.com'],
-            'coinbase' => ['coinbase.com'],
-            'kraken' => ['kraken.com'],
-            'crypto.com' => ['crypto.com'],
-            'blockchain.com' => ['blockchain.com'],
-            'trust wallet' => ['trustwallet.com'],
-            // Regional banking — baiduri.com.bn and progresif.com confirmed
-            // via web search; both differ from a naive first guess.
-            'baiduri' => ['baiduri.com.bn'],
-            'hsbc' => ['hsbc.com', 'hsbc.com.bn'],
-            'citibank' => ['citibank.com', 'citi.com'],
-            'standard chartered' => ['sc.com'],
-            // E-commerce
-            'shopee' => ['shopee.com'],
-            'lazada' => ['lazada.com'],
-            'alibaba' => ['alibaba.com'],
-            'ebay' => ['ebay.com'],
-            // Telco
-            'progresif' => ['progresif.com'],
-            // Tech/social — steam and zoom deliberately do NOT use
-            // "brandname.com" (steampowered.com, zoom.us), confirmed before
-            // adding since a wrong domain here would flag the brand's own
-            // real site as impersonating itself.
-            'instagram' => ['instagram.com'],
-            'whatsapp' => ['whatsapp.com'],
-            'linkedin' => ['linkedin.com'],
-            'tiktok' => ['tiktok.com'],
-            'spotify' => ['spotify.com'],
-            'adobe' => ['adobe.com'],
-            'dropbox' => ['dropbox.com'],
-            'steam' => ['steampowered.com'],
-            'zoom' => ['zoom.us'],
-            'twitter' => ['twitter.com', 'x.com'],
-            // Shipping
-            'usps' => ['usps.com'],
-            'royal mail' => ['royalmail.com'],
-            'singpost' => ['singpost.com'],
-        ];
-
-        $brandDomains = array_merge($brandDomains, self::BRUNEI_BRANDS);
+        $brandDomains = array_merge(self::OFFICIAL_BRAND_DOMAINS, self::BRUNEI_BRANDS);
 
         $allowed = $brandDomains[$brand] ?? [$brand.'.com'];
         foreach ($allowed as $officialDomain) {

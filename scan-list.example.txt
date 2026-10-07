@@ -1,0 +1,28 @@
+# SIMULATED Brunei lookalikes, made-up addresses written to test the Brunei rules.
+# Label these as "simulated" in your report. Most won't resolve, which is fine:
+# the URL, brand and wording checks still run. Domain-age and page checks may show UNKNOWN.
+#
+# Real Brunei sites that should stay clean (open each in a browser first):
+legit|https://www.bibd.com.bn
+legit|https://www.baiduri.com.bn
+legit|https://www.pb.edu.bn
+legit|https://www.gov.bn
+#
+# Bank lookalikes
+scam|http://bibd-secure-login.com/verify
+scam|https://bibd-online-banking-update.net/login
+scam|http://baiduri-verify-account.com/signin
+scam|https://baiduri-bank-secure.top/login
+scam|http://bibd.com.bn.account-verify.xyz/login
+scam|https://progresif-bn-update.com/pay
+# Government / authority lookalikes
+scam|http://gov-bn-refund.com/claim
+scam|https://polis-diraja-brunei-saman.com/bayar
+scam|http://jabatan-imigresen-bn.top/verify
+scam|https://customs-gov-bn-parcel.xyz/fee
+scam|http://jpd-gov-bn-saman.net/check
+# Parcel / prize / utility lookalikes
+scam|https://bruneipost-parcel-redelivery.com/track
+scam|http://dst-brunei-bill-payment.com/pay
+scam|https://royalbrunei-free-ticket-prize.top/claim
+scam|http://des-gov-bn-bil-elektrik.xyz/bayar

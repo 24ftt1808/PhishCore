@@ -6,7 +6,9 @@ use App\Models\Analysis;
 use App\Models\CtiLookup;
 use App\Models\Report;
 use App\Services\AnalysisEngine;
+use App\Support\PhoneCountries;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 
@@ -33,6 +35,14 @@ class ScanController extends Controller
 
         $request->validate($this->rulesFor($type));
 
+        // A local-style number is read as belonging to the country picked on
+        // the form; one that already starts with "+" keeps its own country.
+        // Storing the normalised form also keeps repeat-number matching
+        // consistent between scans.
+        $phone = $type === 'phone'
+            ? PhoneCountries::normalise((string) $request->input('phone'), $request->input('phone_country'))
+            : $request->input('phone');
+
         $screenshotPath = null;
         $screenshotStoragePath = null;
 
@@ -49,7 +59,7 @@ class ScanController extends Controller
             'type' => $type,
             'url' => $request->input('url'),
             'sender_email' => $request->input('email'),
-            'phone_number' => $request->input('phone'),
+            'phone_number' => $phone,
             'screenshot_path' => $screenshotPath,
             'status' => 'processing',
         ]);
@@ -76,7 +86,7 @@ class ScanController extends Controller
                 type: $type,
                 url: $request->input('url'),
                 email: $request->input('email'),
-                phone: $request->input('phone'),
+                phone: $phone,
                 screenshotPath: $screenshotStoragePath,
                 reportId: $report->id,
                 emailSubject: $request->input('subject'),
@@ -173,7 +183,10 @@ class ScanController extends Controller
                 'subject' => ['nullable', 'string', 'max:255'],
                 'body' => ['nullable', 'string', 'max:5000'],
             ],
-            'phone' => ['phone' => ['required', 'string', 'max:30']],
+            'phone' => [
+                'phone' => ['required', 'string', 'max:30'],
+                'phone_country' => ['nullable', 'string', Rule::in(PhoneCountries::codes())],
+            ],
             'screenshot' => ['screenshot' => ['required', 'image', 'max:5120']], // 5MB max
             default => ['url' => ['required', 'url', 'max:2048']],
         };

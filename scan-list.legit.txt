@@ -1,0 +1,47 @@
+# Legitimate sites for the accuracy test. Format: label|group|url
+#
+# Groups:
+#   brunei-known  Brunei sites PhishCore already has on its official-domain list.
+#                 These are checked as a regression test, but they pass by design.
+#   brunei-other  Brunei sites that are NOT on that list. These are the real test
+#                 of false alarms on local sites.
+#   global        Well-known international sites.
+#
+# I am confident these domains are real, but a site can be down or redirect on
+# the day you run the test. If one fails, delete its line and note it.
+# Add your own legitimate Brunei sites, especially ones outside the list.
+
+legit|brunei-known|https://www.bibd.com.bn
+legit|brunei-known|https://www.baiduri.com.bn
+legit|brunei-known|https://www.hsbc.com.bn
+legit|brunei-known|https://www.bdcb.gov.bn
+legit|brunei-known|https://www.customs.gov.bn
+legit|brunei-known|https://www.post.gov.bn
+legit|brunei-known|https://www.jpd.gov.bn
+legit|brunei-known|https://www.dst.com.bn
+legit|brunei-known|https://www.imagine.com.bn
+legit|brunei-known|https://www.flyroyalbrunei.com
+legit|brunei-known|https://www.politeknikbrunei.edu.bn
+
+legit|brunei-other|https://www.brunei.gov.bn
+legit|brunei-other|https://www.moh.gov.bn
+legit|brunei-other|https://www.moe.gov.bn
+legit|brunei-other|https://www.mofe.gov.bn
+legit|brunei-other|https://www.ubd.edu.bn
+legit|brunei-other|https://www.unifi.com.bn
+legit|brunei-other|https://www.brudirect.com
+legit|brunei-other|https://borneobulletin.com.bn
+legit|brunei-other|https://thescoop.co
+
+legit|global|https://www.google.com
+legit|global|https://www.microsoft.com
+legit|global|https://www.apple.com
+legit|global|https://www.amazon.com
+legit|global|https://www.paypal.com
+legit|global|https://www.facebook.com
+legit|global|https://www.netflix.com
+legit|global|https://www.dhl.com
+legit|global|https://github.com
+legit|global|https://www.wikipedia.org
+legit|global|https://www.maybank2u.com.my
+legit|global|https://www.grab.com

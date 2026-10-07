@@ -263,3 +263,103 @@ test('a brand mention on its own official domain is still not flagged', function
 
     expect($this->engine->checkPageContent('https://www.paypal.com/signin')['points'])->toBe(0);
 });
+
+// --- email and message text ---
+
+test('a sender on a verified official domain is not treated as mimicking the brand', function () {
+    foreach (['statements@bibd.com.bn', 'noreply@maybank2u.com.my', 'no-reply@accounts.google.com', 'info@customs.gov.bn'] as $sender) {
+        expect($this->engine->checkEmailDomain($sender)['points'])->toBe(0);
+    }
+});
+
+test('lookalike sender domains are still flagged', function () {
+    foreach (['a@bibd-online-secure.com', 'a@maybank2u.com.my.evil.com', 'a@paypal-secure-verify.com', 'a@micros0ft-helpdesk.net', 'a@notmaybank2u.com.my'] as $sender) {
+        expect($this->engine->checkEmailDomain($sender)['points'])->toBeGreaterThanOrEqual(35);
+    }
+});
+
+test('ordinary words are not mistaken for a brand', function () {
+    $sentences = [
+        'Dinner at 7 tonight. Can you pick up some milk on the way home?',
+        'Please set up the room and give me a call.',
+        'Many people want to apply again. The image is in the build.',
+        'Feel free to use the table, the train, and the amount shown.',
+        'Please check the progress of the programs.',
+    ];
+
+    foreach ($sentences as $text) {
+        expect(callPrivate($this->engine, 'detectBrandInText', $text)['brand'])->toBeNull();
+    }
+});
+
+test('a brand written with look-alike characters is still detected', function () {
+    $cases = [
+        'Your DHI parcel is held' => 'dhl',
+        'Log in to your PayPa1 account' => 'paypal',
+        'Arnazon order failed' => 'amazon',
+        'G00gle security alert' => 'google',
+        'Micr0soft 365 password' => 'microsoft',
+    ];
+
+    foreach ($cases as $text => $brand) {
+        expect(callPrivate($this->engine, 'detectBrandInText', $text)['brand'])->toBe($brand);
+    }
+});
+
+test('an email from an ordinary address that only says "pick up" is not flagged as a brand mismatch', function () {
+    $text = 'Dinner at 7 tonight. Can you pick up some milk on the way home?';
+    $brand = callPrivate($this->engine, 'detectBrandInText', $text);
+
+    expect(callPrivate($this->engine, 'checkBrandSenderMismatch', $brand['brand'], $brand['surface'], 'mum@gmail.com')['points'])->toBe(0);
+});
+
+// --- wider scam wording (found testing against real phishing emails) ---
+
+function contentPoints(AnalysisEngine $engine, string $text): int
+{
+    return callPrivate($engine, 'checkContentPatterns', $text)['points'];
+}
+
+test('crypto giveaways, advance-fee letters and reward lures are flagged', function () {
+    $scams = [
+        'Your Airdrop is ready. Click this button to claim your NFT. Connect Wallet.',
+        'Are you ready to claim your XRP share? Token Allocation Program is now open.',
+        'Dear Friend, God bless you. I am contacting you for the second time about my inheritance.',
+        'You have a donation of $2,800,000. I won the Powerball lottery.',
+        'You\'ve been chosen! Claim your reward today.',
+        'Your Wallet has been temporarily suspended. Verify your wallet now.',
+        'Action Required: your account password expires in 48 hours.',
+        'Voce tem pontos acumulados. Resgate agora, os pontos estao proximos de expirar.',
+        'Taxa de recolhimento da alfândega pendente para a sua encomenda.',
+    ];
+
+    foreach ($scams as $text) {
+        expect(contentPoints($this->engine, $text))->toBeGreaterThanOrEqual(15);
+    }
+});
+
+test('ordinary business and personal mail is not flagged by the wider rules', function () {
+    $normal = [
+        'Dear friends and colleagues, I have switched jobs. Please update your address book.',
+        'Dear friends: it is time for the annual dinner. See you there.',
+        'Weekly status update. Please find below the follow-ups from the meeting.',
+        'The economic outlook for next quarter looks steady. Revenue is up.',
+        'Please send the invoice by Friday and confirm the meeting time.',
+    ];
+
+    foreach ($normal as $text) {
+        expect(contentPoints($this->engine, $text))->toBeLessThan(25);
+    }
+});
+
+test('"ups" inside ordinary words is not the courier, but UPS is', function () {
+    expect(callPrivate($this->engine, 'detectBrandInText', 'Please send the follow-ups and the ups and downs report')['brand'])->toBeNull()
+        ->and(callPrivate($this->engine, 'detectBrandInText', 'Your UPS parcel is held')['brand'])->toBe('ups');
+});
+
+test('senders on the official domains of the added brands are not flagged', function () {
+    foreach (['a@coinbase.com', 'a@bradesco.com.br', 'a@banco.bradesco', 'a@livelo.com.br', 'a@correios.com.br', 'a@whatsapp.com', 'a@metamask.io'] as $sender) {
+        expect($this->engine->checkEmailDomain($sender)['points'])->toBe(0);
+    }
+    expect($this->engine->checkEmailDomain('a@coinbase-support-login.com')['points'])->toBeGreaterThanOrEqual(35);
+});

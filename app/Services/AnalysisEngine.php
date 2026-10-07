@@ -75,6 +75,12 @@ class AnalysisEngine
         'netflix' => ['netflix.com', 'netflix.github.io'],
         'maybank' => ['maybank2u.com.my', 'maybank.com'],
         'bibd' => ['bibd.com.bn'],
+        // Verified by opening each site: whatsapp.com, livelo.com.br, correios.com.br;
+        // bradesco.com.br redirects to banco.bradesco.
+        'bradesco' => ['bradesco.com.br', 'banco.bradesco'],
+        'livelo' => ['livelo.com.br'],
+        'correios' => ['correios.com.br'],
+        'whatsapp' => ['whatsapp.com', 'whatsapp.net'],
         // Crypto/wallets — domains verified via web search before adding,
         // not assumed, after an earlier session mistake (a wrong domain
         // guess for politeknikbrunei.edu.bn) taught the cost of guessing.
@@ -1533,9 +1539,15 @@ class AnalysisEngine
         $reasons = [];
         $points = 0;
 
-        $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank', 'dhl', 'fedex', 'ups', 'maybank', 'bibd'];
+        $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank', 'dhl', 'fedex', 'ups', 'maybank', 'bibd', 'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp'];
         $normalizedDomain = $this->normalizeForBrandMatch($domain);
+        // A sender on a verified official domain (bibd.com.bn, maybank2u.com.my,
+        // blog.google and so on) is not mimicking anything.
+        $isOfficialSender = $this->isOfficialBrandDomain($domain);
         foreach ($brands as $brand) {
+            if ($isOfficialSender) {
+                break;
+            }
             $matchesBrand = str_contains($normalizedDomain, $brand);
             $isOfficialDomain = str_ends_with($domain, $brand.'.com') || $domain === $brand.'.com';
 
@@ -1695,24 +1707,24 @@ class AnalysisEngine
 
     private function checkContentPatterns(string $text): array
     {
-        $text = strtolower($text);
+        $text = mb_strtolower($text);
         $reasons = [];
         $points = 0;
         $matchedCategories = 0;
 
         $patterns = [
             'urgency' => [
-                'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|act now|act immediately|urgent|final notice|immediately|tindakan segera|segera (sahkan|kemas kini|bertindak|hubungi)|dalam masa 24 jam|notis akhir|amaran terakhir)\b/',
+                'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|within (24|48|72) hours|expires? in \d+ (hours|days)|act now|act immediately|urgent|urgently|final notice|immediately|offer ends|ends today|tindakan segera|segera (sahkan|kemas kini|bertindak|hubungi)|dalam masa 24 jam|notis akhir|amaran terakhir|at[eé] amanh[aã]|pr[oó]ximos de expirar|[uú]ltimo aviso|intento final|aviso final|dringend|sofort)\b/u',
                 'points' => 15,
                 'label' => 'Urgency language detected (e.g. "urgent", "24 hours", "act now")',
             ],
             'account_threat' => [
-                'regex' => '/(account will be suspended|account (is|has been) (locked|suspended|deactivated)|temporary suspension|avoid deactivation|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup))/',
+                'regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
                 'points' => 15,
                 'label' => 'Account threat language detected (suspension/deactivation)',
             ],
             'credential_request' => [
-                'regex' => '/(verify your account|verify my|confirm your password|enter your login|verification code|verify now|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kod pengesahan|kod otp)/',
+                'regex' => '/(verify your account|verify my|verify your (identity|wallet|email)|confirm your (password|information|identity|details)|enter your login|verification code|verify now|update your (payment|billing|account)|reset access|secret recovery phrase|seed phrase|recovery phrase|connect (your )?wallet|wallet verification|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kod pengesahan|kod otp|confirme (seus|suas) dados|atualize (seus|suas|sua) (dados|conta|cadastro)|aktualisieren sie|kontoinformationen|mettez [aà] jour)/u',
                 'points' => 20,
                 'label' => 'Credential/verification request detected',
             ],
@@ -1722,9 +1734,19 @@ class AnalysisEngine
                 'label' => 'Financial request or invoice language detected',
             ],
             'prize_scam' => [
-                'regex' => '/(you have won|you\'ve won|congratulations.{0,40}(won|selected)|claim your (prize|reward|gift)|tahniah.{0,40}(menang|dipilih|terpilih)|anda (telah )?memenangi|tuntut hadiah)/',
-                'points' => 15,
-                'label' => 'Prize/lottery language detected (e.g. "you have won", "tahniah anda menang")',
+                'regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?)|weekly lottery|survey zone|redeem (your|for) |tahniah.{0,40}(menang|dipilih|terpilih)|anda (telah )?memenangi|tuntut hadiah|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
+                'points' => 20,
+                'label' => 'Prize/reward language detected (e.g. "you have won", "claim your reward", "tahniah anda menang")',
+            ],
+            'crypto_scam' => [
+                'regex' => '/(airdrop|token allocation|free mint|erc-?20|ethereum 2\.0|claim your (xrp|usdt|eth|btc|nft)|usdt|nft cashback|bitcoin (payment|accounts?)|crypto(currency)? (giveaway|reward))/',
+                'points' => 25,
+                'label' => 'Cryptocurrency giveaway or wallet-claim language detected (a common scam lure)',
+            ],
+            'advance_fee' => [
+                'regex' => '/(dear friend\b(?!s)|god bless you|next of kin|inheritance|you have a donation|donation of \$|contacting you for the second time|reply urgently|powerball|meu caro amigo)/',
+                'points' => 25,
+                'label' => 'Advance-fee / "dear friend" scam language detected',
             ],
             'authority_threat' => [
                 'regex' => '/(notice of involvement|notis (penglibatan|siasatan)|royal brunei police|polis diraja brunei|interpol|waran (tangkap|geledah)|arrest warrant|section 420|seksyen 420|keep (this|the) matter confidential|rahsiakan (perkara|hal) ini)/',
@@ -1732,7 +1754,7 @@ class AnalysisEngine
                 'label' => 'Authority-impersonation language detected (police/Interpol/investigation notice, or demands for secrecy)',
             ],
             'customs_fee' => [
-                'regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan))/',
+                'regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan)|redelivery|delivery (attempt )?failed|will be sent back|taxa de recolhimento|alf[aâ]ndega)/u',
                 'points' => 15,
                 'label' => 'Customs/delivery-fee language detected (a common parcel scam)',
             ],
@@ -1764,10 +1786,24 @@ class AnalysisEngine
         ];
     }
 
+    /**
+     * Reduces a word to a form where look-alike characters compare equal:
+     * digits become the letters they imitate, "i" and "l" are treated as the
+     * same, "rn" reads as "m" and "vv" as "w".
+     */
+    private function foldLookalikes(string $word): string
+    {
+        $word = strtolower($this->normalizeForBrandMatch($word));
+        $word = str_replace(['rn', 'vv'], ['m', 'w'], $word);
+
+        return str_replace(['i', '|'], 'l', $word);
+    }
+
     private function detectBrandInText(string $text): array
     {
         $knownBrands = ['dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
-            'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd'];
+            'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd',
+            'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp'];
         $knownBrands = array_merge($knownBrands, array_keys(self::BRUNEI_BRANDS));
 
         $lowerText = strtolower($text);
@@ -1775,35 +1811,43 @@ class AnalysisEngine
         // Exact match first — cheapest and most reliable when the brand name
         // is spelled correctly in the message.
         foreach ($knownBrands as $brand) {
+            // "ups" is an everyday word ("follow-ups", "ups and downs"); only the
+            // courier's written form, capitalised UPS, counts.
+            if ($brand === 'ups') {
+                if (preg_match('/\bUPS\b/', $text)) {
+                    return ['brand' => $brand, 'surface' => $brand];
+                }
+
+                continue;
+            }
             if (preg_match('/\b'.preg_quote($brand, '/').'\b/', $lowerText)) {
                 return ['brand' => $brand, 'surface' => $brand];
             }
         }
 
-        // Fuzzy fallback — catches cases where the VISIBLE brand text itself is
-        // a typosquat (e.g. "DHI" instead of "DHL"), not just the sender domain.
-        // Length-difference guard keeps short/common words from false-matching
-        // against short brand names.
-        preg_match_all('/\b[A-Za-z]{2,12}\b/', $text, $m);
+        // Lookalike fallback — catches a VISIBLE brand name that is itself a
+        // typosquat (e.g. "DHI" for "DHL", "Paypa1", "Arnazon"). It only
+        // accepts look-alike characters (1/l/i, 0/o, 3/e, 5/s, rn/m, vv/w),
+        // never general similarity: an earlier similarity rule matched
+        // ordinary words such as "up" (UPS), "apply" (Apple), "people",
+        // "again", "image" and "build", and flagged normal emails.
+        $foldBrand = fn (string $w) => $this->foldLookalikes($w);
+        preg_match_all('/\b[A-Za-z0-9]{2,12}\b/', $text, $m);
         $words = array_unique(array_map('strtolower', $m[0] ?? []));
-
-        $bestBrand = null;
-        $bestSurface = null;
-        $bestPercent = 0;
 
         foreach ($words as $word) {
             foreach ($knownBrands as $brand) {
-                if ($word === $brand || abs(strlen($word) - strlen($brand)) > 2) {
+                if ($word === $brand || str_contains($brand, ' ')) {
                     continue;
                 }
-                similar_text($word, $brand, $percent);
-                if ($percent >= 65 && $percent > $bestPercent) {
-                    $bestPercent = $percent;
-                    $bestBrand = $brand;
-                    $bestSurface = $word;
+                if ($foldBrand($word) === $foldBrand($brand)) {
+                    return ['brand' => $brand, 'surface' => $word];
                 }
             }
         }
+
+        $bestBrand = null;
+        $bestSurface = null;
 
         return ['brand' => $bestBrand, 'surface' => $bestSurface];
     }
@@ -1835,6 +1879,13 @@ class AnalysisEngine
             'netflix' => ['netflix.com'],
             'maybank' => ['maybank2u.com.my', 'maybank.com'],
             'bibd' => ['bibd.com.bn'],
+            'coinbase' => ['coinbase.com'],
+            'binance' => ['binance.com'],
+            'metamask' => ['metamask.io'],
+            'bradesco' => ['bradesco.com.br', 'banco.bradesco'],
+            'livelo' => ['livelo.com.br'],
+            'correios' => ['correios.com.br'],
+            'whatsapp' => ['whatsapp.com', 'whatsapp.net'],
         ];
         $brandDomains = array_merge($brandDomains, self::BRUNEI_BRANDS);
 

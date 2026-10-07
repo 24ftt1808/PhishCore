@@ -65,7 +65,8 @@ function capturePdfData(): object
 test('anyone who can open a scan can download it as a pdf', function () {
     $report = scannedReport();
 
-    $response = $this->get(route('scan.pdf', $report));
+    $response = $this->withSession(['guest_report_ids' => [$report->id]])
+        ->get(route('scan.pdf', $report));
 
     $response->assertOk();
     expect($response->headers->get('Content-Type'))->toBe('application/pdf');
@@ -76,14 +77,18 @@ test('anyone who can open a scan can download it as a pdf', function () {
 test('a scan without an analysis cannot be exported', function () {
     $report = Report::factory()->create(['status' => 'failed']);
 
-    $this->get(route('scan.pdf', $report))->assertNotFound();
+    $this->withSession(['guest_report_ids' => [$report->id]])
+        ->get(route('scan.pdf', $report))
+        ->assertNotFound();
 });
 
 test('the pdf uses the same reference id and verdict as the result page', function () {
     $report = scannedReport();
     $captured = capturePdfData();
 
-    $this->get(route('scan.pdf', $report))->assertOk();
+    $this->withSession(['guest_report_ids' => [$report->id]])
+        ->get(route('scan.pdf', $report))
+        ->assertOk();
 
     $expectedRef = 'PG-'.$report->created_at->format('Y-md').'-'.strtoupper(substr(md5((string) $report->id), 0, 5));
 
@@ -98,7 +103,9 @@ test('guests get no investigation section in the pdf', function () {
     investigationFor($report);
     $captured = capturePdfData();
 
-    $this->get(route('scan.pdf', $report))->assertOk();
+    $this->withSession(['guest_report_ids' => [$report->id]])
+        ->get(route('scan.pdf', $report))
+        ->assertOk();
 
     expect($captured->data['investigation'])->toBeNull();
 });
@@ -108,7 +115,10 @@ test('regular users see the investigation status but not names or notes', functi
     investigationFor($report);
     $captured = capturePdfData();
 
-    $this->actingAs(User::factory()->create(['is_team_member' => false]))
+    $owner = User::factory()->create(['is_team_member' => false]);
+    $report->update(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)
         ->get(route('scan.pdf', $report))
         ->assertOk();
 

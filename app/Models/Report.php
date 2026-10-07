@@ -23,6 +23,33 @@ class Report extends Model
         'status',
     ];
 
+    /**
+     * Who may open this scan's private result page (and its PDF).
+     * Admins and team members can open any scan; a signed-in user can open
+     * their own; a guest can open scans made in their current browser session.
+     * Everyone else gets a 404, so scan IDs cannot be enumerated.
+     */
+    public function canBeViewedBy(?User $user): bool
+    {
+        if ($user && ($user->role === 'admin' || $user->is_team_member)) {
+            return true;
+        }
+
+        if ($user && $this->user_id !== null && (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return in_array((int) $this->id, array_map('intval', session('guest_report_ids', [])), true);
+    }
+
+    /** Only finished link scans with a result can be shared publicly. */
+    public function isShareable(): bool
+    {
+        return $this->type === 'url'
+            && $this->status === 'completed'
+            && $this->analyses()->whereNotNull('verdict')->exists();
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -42,4 +69,4 @@ class Report extends Model
     {
         return $this->hasOne(Investigation::class);
     }
-}
+}   

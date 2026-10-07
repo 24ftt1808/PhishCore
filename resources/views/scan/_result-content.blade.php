@@ -1,4 +1,5 @@
 @php
+    $shared = $shared ?? false;
     $totalScore = max($analysis->risk_score, 1);
     $breakdownRows = collect($analysis->flags ?? [])
         ->filter(fn ($check) => is_array($check))
@@ -29,6 +30,9 @@
         'screenshot' => 'Scan Another Screenshot',
         default => 'Scan Another URL',
     };
+    if ($shared) {
+        $scanAnotherLabel = 'Scan a link yourself';
+    }
 
     $topReason = collect($analysis->flags ?? [])->filter(fn ($check) => is_array($check))->sortByDesc('points')->first();
 @endphp
@@ -69,7 +73,7 @@
                 <div class="min-w-0">
                     <h2 class="r-headline text-xl sm:text-2xl lg:text-3xl font-bold break-words {{ $style['text'] }} leading-tight">{{ $headline }}</h2>
                     <p class="mt-1 text-xs text-slate-400">
-                        <span class="font-mono">{{ $refId }}</span> &middot; Scanned {{ $report->created_at->format('j F Y \a\t g:i A') }}@if ($report->user) &middot; by {{ $report->user->name }}@endif
+                        <span class="font-mono">{{ $refId }}</span> &middot; Scanned {{ $report->created_at->format('j F Y \a\t g:i A') }}@if ($report->user && ! $shared) &middot; by {{ $report->user->name }}@endif
                     </p>
                 </div>
             </div>
@@ -115,16 +119,20 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
             {{ $scanAnotherLabel }}
         </a>
-        <a href="{{ route('scan.pdf', $report) }}" class="r-btn r-btn-ghost">
+@unless ($shared)
+                <a href="{{ route('scan.pdf', $report) }}" class="r-btn r-btn-ghost">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
             Download PDF Report
         </a>
+        @endunless
+        @if (! $shared)
         @guest
             <a href="{{ route('register') }}" class="r-btn r-btn-ghost">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg>
                 Create Account to Save History
             </a>
         @endguest
+        @endif
     </div>
 </section>
 
@@ -391,10 +399,12 @@
                 <dt class="text-xs text-slate-400 mb-1">IP REPUTATION</dt>
                 <dd class="text-slate-100">{{ $analysis->ip_reputation ?? 'Unavailable' }}</dd>
             </div>
+@unless ($shared)
             <div>
                 <dt class="text-xs text-slate-400 mb-1">SCANNED BY</dt>
                 <dd class="text-slate-100">{{ $report->user?->name ?? 'Guest (unregistered)' }}</dd>
             </div>
+@endunless
             <div>
                 <dt class="text-xs text-slate-400 mb-1">SCAN DURATION</dt>
                 <dd class="text-slate-100">{{ $analysis->duration_ms !== null ? round($analysis->duration_ms / 1000, 2) . 's' : 'Not recorded' }}</dd>
@@ -425,4 +435,4 @@
             @endforeach
         </div>
     </div>
-</div>
+</div>  

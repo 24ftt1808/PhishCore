@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\File;
 /**
  * Downloads a scan as a PDF case report.
  *
- * Access mirrors the scan result page itself (anyone who can open /scan/{id} can
+ * Access mirrors the scan result page itself (only people who can open
+ * /scan/{id} — the owner, the team, or the guest session that made it — can
  * download it). The investigation section follows the same rule as the on-screen
  * panel: signed-in users only, and names/notes are visible to team members only.
  */
@@ -56,6 +57,8 @@ class ScanPdfController extends Controller
 
     public function __invoke(Request $request, Report $report): Response
     {
+        abort_unless($report->canBeViewedBy($request->user()), 404);
+
         $report->load(['analyses', 'ctiLookups', 'user', 'investigation.assignedUser', 'investigation.statusLogs.changedBy']);
 
         $analysis = $report->analyses->first();

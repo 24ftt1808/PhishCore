@@ -1,4 +1,8 @@
 @php
+    $shared = $shared ?? false;
+@endphp
+
+@php
     $hasAnalysis = $analysis !== null;
 
     if ($hasAnalysis) {
@@ -55,13 +59,14 @@
             'typeIcons' => $typeIcons,
             'arcLength' => $arcLength,
             'arcOffset' => $arcOffset,
+            'shared' => $shared,
         ])->render()
         : View::make('scan._result-failed', [
             'report' => $report,
         ])->render();
 @endphp
 
-@auth
+@if (! $shared && auth()->check())
     <x-layouts.dashboard>
         @include('scan._result-styles')
 
@@ -83,12 +88,24 @@
         {!! $content !!}
 
         @if ($hasAnalysis)
+            @include('scan._share-box', ['report' => $report])
             @include('scan._investigation-panel', ['report' => $report])
         @endif
     </x-layouts.dashboard>
 @else
     <x-layouts.public>
         @include('scan._result-styles')
+        @if ($shared)
+            <div class="r-in mx-auto max-w-5xl px-4 sm:px-0 mb-4">
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    <span class="font-semibold text-slate-300">Shared scan result.</span>
+                    This is an automated analysis from PhishCore and can contain errors. It doesn't show who submitted the scan.
+                </p>
+            </div>
+        @endif
         {!! $content !!}
+        @if ($hasAnalysis && ! $shared)
+            @include('scan._share-box', ['report' => $report])
+        @endif
     </x-layouts.public>
-@endauth
+@endif

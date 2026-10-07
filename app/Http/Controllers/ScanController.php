@@ -54,6 +54,12 @@ class ScanController extends Controller
             'status' => 'processing',
         ]);
 
+        // Guests have no account to own the scan, so remember it in their
+        // session — that is what lets them open their own result page.
+        if (! auth()->check()) {
+            session()->push('guest_report_ids', $report->id);
+        }
+
         // A single scan can chain several sequential external API calls
         // (WHOIS, SSL, Google Safe Browsing, VirusTotal submit+poll, IP
         // reputation, redirect-chain following, and — for screenshots —
@@ -132,6 +138,8 @@ class ScanController extends Controller
 
     public function show(Report $report): View
     {
+        abort_unless($report->canBeViewedBy(auth()->user()), 404);
+
         $report->load(['analyses', 'ctiLookups']);
         return view('scan.show', [
             'report' => $report,

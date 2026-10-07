@@ -1,0 +1,18 @@
+# Held-out legitimate sites. NOT used for tuning. Run once, do not change the engine after seeing results.
+# Each URL was opened and loaded as a real site.
+legit|hosted|https://nasa.github.io/
+legit|hosted|https://square.github.io/
+legit|hosted|https://alphagov.github.io/
+legit|hosted|https://cfpb.github.io/
+legit|hosted|https://uber.github.io/
+legit|hosted|https://portfolio-blog-starter.vercel.app/
+legit|hosted|https://nextjs-subscription-payments.vercel.app/
+legit|brunei|https://www.utb.edu.bn/
+legit|brunei|https://www.unissa.edu.bn/
+legit|brunei|https://www.taib.com.bn/
+legit|brunei|https://www.mtic.gov.bn/
+legit|brunei|https://www.mora.gov.bn/
+legit|global|https://xkcd.com/
+legit|global|https://www.openstreetmap.org/
+legit|global|https://www.gnu.org/
+legit|global|https://archlinux.org/

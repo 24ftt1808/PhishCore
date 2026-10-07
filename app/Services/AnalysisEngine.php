@@ -759,6 +759,26 @@ class AnalysisEngine
     }
 
     /**
+     * Whether the host has any DNS record. gethostbyname() only looks for an
+     * IPv4 address and can fail on some resolvers or for IPv6-only and CNAME
+     * hosts, which made real sites (a Brunei bank and ministry sites among
+     * them) show as "no longer resolves". Falling back to a full record lookup
+     * means only a domain with no A, AAAA or CNAME record is called offline.
+     */
+    private function hostResolves(string $host): bool
+    {
+        $ip = @gethostbyname($host);
+
+        if ($ip && $ip !== $host) {
+            return true;
+        }
+
+        $records = @dns_get_record($host, DNS_A | DNS_AAAA | DNS_CNAME);
+
+        return is_array($records) && $records !== [];
+    }
+
+    /**
      * Checks whether the site is currently reachable at all, distinguishing
      * WHY it isn't (if it isn't) rather than lumping every failure into a
      * single generic "unavailable." This is informational only — it does
@@ -781,8 +801,7 @@ class AnalysisEngine
             ];
         }
 
-        $resolved = @gethostbyname($host);
-        if (! $resolved || $resolved === $host) {
+        if (! $this->hostResolves($host)) {
             return [
                 'status_label' => 'OFFLINE',
                 'reasons' => ["This domain (\"{$host}\") no longer resolves — it may have expired, been suspended, or been taken down entirely"],
@@ -2836,4 +2855,4 @@ class AnalysisEngine
 
         return $result;
     }
-}   
+}

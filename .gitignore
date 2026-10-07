@@ -30,3 +30,6 @@ feed.txt
 scam-brunei.txt
 scam-global.txt
 scan-list.txt
+
+feed2.txt
+scan-list.holdout.txt

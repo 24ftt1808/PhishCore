@@ -1,0 +1,14 @@
+# Phone numbers for the phone scan test. Format: label|group|number  (or just a number)
+# label is scam, legit or unknown. Use unknown for numbers you want to look at but cannot judge.
+# These are made-up numbers chosen to test the number checks. None is a real person's number.
+# Add your own numbers below, such as scam calls or SMS you received, and your own real contacts.
+scam|fake-format|8888888
+scam|fake-format|+6731234567
+scam|fake-format|+67371234
+scam|premium|+449098765432
+unknown|valid-brunei-mobile|+6737123456
+unknown|valid-brunei-mobile|+6738123456
+unknown|valid-brunei-landline|+6732223344
+unknown|foreign-mobile|+447911123456
+unknown|foreign-mobile|+60123456789
+unknown|not-a-number|call me

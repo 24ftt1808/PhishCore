@@ -17,6 +17,39 @@ use Zxing\QrReader;
 
 class AnalysisEngine
 {
+    /**
+     * Brunei-specific brands and their OFFICIAL domains. Every domain here was
+     * confirmed against the organisation's own site/Wikipedia before adding —
+     * a wrong domain would flag the brand's real site as impersonating itself.
+     *
+     * Deliberately multi-word for names that are ordinary words or surnames
+     * ("imagine", "taib", "dst"): a bare match would fire on unrelated pages.
+     * Merged into the page-content and email brand checks below.
+     */
+    private const BRUNEI_BRANDS = [
+        'baiduri' => ['baiduri.com.bn'],
+        'bdcb' => ['bdcb.gov.bn'],
+        'progresif' => ['progresif.com'],
+        'datastream digital' => ['dst.com.bn'],
+        'dst brunei' => ['dst.com.bn'],
+        'imagine brunei' => ['imagine.com.bn'],
+        'perbadanan taib' => ['taib.com.bn', 'insuranstaib.com.bn'],
+        'insurans islam taib' => ['insuranstaib.com.bn'],
+        'brunei customs' => ['customs.gov.bn'],
+        'royal customs and excise' => ['customs.gov.bn'],
+        'royal brunei airlines' => ['flyroyalbrunei.com'],
+        'royal brunei police force' => ['polis.gov.bn'],
+        'polis diraja brunei' => ['polis.gov.bn'],
+        'immigration and national registration department' => ['immigration.gov.bn'],
+        'jabatan imigresen' => ['immigration.gov.bn'],
+        'land transport department' => ['jpd.gov.bn'],
+        'jabatan pengangkutan darat' => ['jpd.gov.bn'],
+        'department of electrical services' => ['des.gov.bn'],
+        'jabatan perkhidmatan elektrik' => ['des.gov.bn'],
+        'brunei post' => ['post.gov.bn'],
+        'brunei postal services' => ['post.gov.bn'],
+    ];
+
     public function checkUrlSyntax(string $url): array
     {
         $reasons = [];
@@ -61,6 +94,52 @@ class AnalysisEngine
                 $points += 30;
                 break;
             }
+        }
+
+        // Brunei-specific lookalikes. Official domains differ from the
+        // naive "brand.com" guess (e.g. bibd.com.bn), so they are checked
+        // against an explicit allow-list rather than the loop above.
+        if (! preg_grep('/brand name|mimic/', $reasons)) {
+            $bnBrands = [
+                'bibd' => ['bibd.com.bn'],
+                'baiduri' => ['baiduri.com.bn'],
+                'bdcb' => ['bdcb.gov.bn'],
+                'progresif' => ['progresif.com'],
+                'bruneipost' => ['post.gov.bn'],
+                'royalbrunei' => ['flyroyalbrunei.com'],
+            ];
+            foreach ($bnBrands as $bnBrand => $officialDomains) {
+                if (! str_contains($normalizedHost, $bnBrand)) {
+                    continue;
+                }
+                $isOfficial = false;
+                foreach ($officialDomains as $official) {
+                    if ($host === $official || str_ends_with($host, '.'.$official)) {
+                        $isOfficial = true;
+                        break;
+                    }
+                }
+                if (! $isOfficial) {
+                    $reasons[] = "Domain imitates the Brunei brand \"{$bnBrand}\" but is not its official domain";
+                    $points += 30;
+                    break;
+                }
+            }
+        }
+
+        // Fake Brunei-government look: "gov.bn" / "gov-bn" used inside a
+        // domain that does not actually end in .gov.bn.
+        if (preg_match('/gov[.\-]?bn/', $host) && ! str_ends_with($host, '.gov.bn') && $host !== 'gov.bn') {
+            $reasons[] = 'Domain pretends to be a Brunei government site (contains "gov.bn") but is not under .gov.bn';
+            $points += 30;
+        } elseif (
+            preg_match('/brunei|(^|[.\-])bn([.\-]|$)/', $host)
+            && preg_match('/customs|kastam|police|polis|ministry|refund|fine|gov/', $host)
+            && ! str_ends_with($host, '.bn')
+            && ! str_ends_with($host, 'flyroyalbrunei.com')
+        ) {
+            $reasons[] = 'Domain uses Brunei authority wording (customs, police, ministry, refund) outside a .bn domain';
+            $points += 20;
         }
 
         return [
@@ -169,6 +248,22 @@ class AnalysisEngine
 
             if (stripos($message, 'does not match') !== false || stripos($message, 'subject name') !== false) {
                 return ['flagged' => true, 'points' => 20, 'reasons' => ['SSL certificate does not match the domain']];
+            }
+
+            // "unable to get local issuer certificate" (OpenSSL error 20) means
+            // the certificate's chain could not be completed from this server.
+            // The most common cause is a site that does not send its
+            // intermediate certificate (browsers fetch it themselves, curl
+            // does not) — a server misconfiguration, not evidence of
+            // phishing. Report it as UNKNOWN rather than a misleading
+            // SUSPICIOUS, consistent with how failed checks are handled.
+            if (stripos($message, 'unable to get local issuer') !== false) {
+                return [
+                    'flagged' => false,
+                    'points' => 0,
+                    'reasons' => ['The certificate chain could not be fully verified from our server (the site may not send its intermediate certificate). This is often a server misconfiguration and does not count against the site.'],
+                    'unavailable' => true,
+                ];
             }
 
             if (stripos($message, 'ssl') !== false || stripos($message, 'certificate') !== false) {
@@ -324,6 +419,9 @@ class AnalysisEngine
             if ($flaggedCount > 0) {
                 $points = min(50, $flaggedCount * 5);
                 $reasons[] = "{$flaggedCount} out of {$total} security vendors on VirusTotal flagged this URL as malicious or suspicious";
+                if ($flaggedCount <= 3) {
+                    $reasons[] = 'Only a very small share of vendors flagged it. This is often a false alarm on well-known, legitimate sites, so it counts as a minor signal.';
+                }
             } else {
                 $reasons[] = "0 out of {$total} security vendors on VirusTotal flagged this URL";
             }
@@ -978,6 +1076,8 @@ class AnalysisEngine
             'usps', 'royal mail', 'singpost',
         ];
 
+        $knownBrands = array_values(array_unique(array_merge($knownBrands, array_keys(self::BRUNEI_BRANDS))));
+
         $lowerText = strtolower($text);
 
         foreach ($knownBrands as $brand) {
@@ -1056,6 +1156,8 @@ class AnalysisEngine
             'royal mail' => ['royalmail.com'],
             'singpost' => ['singpost.com'],
         ];
+
+        $brandDomains = array_merge($brandDomains, self::BRUNEI_BRANDS);
 
         $allowed = $brandDomains[$brand] ?? [$brand.'.com'];
         foreach ($allowed as $officialDomain) {
@@ -1363,27 +1465,42 @@ class AnalysisEngine
 
         $patterns = [
             'urgency' => [
-                'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|act now|act immediately|urgent|final notice|immediately)\b/',
+                'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|act now|act immediately|urgent|final notice|immediately|tindakan segera|segera (sahkan|kemas kini|bertindak|hubungi)|dalam masa 24 jam|notis akhir|amaran terakhir)\b/',
                 'points' => 15,
                 'label' => 'Urgency language detected (e.g. "urgent", "24 hours", "act now")',
             ],
             'account_threat' => [
-                'regex' => '/(account will be suspended|account (is|has been) (locked|suspended|deactivated)|temporary suspension|avoid deactivation)/',
+                'regex' => '/(account will be suspended|account (is|has been) (locked|suspended|deactivated)|temporary suspension|avoid deactivation|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup))/',
                 'points' => 15,
                 'label' => 'Account threat language detected (suspension/deactivation)',
             ],
             'credential_request' => [
-                'regex' => '/(verify your account|verify my|confirm your password|enter your login|verification code|verify now)/',
+                'regex' => '/(verify your account|verify my|confirm your password|enter your login|verification code|verify now|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kod pengesahan|kod otp)/',
                 'points' => 20,
                 'label' => 'Credential/verification request detected',
             ],
             'financial_request' => [
-                'regex' => '/(transfer (of )?funds|payment required|invoice|bank account|refund)/',
+                'regex' => '/(transfer (of )?funds|payment required|invoice|bank account|refund|pindahan wang|pindah wang|bayaran (diperlukan|segera)|akaun bank|bayaran balik)/',
                 'points' => 15,
                 'label' => 'Financial request or invoice language detected',
             ],
+            'prize_scam' => [
+                'regex' => '/(you have won|you\'ve won|congratulations.{0,40}(won|selected)|claim your (prize|reward|gift)|tahniah.{0,40}(menang|dipilih|terpilih)|anda (telah )?memenangi|tuntut hadiah)/',
+                'points' => 15,
+                'label' => 'Prize/lottery language detected (e.g. "you have won", "tahniah anda menang")',
+            ],
+            'authority_threat' => [
+                'regex' => '/(notice of involvement|notis (penglibatan|siasatan)|royal brunei police|polis diraja brunei|interpol|waran (tangkap|geledah)|arrest warrant|section 420|seksyen 420|keep (this|the) matter confidential|rahsiakan (perkara|hal) ini)/',
+                'points' => 20,
+                'label' => 'Authority-impersonation language detected (police/Interpol/investigation notice, or demands for secrecy)',
+            ],
+            'customs_fee' => [
+                'regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan))/',
+                'points' => 15,
+                'label' => 'Customs/delivery-fee language detected (a common parcel scam)',
+            ],
             'call_to_action' => [
-                'regex' => '/(click here|click the button|click below|follow the link)/',
+                'regex' => '/(click here|click the button|click below|follow the link|klik (di ?sini|pautan|link|butang)|ikut pautan)/',
                 'points' => 10,
                 'label' => 'Suspicious call-to-action phrasing detected (click/follow link)',
             ],
@@ -1414,6 +1531,7 @@ class AnalysisEngine
     {
         $knownBrands = ['dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
             'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd'];
+        $knownBrands = array_merge($knownBrands, array_keys(self::BRUNEI_BRANDS));
 
         $lowerText = strtolower($text);
 
@@ -1481,6 +1599,7 @@ class AnalysisEngine
             'maybank' => ['maybank2u.com.my', 'maybank.com'],
             'bibd' => ['bibd.com.bn'],
         ];
+        $brandDomains = array_merge($brandDomains, self::BRUNEI_BRANDS);
 
         $allowed = $brandDomains[$brand] ?? [$brand.'.com'];
         $isOfficial = false;
@@ -1712,6 +1831,10 @@ class AnalysisEngine
             'act now', 'act immediately', 'final notice', 'immediate action required',
             'failed delivery', 'delivery failed', 'tracking number', 'could not be delivered',
             'invoice attached', 'payment failed', 'refund', 'suspended due to',
+            // Malay
+            'tindakan segera', 'sahkan akaun', 'akaun anda', 'kod pengesahan', 'kod otp',
+            'tahniah', 'memenangi', 'klik di sini', 'klik pautan', 'bayaran balik',
+            'caj kastam', 'notis penglibatan',
         ];
 
         $lowerText = strtolower($text);
@@ -1725,6 +1848,18 @@ class AnalysisEngine
     }
 
     /**
+     * Join reasons into one readable message, making sure each reads as its
+     * own sentence (several reasons are written without a final full stop).
+     */
+    private function joinReasons(array $reasons): string
+    {
+        return implode(' ', array_map(
+            fn ($reason) => preg_match('/[.!?)]$/', $reason = rtrim((string) $reason)) ? $reason : $reason.'.',
+            $reasons
+        ));
+    }
+
+    /**
      * Build a structured check result for the UI (name, status, message).
      */
     private function buildCheck(string $name, array $result, string $flaggedStatus = 'SUSPICIOUS'): array
@@ -1734,7 +1869,7 @@ class AnalysisEngine
                 'name' => $name,
                 'status' => 'UNKNOWN',
                 'message' => ! empty($result['reasons'])
-                    ? implode(' ', $result['reasons'])
+                    ? $this->joinReasons($result['reasons'])
                     : 'This check could not be completed.',
                 'points' => $result['points'],
             ];
@@ -1744,7 +1879,7 @@ class AnalysisEngine
             'name' => $name,
             'status' => $result['flagged'] ? $flaggedStatus : 'SAFE',
             'message' => ! empty($result['reasons'])
-                ? implode(' ', $result['reasons'])
+                ? $this->joinReasons($result['reasons'])
                 : 'No issues detected for this check.',
             'points' => $result['points'],
         ];
@@ -1797,7 +1932,7 @@ class AnalysisEngine
             [
                 'name' => 'Site Availability',
                 'status' => $availabilityResult['status_label'],
-                'message' => implode(' ', $availabilityResult['reasons']),
+                'message' => $this->joinReasons($availabilityResult['reasons']),
                 'points' => 0,
             ],
             $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
@@ -2014,10 +2149,11 @@ class AnalysisEngine
             if ($firstSeenLabel) {
                 $reasons[] = $firstSeenLabel;
             }
+            $reasons[] = '(Informational only — this does not change the risk score.)';
 
             return [
-                'flagged' => true,
-                'points' => 10,
+                'flagged' => false,
+                'points' => 0,
                 'reasons' => $reasons,
             ];
         }
@@ -2027,10 +2163,11 @@ class AnalysisEngine
             if ($firstSeenLabel) {
                 $reasons[] = $firstSeenLabel;
             }
+            $reasons[] = '(Informational only — this does not change the risk score.)';
 
             return [
-                'flagged' => true,
-                'points' => 18,
+                'flagged' => false,
+                'points' => 0,
                 'reasons' => $reasons,
             ];
         }
@@ -2039,10 +2176,11 @@ class AnalysisEngine
         if ($firstSeenLabel) {
             $reasons[] = $firstSeenLabel;
         }
+        $reasons[] = '(Informational only — this does not change the risk score.)';
 
         return [
-            'flagged' => true,
-            'points' => 25,
+            'flagged' => false,
+            'points' => 0,
             'reasons' => $reasons,
         ];
     }

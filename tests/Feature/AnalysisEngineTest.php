@@ -141,3 +141,81 @@ test('checkVirusTotal returns unavailable when no API key is configured', functi
     expect($result['flagged'])->toBeFalse();
     expect($result['unavailable'] ?? false)->toBeTrue();
 });
+
+// --- Brunei-specific detection ---
+
+test('checkUrlSyntax does not flag official Brunei domains', function (string $url) {
+    $result = $this->engine->checkUrlSyntax($url);
+
+    expect($result['flagged'])->toBeFalse();
+})->with([
+    'https://www.bibd.com.bn/personal',
+    'https://www.baiduri.com.bn',
+    'https://www.bdcb.gov.bn',
+    'https://www.customs.gov.bn',
+    'https://www.flyroyalbrunei.com/en-bn/',
+    'https://www.post.gov.bn',
+]);
+
+test('checkUrlSyntax flags Brunei brand lookalike domains', function (string $url) {
+    $result = $this->engine->checkUrlSyntax($url);
+
+    expect($result['flagged'])->toBeTrue();
+})->with([
+    'https://bibd-secure-login.com/verify',
+    'https://baiduri-online.top',
+    'https://bdcb-verify.net',
+    'https://bruneipost-track.cc',
+]);
+
+test('checkUrlSyntax flags fake Brunei government and authority domains', function (string $url) {
+    $result = $this->engine->checkUrlSyntax($url);
+
+    expect($result['flagged'])->toBeTrue();
+})->with([
+    'https://brunei.gov.bn.claim-refund.xyz',
+    'https://gov-bn-refund.com',
+    'https://brunei-customs-fee.com',
+]);
+
+test('content patterns flag Malay and Brunei scam wording', function (string $text) {
+    $method = new ReflectionMethod($this->engine, 'checkContentPatterns');
+    $method->setAccessible(true);
+
+    expect($method->invoke($this->engine, strtolower($text))['flagged'])->toBeTrue();
+})->with([
+    'Akaun anda akan disekat. Sila sahkan akaun anda sekarang.',
+    'Tahniah! Anda telah memenangi hadiah. Tuntut hadiah anda.',
+    'Notice of Involvement in Investigation. Royal Brunei Police and Interpol. Keep this matter confidential.',
+    'Your parcel is held. Please pay the customs fee to release it.',
+]);
+
+test('content patterns do not flag ordinary text', function () {
+    $method = new ReflectionMethod($this->engine, 'checkContentPatterns');
+    $method->setAccessible(true);
+
+    expect($method->invoke($this->engine, 'hello, meeting at 3pm tomorrow')['flagged'])->toBeFalse();
+});
+
+test('checkSslCertificate reports an incomplete certificate chain as unknown, not suspicious', function () {
+    \Illuminate\Support\Facades\Http::fake(function () {
+        throw new \Illuminate\Http\Client\ConnectionException('cURL error 60: SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)');
+    });
+
+    $result = $this->engine->checkSslCertificate('https://www.bibd.com.bn');
+
+    expect($result['flagged'])->toBeFalse();
+    expect($result['points'])->toBe(0);
+    expect($result['unavailable'])->toBeTrue();
+});
+
+test('checkSslCertificate still flags an expired certificate', function () {
+    \Illuminate\Support\Facades\Http::fake(function () {
+        throw new \Illuminate\Http\Client\ConnectionException('cURL error 60: SSL certificate problem: certificate has expired');
+    });
+
+    $result = $this->engine->checkSslCertificate('https://expired.example.com');
+
+    expect($result['flagged'])->toBeTrue();
+    expect($result['points'])->toBe(30);
+});

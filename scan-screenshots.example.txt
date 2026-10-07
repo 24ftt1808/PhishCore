@@ -1,0 +1,16 @@
+# Screenshots for the screenshot scan test. Format: label|group|image file (the file is looked up next to this list)
+# label is scam or legit. The images are made-up messages written to look like real scams. None is a real sender or number.
+# unknown-01 has no scam content: the scan should say it needs manual review (counted as not flagged).
+scam|sms|scan-screenshots/scam-01-post-sms.png
+scam|sms|scan-screenshots/scam-02-bank-sms.png
+scam|chat|scan-screenshots/scam-03-prize-chat.png
+scam|email|scan-screenshots/scam-04-paypal-email.png
+scam|chat|scan-screenshots/scam-05-police-chat.png
+scam|email|scan-screenshots/scam-06-crypto-email.png
+scam|sms|scan-screenshots/scam-07-dhl-sms.png
+legit|chat|scan-screenshots/legit-01-friend-chat.png
+legit|sms|scan-screenshots/legit-02-bank-otp.png
+legit|email|scan-screenshots/legit-03-school-email.png
+legit|email|scan-screenshots/legit-04-receipt-email.png
+legit|blank|scan-screenshots/unknown-01-no-text.png
+scam|real|scan-screenshots/real-01-redlight.png

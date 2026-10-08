@@ -203,6 +203,27 @@
     </div>
 @endif
 
+@if ($advice)
+    <div class="card sec">
+        <h2>What you should do</h2>
+        <div class="muted" style="margin-bottom: 8pt;">{{ $advice['intro'] }}</div>
+        <table class="tl">
+            @foreach ($advice['steps'] as $i => $step)
+                <tr>
+                    <td class="mono" style="width: 18pt; color: #fdba74; font-weight: bold;">{{ $i + 1 }}</td>
+                    <td class="white">{{ $step }}</td>
+                </tr>
+            @endforeach
+        </table>
+        <div class="well box" style="margin-top: 10pt;">
+            <div class="white" style="font-weight: bold; margin-bottom: 4pt;">{{ $advice['affectedTitle'] }}</div>
+            @foreach ($advice['affected'] as $i => $line)
+                <div style="margin: 2pt 0;">{{ $i + 1 }}. {{ $line }}</div>
+            @endforeach
+        </div>
+    </div>
+@endif
+
 <div class="card sec">
     <h2>Technical information</h2>
     <table class="kv">

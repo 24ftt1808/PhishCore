@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
+use App\Services\ScanAdvice;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -171,6 +172,7 @@ class ScanPdfController extends Controller
             'technical' => $technical,
             'chain' => $chain,
             'investigation' => $investigation,
+            'advice' => ScanAdvice::for((string) $report->type, (string) $analysis->verdict),
             'generatedAt' => now()->format('j F Y \a\t g:i A'),
             'logo' => $this->logoDataUri(),
         ])->render();

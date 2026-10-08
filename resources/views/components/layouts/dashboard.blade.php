@@ -48,7 +48,7 @@
                 ['route' => 'scan.index',       'match' => ['scan.index', 'scan.show'],   'label' => 'Scan',            'tone' => 'sky',    'show' => true,                      'anim' => 'orbit', 'icon' => 'M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z'],
                 ['route' => 'scan.history',     'match' => ['scan.history'],              'label' => 'Scan History',    'tone' => 'sky',    'show' => true,                      'anim' => 'rewind', 'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
                 ['route' => 'analytics',        'match' => ['analytics'],                 'label' => 'Analytics',       'tone' => 'sky',    'show' => true,                      'anim' => 'rise', 'icon' => 'M3 13.5l3.75-3.75 3 3 4.5-4.5M3 19.5h18'],
-                ['route' => 'chat.index',       'match' => ['chat.index'],                'label' => 'AI Chat',         'tone' => 'sky',    'show' => app(\App\Services\ChatAdvisor::class)->enabled(), 'anim' => 'nudge', 'icon' => 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.76 9.76 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z'],
+                ['route' => 'chat.index',       'match' => ['chat.index'],                'label' => 'AI Chat',         'tone' => 'sky',    'show' => app(\App\Services\ChatAdvisor::class)->enabled(), 'anim' => 'bot', 'icon' => 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.76 9.76 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z'],
                 ['route' => 'investigations.index', 'match' => ['investigations.index'],  'label' => 'Investigations',  'tone' => 'violet', 'show' => (bool) $u->is_team_member, 'anim' => 'open', 'icon' => 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z'],
                 ['route' => 'reports.index',    'match' => ['reports.index'],             'label' => 'Reports',         'tone' => 'violet', 'show' => (bool) $u->is_team_member, 'anim' => 'nudge', 'icon' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'],
                 ['route' => 'user-management.index', 'match' => ['user-management.index'], 'label' => 'User Management', 'tone' => 'violet', 'show' => $u->role === 'admin',     'anim' => 'pulse', 'icon' => 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z'],
@@ -103,6 +103,7 @@
             .side-link[data-anim="rise"]:hover .side-ic svg   { animation-name: ia-rise; }
             .side-link[data-anim="open"]:hover .side-ic svg   { animation-name: ia-open; }
             .side-link[data-anim="nudge"]:hover .side-ic svg  { animation-name: ia-nudge; }
+            .side-link[data-anim="bot"]:hover .side-ic svg    { animation-name: ia-bot; animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-duration: .8s; }
             .side-link[data-anim="pulse"]:hover .side-ic svg  { animation-name: ia-pulse; }
             .side-link[data-anim="gear"]:hover .side-ic svg   { animation-name: ia-gear; animation-timing-function: cubic-bezier(.4, 0, .2, 1); animation-duration: .9s; }
             .side-link[data-anim="out"]:hover .side-ic svg    { animation-name: ia-out; }
@@ -112,6 +113,7 @@
             @keyframes ia-rewind { to { transform: rotate(-360deg); } }
             @keyframes ia-rise   { 0% { transform: translateY(0); } 35% { transform: translateY(-4px) scaleY(1.12); } 65% { transform: translateY(1px); } 100% { transform: translateY(0); } }
             @keyframes ia-open   { 0% { transform: rotate(0); } 30% { transform: rotate(-12deg) scale(1.12); } 60% { transform: rotate(5deg); } 100% { transform: rotate(0); } }
+            @keyframes ia-bot    { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 35% { transform: translateY(-14%) scale(.95, 1.07); } 65% { transform: translateY(0) scale(1.05, .95); } 82% { transform: translateY(-5%) scale(1); } }
             @keyframes ia-nudge  { 0% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-4px) rotate(5deg); } 60% { transform: translateY(1px) rotate(-3deg); } 100% { transform: translateY(0) rotate(0); } }
             @keyframes ia-pulse  { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.28); } 50% { transform: scale(.95); } 75% { transform: scale(1.14); } }
             @keyframes ia-gear   { to { transform: rotate(180deg); } }
@@ -253,7 +255,13 @@
                             @php $on = request()->routeIs($item['match']); @endphp
                             <a href="{{ route($item['route']) }}" data-tone="{{ $item['tone'] }}" data-active="{{ $on ? 'true' : 'false' }}"
                                data-key="{{ $item['route'] }}" data-anim="{{ $item['anim'] }}" @mouseenter="moveTo($el)" @focus="moveTo($el)" @blur="reset()" @click="go($el)" class="side-link">
-                                <span class="side-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $item['icon'] }}" /></svg></span>
+                                <span class="side-ic">
+                                    @if ($item['anim'] === 'bot')
+                                        <x-robot-head class="rb w-[20px] h-[20px]" />
+                                    @else
+                                        <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $item['icon'] }}" /></svg>
+                                    @endif
+                                </span>
                                 <span class="side-label">{{ $item['label'] }}</span>
                                 @if ($on) <span class="side-dot"></span> @endif
                             </a>

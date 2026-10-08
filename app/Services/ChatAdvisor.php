@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * The floating "Safety Adviser" chat. It asks a language model (Groq) and never touches the scan rules.
+ * The floating "Cora" (Safety Adviser) chat. It asks a language model (Groq) and never touches the scan rules.
  *
  * The browser only ever sends plain user/assistant messages. The system instructions and the
  * summary of a scan are built here on the server, so a visitor cannot rewrite them. Any failure
@@ -112,7 +112,8 @@ class ChatAdvisor
     /** The fixed rules the model must follow, plus an optional summary of the scan being viewed. */
     public function instructions(?Report $report = null): string
     {
-        $text = "You are PhishCore's Safety Adviser, a helper inside a phishing-detection website built for Brunei.\n"
+        $text = "You are Cora, PhishCore's Safety Adviser, a helper inside a phishing-detection website built for Brunei.\n"
+            ."If someone asks your name, say you are Cora, PhishCore's AI safety helper.\n"
             ."Only help with scams, phishing, online safety, understanding a PhishCore scan result, and what to do after a scam. Politely decline anything else.\n"
             ."If someone asks what PhishCore is or who made it, say only that PhishCore is a phishing-detection platform built as a final year project at Politeknik Brunei, and do not invent other details about it.\n"
             ."Rules:\n"

@@ -100,8 +100,43 @@
 
             .cg-fab { background: linear-gradient(135deg, rgba(56, 189, 248, .95), rgba(37, 99, 235, .95)); border: 1px solid rgba(255, 255, 255, .35); box-shadow: 0 12px 28px -8px rgba(37, 99, 235, .85), inset 0 1px 0 rgba(255, 255, 255, .5); }
 
+
+            /* entrance, bouncy open, robot (transform and opacity only, so it stays smooth) */
+            .cg-in { animation: cg-in .6s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: var(--d, 0s); }
+            @keyframes cg-in { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+            .cg-chip { animation: cg-in .5s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: calc(.25s + var(--i, 0) * .08s); }
+            .cg-pop-enter { transition: transform .45s cubic-bezier(.34, 1.56, .64, 1), opacity .2s ease-out; will-change: transform, opacity; }
+            .cg-pop-leave { transition: transform .18s ease-in, opacity .15s ease-in; }
+            .cg-pop-from { opacity: 0; transform: translateY(16px) scale(.78); }
+            .cg-pop-to { opacity: 1; transform: none; }
+            .cg-pop-out { opacity: 0; transform: translateY(8px) scale(.92); }
+            .rb { overflow: visible; }
+            .rb-eye, .rb-ant { transform-box: fill-box; transform-origin: center; }
+            .rb-eye { animation: rb-blink 5s infinite; }
+            .rb-ant { animation: rb-ant 2.2s ease-in-out infinite; }
+            @keyframes rb-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
+            @keyframes rb-ant { 50% { opacity: .35; transform: scale(1.5); } }
+            .rb-fab { animation: rb-bob 3.4s ease-in-out infinite; }
+            @keyframes rb-bob { 0%, 100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-2px) rotate(-5deg); } 75% { transform: translateY(-1px) rotate(5deg); } }
+            .rb { transform-origin: 50% 90%; }
+            .rb-mouth, .rb-smile, .rb-eye, .rb-eye-happy, .rb-hand { transition: opacity .15s; }
+            .rb-smile, .rb-eye-happy, .rb-hand { opacity: 0; }
+            .rb-hand { transform-origin: 19.7px 20.6px; transform: rotate(-12deg); }
+            :is(.cg-fab, .side-link, .cg-av):hover .rb-mouth, :is(.cg-fab, .side-link, .cg-av):hover .rb-eye { opacity: 0; }
+            :is(.cg-fab, .side-link, .cg-av):hover .rb-smile, :is(.cg-fab, .side-link, .cg-av):hover .rb-eye-happy { opacity: 1; }
+            :is(.cg-fab, .side-link, .cg-av):hover .rb-hand { opacity: 1; animation: rb-wave .8s ease-in-out infinite; }
+            @keyframes rb-wave { 0%, 100% { transform: rotate(-12deg); } 25% { transform: rotate(-38deg); } 50% { transform: rotate(8deg); } 75% { transform: rotate(-34deg); } }
+            :is(.cg-fab, .cg-av):hover .rb { animation: rb-bounce .8s ease-in-out infinite; }
+            @keyframes rb-bounce { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 35% { transform: translateY(-14%) scale(.95, 1.07); } 65% { transform: translateY(0) scale(1.05, .95); } 82% { transform: translateY(-5%) scale(1); } }
+            .cg-fab { position: relative; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
+            .cg-fab:hover { transform: scale(1.1); }
+            .cg-fab:active { transform: scale(.93); }
+            .cg-fab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid rgba(125, 211, 252, .7); opacity: 0; pointer-events: none; animation: cg-ring 4s ease-out infinite; }
+            .cg-fab.is-open::after { animation: none; }
+            @keyframes cg-ring { 0%, 70% { opacity: 0; transform: scale(1); } 75% { opacity: .8; } 100% { opacity: 0; transform: scale(1.6); } }
             @media (prefers-reduced-motion: reduce) {
-                .cg-orb, .cg-av-lg, .cg-live, .cg-dot, .cg-msg { animation: none !important; }
+                .cg-orb, .cg-av-lg, .cg-live, .cg-dot, .cg-msg, .cg-in, .cg-chip, .rb-eye, .rb-ant, .rb-fab, .cg-fab::after, .rb-hand, .cg-fab:hover .rb, .cg-av:hover .rb { animation: none !important; }
+                .cg-pop-enter, .cg-pop-leave { transition: none; }
                 .cg-scroll { scroll-behavior: auto; }
                 .cg-chip, .cg-send { transition: none; }
             }
@@ -118,15 +153,15 @@
             {{-- Chat panel --}}
             <div
                 x-show="open"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-y-3 scale-95"
-                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95"
+                x-transition:enter="cg-pop-enter"
+                x-transition:enter-start="cg-pop-from"
+                x-transition:enter-end="cg-pop-to"
+                x-transition:leave="cg-pop-leave"
+                x-transition:leave-start="cg-pop-to"
+                x-transition:leave-end="cg-pop-out"
                 style="display: none;"
                 role="dialog"
-                aria-label="Safety Adviser chat"
+                aria-label="Chat with Cora"
                 class="cg-glass cg-panel absolute bottom-16 right-0 flex w-[calc(100vw-2rem)] max-w-[26rem] origin-bottom-right flex-col rounded-3xl"
             >
                 <span class="cg-orb cg-orb-a" aria-hidden="true"></span>
@@ -135,10 +170,10 @@
                 <div class="cg-head flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
                     <div class="flex min-w-0 items-center gap-3">
                         <span class="cg-av" aria-hidden="true">
-                            <svg class="h-4 w-4 text-sky-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                            <x-robot-head class="rb h-[1.15rem] w-[1.15rem] text-sky-100" />
                         </span>
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold text-white">Safety Adviser</p>
+                            <p class="truncate text-sm font-semibold text-white">Cora</p>
                             <p class="cg-hide-short flex items-center gap-1.5 text-[11px] text-slate-400"><i class="cg-live"></i><span class="truncate">AI helper<span class="hidden min-[420px]:inline"> &middot; can make mistakes</span></span></p>
                         </div>
                     </div>
@@ -158,10 +193,11 @@
                 type="button"
                 @click="toggle()"
                 :aria-expanded="open.toString()"
-                aria-label="Open Safety Adviser chat"
-                class="cg-fab flex h-14 w-14 items-center justify-center rounded-full text-white transition hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                aria-label="Chat with Cora"
+                :class="open ? 'is-open' : ''"
+                class="cg-fab flex h-14 w-14 items-center justify-center rounded-full text-white focus:outline-none focus:ring-2 focus:ring-sky-300"
             >
-                <svg x-show="!open" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.76 9.76 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+                <x-robot-head x-show="!open" class="rb rb-fab h-8 w-8" :stroke="1.7" />
                 <svg x-show="open" style="display: none;" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
@@ -179,6 +215,16 @@
                 // Only pop the keyboard up on devices with a real pointer; on phones and tablets it would cover the chat.
                 const canAutoFocus = () => { try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) { return false; } };
 
+                // Three random questions from a bigger list, so the chat doesn't always open the same way.
+                const POOL = config.reportId
+                    ? ['Explain this scan result in simple words', 'What should I do now?', 'How do I report a scam in Brunei?', 'Why was this flagged as risky?', 'Is it safe to open this link?', 'What if I already typed my password?', 'What does the risk score mean?', 'Should I warn my friends about this?']
+                    : ['What should I do if I clicked a scam link?', 'How can I spot a fake bank message?', 'How do I report a scam in Brunei?', 'Is a link with a padlock always safe?', 'What is phishing, in simple words?', 'Someone asked for my OTP. What now?', 'How do I know if a website is fake?', 'How do job offer scams work?', 'How do I protect my accounts from hackers?', 'What does a scam text look like?', 'Is this parcel delivery SMS real?', 'What is two-factor authentication?', 'Can scammers fake a phone number?', 'I sent money to a scammer. What now?'];
+                const pick = () => {
+                    const a = POOL.slice();
+                    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+                    return a.slice(0, 3);
+                };
+
                 return {
                     open: !!saved.open,
                     messages: Array.isArray(saved.messages) ? saved.messages.slice(-40) : [],
@@ -186,9 +232,7 @@
                     loading: false,
                     copied: null,
                     showJump: false,
-                    suggestions: config.reportId
-                        ? ['Explain this scan result in simple words', 'What should I do now?', 'How do I report a scam in Brunei?']
-                        : ['What should I do if I clicked a scam link?', 'How can I spot a fake bank message?', 'How do I report a scam in Brunei?'],
+                    suggestions: pick(),
 
                     init() {
                         this.$watch('open', () => { this.save(); if (this.open) this.focusAndScroll(); });
@@ -196,7 +240,7 @@
                     },
                     save() { try { sessionStorage.setItem(KEY, JSON.stringify({ open: this.open, messages: this.messages.slice(-40) })); } catch (e) {} },
                     toggle() { this.open = !this.open; },
-                    reset() { this.messages = []; this.showJump = false; this.save(); this.$nextTick(() => this.grow()); },
+                    reset() { this.messages = []; this.showJump = false; this.suggestions = pick(); this.save(); this.$nextTick(() => this.grow()); },
                     focusAndScroll() {
                         this.$nextTick(() => {
                             this.scrollDown(false);

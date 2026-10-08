@@ -18,10 +18,10 @@
         <template x-if="messages.length === 0">
             <div class="cg-msg flex flex-col items-center text-center {{ $compact ? 'gap-3' : 'gap-4' }}" style="margin-top: auto; margin-bottom: auto;">
                 <span class="cg-av cg-av-lg cg-hide-short" aria-hidden="true">
-                    <svg class="h-7 w-7 text-sky-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                    <x-robot-head class="rb h-8 w-8 text-sky-100" :stroke="1.6" />
                 </span>
                 <div>
-                    <p class="font-semibold text-white {{ $compact ? 'text-base' : 'text-lg sm:text-xl' }}">How can I help you stay safe?</p>
+                    <p class="font-semibold text-white {{ $compact ? 'text-base' : 'text-lg sm:text-xl' }}">Hi, I'm Cora. How can I help you stay safe?</p>
                     <p class="mx-auto mt-1 max-w-md text-sm text-slate-300 cg-hide-short">
                         Ask about scams and online safety, in English or Malay.
                         @unless ($compact)
@@ -30,8 +30,8 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap justify-center gap-2">
-                    <template x-for="q in suggestions" :key="q">
-                        <button type="button" @click="ask(q)" class="cg-chip" x-text="q"></button>
+                    <template x-for="(q, qi) in suggestions" :key="q">
+                        <button type="button" @click="ask(q)" class="cg-chip" :style="'--i:' + qi" x-text="q"></button>
                     </template>
                 </div>
             </div>
@@ -41,7 +41,7 @@
         <template x-for="(m, i) in messages" :key="i">
             <div class="cg-msg flex items-start gap-2" :class="m.role === 'user' ? 'justify-end' : 'justify-start'">
                 <span x-show="m.role !== 'user'" class="cg-av" aria-hidden="true">
-                    <svg class="h-4 w-4 text-sky-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                    <x-robot-head class="rb h-[1.15rem] w-[1.15rem] text-sky-100" />
                 </span>
                 <div class="group relative min-w-0 max-w-[calc(100%-2.6rem)] sm:max-w-[min(80%,40rem)]" :class="m.role === 'user' ? 'flex flex-col items-end' : ''">
                     <div
@@ -75,9 +75,9 @@
         {{-- Typing indicator --}}
         <div x-show="loading" style="display: none;" class="cg-msg flex items-start gap-2">
             <span class="cg-av" aria-hidden="true">
-                <svg class="h-4 w-4 text-sky-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                <x-robot-head class="rb h-[1.15rem] w-[1.15rem] text-sky-100" />
             </span>
-            <div class="cg-bot rounded-2xl rounded-bl-md px-4 py-3" role="status" aria-label="The adviser is typing">
+            <div class="cg-bot rounded-2xl rounded-bl-md px-4 py-3" role="status" aria-label="Cora is typing">
                 <span class="flex items-center gap-1.5"><i class="cg-dot"></i><i class="cg-dot"></i><i class="cg-dot"></i></span>
             </div>
         </div>
@@ -107,7 +107,7 @@
             rows="1"
             maxlength="1000"
             enterkeyhint="send"
-            placeholder="Ask about scams&hellip;"
+            placeholder="Ask Cora about scams&hellip;"
             aria-label="Your message"
         ></textarea>
         <button type="submit" :disabled="loading || input.trim() === ''" aria-label="Send" class="cg-send">
@@ -123,4 +123,8 @@
         </p>
         <span x-show="input.length > 800" style="display: none;" x-text="input.length + '/1000'" class="shrink-0 text-[11px] font-medium text-amber-300"></span>
     </div>
+    <p class="cg-hide-short mt-1.5 flex items-center justify-center gap-1 pb-0.5 text-[10px] text-slate-500">
+        <svg class="h-3 w-3 text-sky-400/80" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2 4.5 13.5H11L10 22l9-11.5h-6.5z"/></svg>
+        Powered by <span class="font-semibold text-slate-300">Groq</span>
+    </p>
 </form>

@@ -252,11 +252,11 @@ test('one user cannot send more than the daily limit', function () {
 test('the floating chat button shows for signed-in users only when the chat is on', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertDontSee('Open Safety Adviser chat');
+    $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertDontSee('Chat with Cora');
 
     chatOn();
 
-    $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertSee('Open Safety Adviser chat');
+    $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertSee('Chat with Cora');
 });
 
 test('the AI Chat page needs a login and the chat to be on', function () {
@@ -270,8 +270,8 @@ test('the AI Chat page needs a login and the chat to be on', function () {
 
     $this->actingAs($user)->get(route('chat.index'))
         ->assertOk()
-        ->assertSee('Safety Adviser')
-        ->assertDontSee('Open Safety Adviser chat');
+        ->assertSee('Cora')
+        ->assertDontSee('Chat with Cora');
 });
 
 test('the AI Chat tab appears in the menu only when the chat is on', function () {

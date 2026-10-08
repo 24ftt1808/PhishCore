@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ChatPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
 use App\Http\Controllers\ProfileController;
@@ -62,6 +64,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
     Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.destroy');
+
+    Route::get('/chat', ChatPageController::class)->name('chat.index');
+    Route::post('/chat', ChatController::class)->middleware('throttle:15,1')->name('chat.send');
 
     Route::get('/scan-history', [ScanHistoryController::class, 'index'])->name('scan.history');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');

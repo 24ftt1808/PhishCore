@@ -47,6 +47,15 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
     ],
 
+    // Floating Safety Adviser chat (Groq). Off unless CHATBOT_ENABLED=true, a key and a model are set.
+    // PRIVACY: when on, what users type in the chat is sent to Groq.
+    'chat' => [
+        'enabled' => env('CHATBOT_ENABLED', false),
+        'key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL'),
+        'url' => env('GROQ_URL', 'https://api.groq.com/openai/v1/chat/completions'),
+    ],
+
     'ocr_space' => [
     'key' => env('OCR_SPACE_API_KEY'),
 ],

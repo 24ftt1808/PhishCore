@@ -56,10 +56,10 @@
     $heroVt = $ctiLookup?->raw_response['data']['attributes']['last_analysis_stats'] ?? null;
     $heroVtTotal = $heroVt ? array_sum(array_map('intval', $heroVt)) : 0;
     $heroFacts = array_values(array_filter([
-        ['Checks flagged', $checkList->where('points', '>', 0)->count() . ' of ' . $checkList->count(), $checkList->where('points', '>', 0)->isNotEmpty() ? $style['text'] : 'text-white'],
-        $heroVtTotal > 0 ? ['Security vendors', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) . ' of ' . $heroVtTotal . ' flagged', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) > 0 ? 'text-red-300' : 'text-emerald-300'] : null,
-        $analysis->domain_age_days !== null ? ['Domain age', number_format($analysis->domain_age_days) . ' days', $analysis->domain_age_days < 30 ? 'text-orange-300' : 'text-white'] : null,
-        $analysis->duration_ms !== null ? ['Scan time', round($analysis->duration_ms / 1000, 1) . 's', 'text-white'] : null,
+        ['Checks with warnings', $checkList->where('points', '>', 0)->count() . ' of ' . $checkList->count(), $checkList->where('points', '>', 0)->isNotEmpty() ? $style['text'] : 'text-white'],
+        $heroVtTotal > 0 ? ['Security companies', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) . ' of ' . $heroVtTotal . ' flagged', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) > 0 ? 'text-red-300' : 'text-emerald-300'] : null,
+        $analysis->domain_age_days !== null ? ['Website age', number_format($analysis->domain_age_days) . ' days', $analysis->domain_age_days < 30 ? 'text-orange-300' : 'text-white'] : null,
+        $analysis->duration_ms !== null ? ['Time taken', round($analysis->duration_ms / 1000, 1) . 's', 'text-white'] : null,
     ]));
 @endphp
 
@@ -86,7 +86,7 @@
             @endif
 
             @if ($topReason && ($topReason['points'] ?? 0) > 0)
-                <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $topReason['message'] }}</p>
+                <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ \App\Services\CheckExplainer::plain((string) $topReason['message']) }}</p>
             @endif
 
             <div class="mt-6">
@@ -108,6 +108,7 @@
                 <span class="block text-4xl font-bold text-white tabular-nums">{{ $analysis->risk_score }}</span>
             </div>
             <p class="text-[11px] tracking-[0.14em] text-slate-300 mt-2">RISK SCORE / 100</p>
+            <p class="text-[11px] text-slate-400 mt-1 text-center">0 = very likely safe, 100 = very dangerous</p>
             <p class="text-xs font-bold tracking-wide {{ $style['text'] }} mt-0.5">{{ $severityLabel }}</p>
         </div>
     </div>
@@ -271,44 +272,81 @@
     </div>
 @endif
 
-{{-- DETECTION DETAILS --}}
-<h2 class="text-lg font-bold text-white mb-1">Detection Details</h2>
-<p class="text-sm text-slate-300 mb-5">Results from each detection layer relevant to this report.</p>
+{{-- WHAT WE CHECKED (plain-language view of the detection layers) --}}
+@php
+    $allChecks = collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c))->values();
+    $checkGroups = [
+        'warn' => ['title' => 'Things that look wrong', 'note' => null, 'open' => true],
+        'ok' => ['title' => 'Things that look fine', 'note' => null, 'open' => false],
+        'info' => ['title' => "Things we couldn't check, or that are just for information", 'note' => "\"Couldn't check\" is not good or bad by itself. It only means we couldn't get an answer, so it did not count against the score.", 'open' => false],
+    ];
+    $checkIconPaths = [
+        'SSL Certificate' => 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
+        'Domain Age' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5',
+        'URL Structure' => 'M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5',
+        'Blacklist Database' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',
+        'Sender Domain Analysis' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75',
+        'Phone Number Analysis' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
+        'Screenshot Text Extraction' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M18 22.5H6a2.25 2.25 0 01-2.25-2.25V3.75A2.25 2.25 0 016 1.5h12a2.25 2.25 0 012.25 2.25v16.5A2.25 2.25 0 0118 22.5zM10.5 8.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+    ];
+    $defaultCheckIcon = 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z';
+@endphp
 
-<div class="grid md:grid-cols-2 gap-4 mb-10">
-    @foreach (collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c)) as $check)
-        @php
-            $colorClass = $statusColors[$check['status']] ?? $statusColors['SAFE'];
-            $checkIconPaths = [
-                'SSL Certificate' => 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
-                'Domain Age' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5',
-                'URL Structure' => 'M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5',
-                'Blacklist Database' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',
-                'Sender Domain Analysis' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75',
-                'Phone Number Analysis' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
-                'Screenshot Text Extraction' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M18 22.5H6a2.25 2.25 0 01-2.25-2.25V3.75A2.25 2.25 0 016 1.5h12a2.25 2.25 0 012.25 2.25v16.5A2.25 2.25 0 0118 22.5zM10.5 8.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
-            ];
-            $iconPath = $checkIconPaths[$check['name']] ?? 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z';
-        @endphp
-        <div class="r-card r-lift r-in p-5" style="--d: {{ min($loop->index, 8) * 0.06 + 0.1 }}s">
-            <div class="flex items-center justify-between gap-3 mb-3">
-                <p class="text-white font-semibold flex items-center gap-2.5 min-w-0">
-                    <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" />
-                    </svg>
-                    <span class="truncate">{{ $check['name'] }}</span>
-                </p>
-                <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 {{ $colorClass }}">{{ $check['status'] }}</span>
-            </div>
-            <p class="text-sm text-slate-300 leading-relaxed">{{ $check['message'] }}</p>
+<h2 class="text-lg font-bold text-white mb-1">What we checked</h2>
+<p class="text-sm text-slate-300 mb-5">{{ \App\Services\CheckExplainer::summary($allChecks) }}</p>
+
+@foreach ($checkGroups as $groupKey => $group)
+    @php $groupChecks = $allChecks->filter(fn ($c) => \App\Services\CheckExplainer::group((string) ($c['status'] ?? '')) === $groupKey); @endphp
+    @continue($groupChecks->isEmpty())
+
+    <details class="mb-6" @if ($group['open']) open @endif>
+        <summary class="cursor-pointer select-none text-sm font-semibold text-slate-100 mb-3 flex items-center gap-2">
+            <span>{{ $group['title'] }} ({{ $groupChecks->count() }})</span>
+        </summary>
+        @if ($group['note'])
+            <p class="text-xs text-slate-400 mb-3">{{ $group['note'] }}</p>
+        @endif
+
+        <div class="grid md:grid-cols-2 gap-4">
+            @foreach ($groupChecks as $check)
+                @php
+                    $colorClass = $statusColors[$check['status']] ?? $statusColors['SAFE'];
+                    $iconPath = $checkIconPaths[$check['name']] ?? $defaultCheckIcon;
+                    $meaning = \App\Services\CheckExplainer::meaning($check['name']);
+                @endphp
+                <div class="r-card r-lift r-in p-5" style="--d: {{ min($loop->index, 8) * 0.06 + 0.1 }}s">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <p class="text-white font-semibold flex items-center gap-2.5 min-w-0">
+                            <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" />
+                            </svg>
+                            <span>{{ \App\Services\CheckExplainer::title($check['name']) }}</span>
+                        </p>
+                        <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 {{ $colorClass }}">{{ \App\Services\CheckExplainer::statusLabel((string) $check['status']) }}</span>
+                    </div>
+                    <p class="text-sm text-slate-200 leading-relaxed">{{ \App\Services\CheckExplainer::plain((string) ($check['message'] ?? '')) }}</p>
+                    @if ($meaning)
+                        <details class="mt-3">
+                            <summary class="cursor-pointer select-none text-xs text-sky-300">What does this mean?</summary>
+                            <p class="mt-2 text-xs text-slate-400 leading-relaxed">{{ $meaning }}</p>
+                        </details>
+                    @endif
+                    @if (\App\Services\CheckExplainer::hasFriendlyTitle($check['name']))
+                        <p class="mt-3 text-[11px] text-slate-500">Technical name: {{ $check['name'] }}</p>
+                    @endif
+                </div>
+            @endforeach
         </div>
-    @endforeach
-</div>
+    </details>
+@endforeach
 
-{{-- RISK BREAKDOWN --}}
+<div class="mb-10"></div>
+
+{{-- WHY THIS SCORE --}}
 <div class="r-card r-in p-6 mb-6" style="--d:.1s">
-    <h2 class="text-lg font-bold text-white mb-1">Risk Breakdown</h2>
-    <p class="text-sm text-slate-300 mb-5">Contribution of each detection layer to the overall risk score.</p>
+    <h2 class="text-lg font-bold text-white mb-1">Why this score?</h2>
+    <p class="text-sm text-slate-300 mb-1">The score goes from 0 (very likely safe) to 100 (very dangerous). These are the checks that pushed it up, biggest first.</p>
+    <p class="text-xs text-slate-400 mb-5">The percentage is how much of the score each check is responsible for.</p>
 
     @if ($analysis->risk_score > 0 && $breakdownRows->where('points', '>', 0)->count() > 0)
         <div class="space-y-4">
@@ -318,9 +356,9 @@
                     $textColor = $row['pct'] >= 80 ? 'text-red-300' : ($row['pct'] >= 40 ? 'text-orange-300' : 'text-sky-300');
                 @endphp
                 <div>
-                    <div class="flex items-center justify-between text-sm mb-1.5">
-                        <span class="text-slate-100">{{ $row['name'] }}</span>
-                        <span class="{{ $textColor }} font-semibold">{{ $row['pct'] }}%</span>
+                    <div class="flex items-center justify-between gap-3 text-sm mb-1.5">
+                        <span class="text-slate-100">{{ \App\Services\CheckExplainer::title($row['name']) }}</span>
+                        <span class="{{ $textColor }} font-semibold shrink-0">{{ $row['pct'] }}%</span>
                     </div>
                     <span class="block h-2 rounded-full bg-slate-700/40 overflow-hidden">
                         <span class="r-grow block h-full rounded-full {{ $barColor }}" style="width: {{ $row['pct'] }}%; --d: {{ 0.25 + $loop->index * 0.08 }}s"></span>
@@ -331,7 +369,7 @@
     @elseif ($analysis->verdict === 'review')
         <p class="text-sm text-slate-300">No automatic score was generated for this report &mdash; it needs a human to review the extracted content above.</p>
     @else
-        <p class="text-sm text-slate-300">No risk contributors &mdash; this report passed every detection layer cleanly.</p>
+        <p class="text-sm text-slate-300">Nothing pushed the score up &mdash; this report passed every check cleanly.</p>
     @endif
 </div>
 

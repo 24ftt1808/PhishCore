@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChatPageController;
+use App\Http\Controllers\PlayController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
 use App\Http\Controllers\ProfileController;
@@ -66,6 +67,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.destroy');
 
     Route::get('/chat', ChatPageController::class)->name('chat.index');
+    Route::get('/play', PlayController::class)->name('play.index');
+    Route::post('/play/progress', [PlayController::class, 'store'])->middleware('throttle:60,1')->name('play.progress');
     Route::post('/chat', ChatController::class)->middleware('throttle:15,1')->name('chat.send');
 
     Route::get('/scan-history', [ScanHistoryController::class, 'index'])->name('scan.history');

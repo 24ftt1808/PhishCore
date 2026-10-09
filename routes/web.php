@@ -6,6 +6,7 @@ use App\Http\Controllers\ChatPageController;
 use App\Http\Controllers\PlayController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
+use App\Http\Controllers\NumberReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\PublicReportsController;
@@ -65,6 +66,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
     Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.destroy');
+
+    Route::post('/scan/{report}/report-number', [NumberReportController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('number-report.store');
 
     Route::get('/chat', ChatPageController::class)->name('chat.index');
     Route::get('/play', PlayController::class)->name('play.index');

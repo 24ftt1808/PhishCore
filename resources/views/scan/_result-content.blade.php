@@ -233,7 +233,7 @@
                 <button @click="open = !open" class="w-full flex items-center justify-between text-left">
                     <span class="text-sm font-medium text-slate-100">View all {{ $vendorResults->count() }} security vendor results</span>
                     <span class="flex items-center gap-2">
-                        <span class="text-xs text-slate-400" x-text="open ? 'Click to collapse' : 'Click to expand'">Click to expand</span>
+                        <span class="text-xs text-slate-400 max-sm:hidden" x-text="open ? 'Click to collapse' : 'Click to expand'">Click to expand</span>
                         <svg class="w-4 h-4 text-slate-300 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </span>
                 </button>
@@ -276,9 +276,9 @@
 @php
     $allChecks = collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c))->values();
     $checkGroups = [
-        'warn' => ['title' => 'Things that look wrong', 'note' => null, 'open' => true],
-        'ok' => ['title' => 'Things that look fine', 'note' => null, 'open' => false],
-        'info' => ['title' => "Things we couldn't check, or that are just for information", 'note' => "\"Couldn't check\" is not good or bad by itself. It only means we couldn't get an answer, so it did not count against the score.", 'open' => false],
+        'warn' => ['title' => 'Things that look wrong', 'note' => null, 'open' => true, 'rgb' => '251, 191, 36'],
+        'ok' => ['title' => 'Things that look fine', 'note' => null, 'open' => false, 'rgb' => '52, 211, 153'],
+        'info' => ['title' => "Things we couldn't check, or that are just for information", 'rgb' => '148, 163, 184', 'open' => false, 'note' => "\"Couldn't check\" is not good or bad by itself. It only means we couldn't get an answer, so it did not count against the score.", 'open' => false],
     ];
     $checkIconPaths = [
         'SSL Certificate' => 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
@@ -292,6 +292,24 @@
     $defaultCheckIcon = 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z';
 @endphp
 
+<style>
+    /* the three groups under "What we checked": a clear bar with a chevron, so people can see it opens */
+    .rg-sum { list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: .75rem; min-height: 3.1rem; padding: .7rem .9rem; border-radius: .9rem;
+        background: rgba(8, 15, 32, .5); border: 1px solid rgba(var(--c), .35); transition: background-color .15s, border-color .15s; }
+    .rg-sum::-webkit-details-marker { display: none; }
+    .rg-sum:hover { background: rgba(var(--c), .08); border-color: rgba(var(--c), .55); }
+    .rg-sum:focus-visible { outline: 2px solid rgba(125, 211, 252, .8); outline-offset: 2px; }
+    .rg-count { flex: none; display: grid; place-items: center; min-width: 1.75rem; height: 1.75rem; padding: 0 .4rem; border-radius: 999px; font-size: .8rem; font-weight: 700; color: rgb(var(--c)); background: rgba(var(--c), .16); border: 1px solid rgba(var(--c), .4); }
+    .rg-title { font-size: .95rem; font-weight: 600; color: #f1f5f9; line-height: 1.25; }
+    .rg-peek { margin-top: .15rem; font-size: .75rem; color: #94a3b8; line-height: 1.3; }
+    .rg-act { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; font-weight: 600; color: #7dd3fc; }
+    .rg-act svg { width: 1rem; height: 1rem; transition: transform .2s; }
+    details[open] > .rg-sum { margin-bottom: .9rem; }
+    details[open] > .rg-sum .rg-act svg { transform: rotate(180deg); }
+    details[open] > .rg-sum .rg-peek, details[open] > .rg-sum .rg-show, details:not([open]) > .rg-sum .rg-hide { display: none; }
+    @media (prefers-reduced-motion: reduce) { .rg-act svg { transition: none; } }
+</style>
+
 <h2 class="text-lg font-bold text-white mb-1">What we checked</h2>
 <p class="text-sm text-slate-300 mb-5">{{ \App\Services\CheckExplainer::summary($allChecks) }}</p>
 
@@ -300,8 +318,20 @@
     @continue($groupChecks->isEmpty())
 
     <details class="mb-6" @if ($group['open']) open @endif>
-        <summary class="cursor-pointer select-none text-sm font-semibold text-slate-100 mb-3 flex items-center gap-2">
-            <span>{{ $group['title'] }} ({{ $groupChecks->count() }})</span>
+        @php
+            $peekNames = $groupChecks->take(3)->map(fn ($c) => \App\Services\CheckExplainer::title($c['name']))->implode(', ');
+            $peekMore = $groupChecks->count() - 3;
+        @endphp
+        <summary class="rg-sum" style="--c: {{ $group['rgb'] }}">
+            <span class="rg-count">{{ $groupChecks->count() }}</span>
+            <span class="min-w-0">
+                <span class="rg-title block">{{ $group['title'] }}</span>
+                <span class="rg-peek block truncate">{{ $peekNames }}{{ $peekMore > 0 ? ' and '.$peekMore.' more' : '' }}</span>
+            </span>
+            <span class="rg-act">
+                <span class="rg-show">Show</span><span class="rg-hide">Hide</span>
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+            </span>
         </summary>
         @if ($group['note'])
             <p class="text-xs text-slate-400 mb-3">{{ $group['note'] }}</p>
@@ -383,7 +413,7 @@
             Technical Information
         </span>
         <span class="flex items-center gap-2">
-            <span class="text-xs text-slate-400" x-text="open ? 'Click to collapse' : 'Click to expand'">Click to expand</span>
+            <span class="text-xs text-slate-400 max-sm:hidden" x-text="open ? 'Click to collapse' : 'Click to expand'">Click to expand</span>
             <svg class="w-4 h-4 text-slate-300 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         </span>
     </button>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\NumberReport;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -57,10 +58,69 @@ class PublicReportsController extends Controller
         return view('reports.public', [
             'stats' => $stats,
             'trends' => $trends,
+            'topNumbers' => $this->topNumbers(),
             'reports' => $reports,
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to', 'rows']),
         ]);
     }
+    /**
+     * Phone numbers that two or more different people reported as scams in the last year, most
+     * reported first. One person counts once per number, and only the number, the kind of scam
+     * and the dates are exposed, never who reported it.
+     *
+     * @return array<int, array{phone: string, count: int, category: string, last: \Carbon\Carbon}>
+     */
+    private function topNumbers(): array
+    {
+        return NumberReport::query()
+            ->where('created_at', '>=', now()->subDays(365))
+            ->get()
+            ->groupBy('phone')
+            ->map(function ($rows, $phone) {
+                return [
+                    'phone' => (string) $phone,
+                    'count' => $rows->pluck('user_id')->unique()->count(),
+                    'category' => $this->scamTypeLabel($rows->pluck('category')->all()),
+                    'last' => $rows->max('created_at'),
+                ];
+            })
+            ->filter(fn ($row) => $row['count'] >= 2)
+            ->sortByDesc(fn ($row) => $row['count'] * 10_000_000_000 + $row['last']->timestamp)
+            ->take(10)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The scam-type label shown for a reported number. One type with more than half of the
+     * reports is shown alone. Otherwise the top two are shown, plus "+N more type(s)" when
+     * others exist. Ties are broken by the order of NumberReport::CATEGORIES so the same
+     * number always shows the same label.
+     *
+     * @param  array<int, string>  $categories  One category key per report.
+     */
+    private function scamTypeLabel(array $categories): string
+    {
+        $order = array_keys(NumberReport::CATEGORIES);
+        $counts = array_count_values($categories);
+
+        uksort($counts, function ($a, $b) use ($counts, $order) {
+            return [$counts[$b], array_search($a, $order, true)] <=> [$counts[$a], array_search($b, $order, true)];
+        });
+
+        $keys = array_keys($counts);
+        $label = fn (string $key): string => NumberReport::CATEGORIES[$key] ?? NumberReport::CATEGORIES['other'];
+
+        if ($keys === [] || $counts[$keys[0]] * 2 > count($categories)) {
+            return $label($keys[0] ?? 'other');
+        }
+
+        $text = $label($keys[0]).' · '.$label($keys[1]);
+        $more = count($keys) - 2;
+
+        return $more > 0 ? $text.' · +'.$more.' more '.($more === 1 ? 'type' : 'types') : $text;
+    }
+
     /**
      * Aggregates for the public "Trends" section: flagged reports per day
      * (last 14 days, split by verdict), flagged reports by scan type, and

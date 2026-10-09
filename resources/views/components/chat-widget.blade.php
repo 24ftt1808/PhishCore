@@ -2,6 +2,17 @@
     $chatReport = request()->route('report');
     $chatReportId = ($chatReport instanceof \App\Models\Report && $chatReport->canBeViewedBy(auth()->user())) ? $chatReport->id : null;
     // Ties the saved chat in the browser to this login, so another user (or a new login) never sees it.
+    // Which part of the app the person is on, so Cora's suggested questions and tips fit the page.
+    $chatPage = match (true) {
+        $chatReportId !== null => 'report',
+        request()->routeIs('dashboard') => 'dashboard',
+        request()->routeIs('scan.index', 'scan.store') => 'scan',
+        request()->routeIs('scan.history') => 'history',
+        request()->routeIs('analytics') => 'analytics',
+        request()->routeIs('play.*') => 'play',
+        request()->routeIs('profile.*') => 'settings',
+        default => 'other',
+    };
     $chatScope = auth()->check() ? substr(hash('sha256', session()->getId().'|'.auth()->id()), 0, 16) : '';
 @endphp
 
@@ -116,8 +127,6 @@
             .rb-ant { animation: rb-ant 2.2s ease-in-out infinite; }
             @keyframes rb-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
             @keyframes rb-ant { 50% { opacity: .35; transform: scale(1.5); } }
-            .rb-fab { animation: rb-bob 3.4s ease-in-out infinite; }
-            @keyframes rb-bob { 0%, 100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-2px) rotate(-5deg); } 75% { transform: translateY(-1px) rotate(5deg); } }
             .rb { transform-origin: 50% 90%; }
             .rb-mouth, .rb-smile, .rb-eye, .rb-eye-happy, .rb-hand { transition: opacity .15s; }
             .rb-smile, .rb-eye-happy, .rb-hand { opacity: 0; }
@@ -126,16 +135,23 @@
             :is(.cg-fab, .side-link, .cg-av):hover .rb-smile, :is(.cg-fab, .side-link, .cg-av):hover .rb-eye-happy { opacity: 1; }
             :is(.cg-fab, .side-link, .cg-av):hover .rb-hand { opacity: 1; animation: rb-wave .8s ease-in-out infinite; }
             @keyframes rb-wave { 0%, 100% { transform: rotate(-12deg); } 25% { transform: rotate(-38deg); } 50% { transform: rotate(8deg); } 75% { transform: rotate(-34deg); } }
-            :is(.cg-fab, .cg-av):hover .rb { animation: rb-bounce .8s ease-in-out infinite; }
-            @keyframes rb-bounce { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 35% { transform: translateY(-14%) scale(.95, 1.07); } 65% { transform: translateY(0) scale(1.05, .95); } 82% { transform: translateY(-5%) scale(1); } }
-            .cg-fab { position: relative; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
-            .cg-fab:hover { transform: scale(1.1); }
-            .cg-fab:active { transform: scale(.93); }
+            .cg-fab { position: relative; transition: filter .2s ease-out; }
+            .cg-fab:hover { filter: brightness(1.12); }
             .cg-fab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid rgba(125, 211, 252, .7); opacity: 0; pointer-events: none; animation: cg-ring 4s ease-out infinite; }
             .cg-fab.is-open::after { animation: none; }
             @keyframes cg-ring { 0%, 70% { opacity: 0; transform: scale(1); } 75% { opacity: .8; } 100% { opacity: 0; transform: scale(1.6); } }
+            /* little speech bubble that pops up next to the floating button now and then */
+            .cg-tip { position: absolute; right: 0; bottom: 4.2rem; width: max-content; max-width: min(17rem, calc(100vw - 2rem)); display: flex; align-items: flex-start; gap: .4rem; padding: .65rem .5rem .65rem .85rem; border-radius: 1rem 1rem .3rem 1rem; text-align: left; font-size: .82rem; line-height: 1.35; color: #e8f1ff; cursor: pointer;
+                background: linear-gradient(160deg, rgba(30, 52, 98, .96), rgba(14, 26, 54, .96)); border: 1px solid rgba(125, 211, 252, .35); box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .7), 0 0 0 1px rgba(2, 6, 23, .4); }
+            .cg-tip-x { flex: none; display: grid; place-items: center; width: 1.4rem; height: 1.4rem; margin-top: -.1rem; border-radius: 999px; color: #94a3b8; }
+            .cg-tip-x:hover { color: #fff; background: rgba(148, 163, 184, .2); }
+            .cg-tip-in { transition: opacity .35s ease-out, transform .35s ease-out; }
+            .cg-tip-from { opacity: 0; transform: translateY(6px); }
+            .cg-tip-to { opacity: 1; transform: none; }
+            .cg-tip-out { opacity: 0; }
             @media (prefers-reduced-motion: reduce) {
-                .cg-orb, .cg-av-lg, .cg-live, .cg-dot, .cg-msg, .cg-in, .cg-chip, .rb-eye, .rb-ant, .rb-fab, .cg-fab::after, .rb-hand, .cg-fab:hover .rb, .cg-av:hover .rb { animation: none !important; }
+                .cg-tip-in { transition: none; }
+                .cg-orb, .cg-av-lg, .cg-live, .cg-dot, .cg-msg, .cg-in, .cg-chip, .rb-eye, .rb-ant, .cg-fab::after, .rb-hand { animation: none !important; }
                 .cg-pop-enter, .cg-pop-leave { transition: none; }
                 .cg-scroll { scroll-behavior: auto; }
                 .cg-chip, .cg-send { transition: none; }
@@ -145,7 +161,7 @@
         {{-- The AI Chat page has its own big chat, so the floating one is hidden there. --}}
         @unless (request()->routeIs('chat.index'))
         <div
-            x-data="safetyChat(@js(['url' => route('chat.send'), 'token' => csrf_token(), 'reportId' => $chatReportId, 'scope' => $chatScope]))"
+            x-data="safetyChat(@js(['url' => route('chat.send'), 'token' => csrf_token(), 'reportId' => $chatReportId, 'scope' => $chatScope, 'page' => $chatPage]))"
             @keydown.escape.window="open = false"
             class="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6"
             style="padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom);"
@@ -188,6 +204,27 @@
                 <x-chat-thread :compact="true" />
             </div>
 
+            {{-- Random pop-up message beside the floating button (only here, not on the other robot-face spots) --}}
+            <div
+                x-show="tip && !open"
+                x-transition:enter="cg-tip-in"
+                x-transition:enter-start="cg-tip-from"
+                x-transition:enter-end="cg-tip-to"
+                x-transition:leave="cg-tip-in"
+                x-transition:leave-start="cg-tip-to"
+                x-transition:leave-end="cg-tip-out"
+                style="display: none;"
+                class="cg-tip"
+                role="status"
+                aria-live="polite"
+                @click="open = true"
+            >
+                <span x-text="tip"></span>
+                <button type="button" class="cg-tip-x" aria-label="Hide Cora's tips" @click.stop="silence()">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
             {{-- Floating button --}}
             <button
                 type="button"
@@ -216,13 +253,42 @@
                 const canAutoFocus = () => { try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) { return false; } };
 
                 // Three random questions from a bigger list, so the chat doesn't always open the same way.
-                const POOL = config.reportId
-                    ? ['Explain this scan result in simple words', 'What should I do now?', 'How do I report a scam in Brunei?', 'Why was this flagged as risky?', 'Is it safe to open this link?', 'What if I already typed my password?', 'What does the risk score mean?', 'Should I warn my friends about this?']
-                    : ['What should I do if I clicked a scam link?', 'How can I spot a fake bank message?', 'How do I report a scam in Brunei?', 'Is a link with a padlock always safe?', 'What is phishing, in simple words?', 'Someone asked for my OTP. What now?', 'How do I know if a website is fake?', 'How do job offer scams work?', 'How do I protect my accounts from hackers?', 'What does a scam text look like?', 'Is this parcel delivery SMS real?', 'What is two-factor authentication?', 'Can scammers fake a phone number?', 'I sent money to a scammer. What now?'];
+                // Suggested questions. Cora cannot see a message or link until it is typed in, so none of these ask her to judge one.
+                const GENERAL = ['What should I do if I clicked a scam link?', 'How can I spot a fake bank message?', 'How do I report a scam in Brunei?', 'Is a link with a padlock always safe?', 'What is phishing, in simple words?', 'Someone asked for my OTP. What now?', 'How do I know if a website is fake?', 'How do job offer scams work?', 'How do I protect my accounts from hackers?', 'What does a scam text look like?', 'How do parcel delivery scams work?', 'What is two-factor authentication?', 'Can scammers fake a phone number?', 'I sent money to a scammer. What now?'];
+                const BY_PAGE = {
+                    report: ['Explain this scan result in simple words', 'What should I do now?', 'How do I report a scam in Brunei?', 'Why was this flagged as risky?', 'Is it safe to open this link?', 'What if I already typed my password?', 'What does the risk score mean?', 'Should I warn my friends about this?'],
+                    dashboard: ['What does the risk score mean?', 'How do I check a suspicious link safely?', 'What are the most common phishing tricks?', 'What should I do if I clicked a scam link?', 'How do I stay safe from phishing?', 'How do I report a scam in Brunei?'],
+                    scan: ['How do I check a suspicious link safely?', 'Is a link with a padlock always safe?', 'How do I know if a website is fake?', 'What does a scam text look like?', 'What should I check before I click a link?', 'What does the risk score mean?'],
+                    history: ['What should I do about a link that was flagged risky?', 'What does the risk score mean?', 'I opened a risky link. What now?', 'How do I report a scam in Brunei?', 'Why do scammers make messages sound urgent?'],
+                    analytics: ['What are the most common phishing tricks?', 'How do phishing scams usually spread?', 'What does the risk score mean?', 'Why do scammers copy real brands?', 'How do I stay safe from phishing?'],
+                    play: ['How can I spot a fake bank message?', 'What are the red flags in a scam text?', 'How do job offer scams work?', 'Can scammers fake a phone number?', 'Someone asked for my OTP. What now?', 'How do parcel delivery scams work?'],
+                    settings: ['What is two-factor authentication?', 'How do I make a strong password?', 'How do I protect my accounts from hackers?', 'What if I typed my password on a fake site?', 'How often should I change my password?']
+                };
+                const POOL = (config.reportId ? BY_PAGE.report : BY_PAGE[config.page]) || GENERAL;
                 const pick = () => {
                     const a = POOL.slice();
                     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
                     return a.slice(0, 3);
+                };
+                const TIPS = [
+                    'Hi, I\'m Cora. Ask me if a message looks like a scam.',
+                    'Got a strange link? Ask me before you click it.',
+                    'Tip: a real bank will never ask for your OTP or password in a message.',
+                    'Tip: check the web address carefully before you log in.',
+                    'Not sure about an SMS? Tell me what it says and I\'ll help.',
+                    '"Urgent! Act now!" is a classic scam trick. Stay calm and check first.',
+                    'Clicked something odd? Tell me what happened and I\'ll guide you.',
+                    'A padlock in the address bar does not mean a site is safe.',
+                    'Need to report a scam in Brunei? I can show you how.'
+                ];
+                const PAGE_TIPS = {
+                    dashboard: ['Want to check something suspicious? Open the Scan page. I can explain the result.', 'Not sure what a number here means? Ask me.'],
+                    scan: ['Paste the link here instead of tapping it. Safer that way.', 'Got a result you don\'t understand? I can explain it in simple words.'],
+                    history: ['Spot a risky scan in your history? Ask me what to do next.'],
+                    analytics: ['Curious why scammers keep using the same tricks? Ask me.'],
+                    play: ['Stuck on a question? Ask me why a message is a scam.', 'Tip: scammers love urgency. Slow down and check first.'],
+                    settings: ['Tip: turn on two-factor authentication on your important accounts.'],
+                    report: ['Want this scan result explained in simple words? Just ask.']
                 };
 
                 return {
@@ -233,10 +299,42 @@
                     copied: null,
                     showJump: false,
                     suggestions: pick(),
+                    tip: '',
+                    tipTimer: null,
+                    tipHide: null,
+                    lastTip: -1,
 
                     init() {
-                        this.$watch('open', () => { this.save(); if (this.open) this.focusAndScroll(); });
+                        this.$watch('open', () => { this.save(); if (this.open) { this.hideTip(); this.focusAndScroll(); } });
                         if (this.open) this.focusAndScroll();
+                        this.scheduleTip(true);
+                    },
+
+                    // Cora says something now and then (at most 8 times per visit, never while the chat is open, and "x" silences her).
+                    scheduleTip(first) {
+                        let quiet = false, shown = 0;
+                        try { quiet = sessionStorage.getItem('phishcore-cora-quiet') === '1'; shown = parseInt(sessionStorage.getItem('phishcore-cora-tips') || '0', 10) || 0; } catch (e) {}
+                        if (quiet || shown >= 8) return;
+                        const wait = first ? 9000 + Math.random() * 7000 : 40000 + Math.random() * 40000;
+                        clearTimeout(this.tipTimer);
+                        this.tipTimer = setTimeout(() => this.showTip(), wait);
+                    },
+                    showTip() {
+                        const LIST = (PAGE_TIPS[config.reportId ? 'report' : config.page] || []).concat(TIPS);
+                        if (document.hidden || this.open || this.loading) { this.tipTimer = setTimeout(() => this.showTip(), 15000); return; }
+                        let i;
+                        do { i = Math.floor(Math.random() * LIST.length); } while (LIST.length > 1 && i === this.lastTip);
+                        this.lastTip = i;
+                        this.tip = LIST[i];
+                        try { sessionStorage.setItem('phishcore-cora-tips', String((parseInt(sessionStorage.getItem('phishcore-cora-tips') || '0', 10) || 0) + 1)); } catch (e) {}
+                        clearTimeout(this.tipHide);
+                        this.tipHide = setTimeout(() => { this.hideTip(); this.scheduleTip(false); }, 7000);
+                    },
+                    hideTip() { this.tip = ''; clearTimeout(this.tipHide); },
+                    silence() {
+                        this.hideTip();
+                        clearTimeout(this.tipTimer);
+                        try { sessionStorage.setItem('phishcore-cora-quiet', '1'); } catch (e) {}
                     },
                     save() { try { sessionStorage.setItem(KEY, JSON.stringify({ open: this.open, messages: this.messages.slice(-40) })); } catch (e) {} },
                     toggle() { this.open = !this.open; },
@@ -304,7 +402,7 @@
                             const res = await fetch(config.url, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': config.token },
-                                body: JSON.stringify({ messages: history, report_id: config.reportId }),
+                                body: JSON.stringify({ messages: history, report_id: config.reportId, page: config.page || null }),
                             });
                             let data = {};
                             try { data = await res.json(); } catch (e) {}

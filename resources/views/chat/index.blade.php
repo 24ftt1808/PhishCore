@@ -5,7 +5,7 @@
     </div>
 
     <div
-        x-data="safetyChat(@js(['url' => route('chat.send'), 'token' => csrf_token(), 'reportId' => null, 'scope' => substr(hash('sha256', session()->getId().'|'.auth()->id()), 0, 16)]))"
+        x-data="safetyChat(@js(['url' => route('chat.send'), 'token' => csrf_token(), 'reportId' => null, 'page' => 'chat', 'scope' => substr(hash('sha256', session()->getId().'|'.auth()->id()), 0, 16)]))"
         x-init="focusAndScroll()"
         class="cg-glass cg-page cg-in relative mx-auto flex w-full flex-col rounded-[1.75rem]"
         style="--d: .1s"

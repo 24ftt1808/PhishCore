@@ -26,6 +26,7 @@ class ChatController extends Controller
             'messages.*.role' => ['required', 'in:user,assistant'],
             'messages.*.content' => ['required', 'string', 'max:'.ChatAdvisor::MAX_MESSAGE_CHARS],
             'report_id' => ['nullable', 'integer'],
+            'page' => ['nullable', 'string', 'max:20'],
         ]);
 
         if ($validator->fails()) {
@@ -55,7 +56,7 @@ class ChatController extends Controller
 
         RateLimiter::hit($key, 86400);
 
-        $result = $advisor->reply($data['messages'], $report);
+        $result = $advisor->reply($data['messages'], $report, $data['page'] ?? null);
 
         return response()->json($result, $result['ok'] ? 200 : 503);
     }

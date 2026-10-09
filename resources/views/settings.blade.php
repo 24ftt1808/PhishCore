@@ -60,8 +60,9 @@
         .s-note li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: var(--dot, #38bdf8); }
 
         /* ---- ID badge on a V-lanyard ---- */
-        .b-persp { --w: 15rem; perspective: 800px; max-width: var(--w); margin: 0 auto; }
-        @media (min-width: 640px) { .b-persp { --w: 17rem; } }
+        /* the badge grows with the screen height (lanyard + card is about 2.3x its width), so it fills the space on phones and tablets without running off the bottom */
+        .b-persp { --w: clamp(15rem, calc((100dvh - 10rem) / 2.31), 18rem); perspective: 800px; width: 100%; max-width: var(--w); margin: 0 auto; }
+        @media (min-width: 640px) { .b-persp { --w: clamp(19rem, calc((100dvh - 9.5rem) / 2.31), 24rem); } }
         .b-v-short { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%); mask-image: linear-gradient(to bottom, transparent, #000 40%); }
         @media (min-width: 1280px) { .b-persp { max-width: 21rem; } }
         .b-swing { display: flow-root; transform-origin: 50% 0; transform-style: preserve-3d; animation: b-swing 9s ease-in-out .9s infinite; will-change: transform; }
@@ -124,6 +125,14 @@
         @keyframes s-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
         .b-drop { animation: b-drop 1.1s cubic-bezier(.3, 1.25, .5, 1) both; }
         @keyframes b-drop { from { transform: translateY(-34rem); } to { transform: none; } }
+        /* short screens (tablet held sideways): a shorter, fainter lanyard so the whole badge and the photo buttons fit in one screen */
+        @media (min-width: 640px) and (max-width: 1279px) and (max-height: 860px) {
+            .b-persp { --w: 20rem; }
+            .b-v-short { margin-top: -4.6rem; opacity: .75; -webkit-mask-image: linear-gradient(to bottom, transparent 35%, #000 85%); mask-image: linear-gradient(to bottom, transparent 35%, #000 85%); }
+            .b-face > :nth-child(4) { padding-top: 1.4rem; padding-bottom: 1rem; }
+            .b-face > :nth-child(4) > p:first-of-type { margin-top: .75rem; }
+            .b-face > :nth-child(6) { padding-bottom: 1.4rem; }
+        }
         @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
     </style>
 

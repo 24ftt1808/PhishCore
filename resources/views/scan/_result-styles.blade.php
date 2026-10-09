@@ -41,5 +41,15 @@
     .r-ping { animation: r-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite; }
     @keyframes r-ping { 0% { transform: scale(1); opacity: .5; } 70%, 100% { transform: scale(2.4); opacity: 0; } }
 
+    /* phones held upright: tighter panels, full-width buttons, smaller URL text */
+    @media (max-width: 639px) {
+        .r-card.p-6 { padding: 1.1rem; }
+        .r-hero > .p-6 { padding: 1.15rem; }
+        .r-hero .r-facts > div { padding-left: 1.15rem; padding-right: 1.15rem; }
+        .r-hero > .flex-wrap { padding: 1rem 1.15rem; gap: .6rem; }
+        .r-hero .r-btn { width: 100%; justify-content: center; }
+        .r-hero .r-well p { font-size: .75rem; }
+    }
+
     @media (prefers-reduced-motion: reduce) { .r-in, .r-grow, .r-arc, .r-ping { animation: none; } .r-pin { transform: translateX(var(--to)); } .r-lift:hover, .r-btn:hover { transform: none; } }
 </style>

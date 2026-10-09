@@ -182,6 +182,32 @@
             </div>
         </div>
 
+        {{-- Most reported phone numbers (people press "Report as scam" on a phone scan) --}}
+        <div class="glass-panel rounded-2xl p-5 md:p-6 mb-6 md:mb-8">
+            <h2 class="text-white font-semibold">Most reported phone numbers</h2>
+            <p class="text-xs text-slate-400 mt-0.5 mb-4">Reported as scams by two or more different people in the last year</p>
+            @if (count($topNumbers))
+                <ol class="divide-y divide-white/5">
+                    @foreach ($topNumbers as $row)
+                        <li class="flex items-center gap-3 py-3">
+                            <span class="grid place-items-center w-7 h-7 rounded-lg bg-white/5 text-xs font-bold text-slate-300 shrink-0 tabular-nums">{{ $loop->iteration }}</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-mono text-sm text-white truncate">{{ $row['phone'] }}</p>
+                                <p class="text-xs text-slate-400 truncate">{{ $row['category'] }} &middot; last reported {{ $row['last']->diffForHumans() }}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-lg font-bold text-rose-300 tabular-nums leading-none">{{ $row['count'] }}</p>
+                                <p class="text-[10px] tracking-wide text-slate-400 mt-1">REPORTS</p>
+                            </div>
+                        </li>
+                    @endforeach
+                </ol>
+            @else
+                <p class="text-sm text-slate-400">No number has been reported by two or more people yet. When you scan a phone number and it turns out to be a scam, report it from the result page to start the list.</p>
+            @endif
+            <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">Reports come from people and can be wrong, and phone numbers are sometimes given to a new owner. Treat this as a warning sign, not proof.</p>
+        </div>
+
         {{-- Filters --}}
         <form method="GET" action="{{ route('reports.public') }}" class="glass-panel rounded-2xl p-4 md:p-5 mb-5 md:mb-6">
             <div class="flex flex-wrap gap-3 mb-4">
@@ -364,4 +390,4 @@
         });
     </script>
 
-</x-layouts.guest-landing>  
+</x-layouts.guest-landing>

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\NumberReport;
 use App\Models\Report;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
@@ -2613,7 +2614,10 @@ class AnalysisEngine
                 return preg_replace('/[\s()\-]/', '', $report->phone_number) === $normalizedInput;
             });
 
-        if ($matchingReports->isEmpty()) {
+        // People who pressed "Report this number as a scam" (one per person per number).
+        $explicitReports = NumberReport::where('phone', $normalizedInput)->get();
+
+        if ($matchingReports->isEmpty() && $explicitReports->isEmpty()) {
             return [
                 'flagged' => false,
                 'points' => 0,
@@ -2627,14 +2631,30 @@ class AnalysisEngine
         // person testing repeatedly shouldn't look like multiple
         // independent reporters), THEN apply a recency weight to each
         // distinct reporter's most recent report of this number.
-        $byReporter = $matchingReports->groupBy(fn ($r) => $r->user_id ?? 'guest_'.$r->id);
+        $entries = [];
+
+        foreach ($matchingReports->groupBy(fn ($r) => $r->user_id ?? 'guest_'.$r->id) as $key => $reportsForReporter) {
+            $entries[$key] = ['when' => $reportsForReporter->max('created_at'), 'explicit' => false];
+        }
+
+        // Someone who said "this is a scam" on purpose counts for more than someone who only looked the number up.
+        foreach ($explicitReports as $row) {
+            if (isset($entries[$row->user_id])) {
+                $entries[$row->user_id]['explicit'] = true;
+
+                if ($row->created_at->gt($entries[$row->user_id]['when'])) {
+                    $entries[$row->user_id]['when'] = $row->created_at;
+                }
+            } else {
+                $entries[$row->user_id] = ['when' => $row->created_at, 'explicit' => true];
+            }
+        }
 
         $now = now();
         $weightedScore = 0.0;
 
-        foreach ($byReporter as $reportsForReporter) {
-            $mostRecent = $reportsForReporter->sortByDesc('created_at')->first();
-            $ageDays = $mostRecent->created_at->diffInDays($now);
+        foreach ($entries as $entry) {
+            $ageDays = $entry['when']->diffInDays($now);
 
             $weight = match (true) {
                 $ageDays <= 90 => 1.0,
@@ -2642,11 +2662,11 @@ class AnalysisEngine
                 default => 0.2,
             };
 
-            $weightedScore += $weight;
+            $weightedScore += $entry['explicit'] ? $weight * 1.5 : $weight;
         }
 
-        $reporterCount = $byReporter->count();
-        $mostRecentReport = $matchingReports->max('created_at');
+        $reporterCount = count($entries);
+        $mostRecentReport = collect($entries)->max('when');
         $recencyNote = 'Most recent report: '.$mostRecentReport->diffForHumans().'.';
 
         if ($weightedScore < 1) {

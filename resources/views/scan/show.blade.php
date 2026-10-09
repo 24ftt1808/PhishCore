@@ -89,6 +89,7 @@
 
         @if ($hasAnalysis)
             @include('scan._share-box', ['report' => $report])
+            @include('scan._number-report', ['report' => $report])
             @include('scan._investigation-panel', ['report' => $report])
         @endif
     </x-layouts.dashboard>

@@ -53,6 +53,7 @@
         default => 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
     };
     $checkList = collect($analysis->flags ?? [])->filter(fn ($check) => is_array($check));
+    $aiSkipped = $checkList->contains(fn ($c) => in_array($c['name'] ?? '', ['AI Message Review', 'AI Page Review'], true) && ($c['status'] ?? '') === 'UNKNOWN');
     $heroVt = $ctiLookup?->raw_response['data']['attributes']['last_analysis_stats'] ?? null;
     $heroVtTotal = $heroVt ? array_sum(array_map('intval', $heroVt)) : 0;
     $heroFacts = array_values(array_filter([
@@ -87,6 +88,12 @@
 
             @if ($topReason && ($topReason['points'] ?? 0) > 0)
                 <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ \App\Services\CheckExplainer::plain((string) $topReason['message']) }}</p>
+            @endif
+
+            @if ($aiSkipped)
+                <p data-ai-rules-only class="mt-5 max-w-2xl rounded-xl px-4 py-3 text-xs sm:text-sm leading-relaxed text-slate-300" style="background: rgba(148, 163, 184, .1); border: 1px solid rgba(148, 163, 184, .25)">
+                    The AI review could not run this time, so this result uses PhishCore's built-in rules only. Scanning again in a few minutes may add the AI check.
+                </p>
             @endif
 
             <div class="mt-6">

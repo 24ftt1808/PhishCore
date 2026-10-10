@@ -178,3 +178,31 @@ test('a page that the AI calls legitimate adds nothing, and a failing AI service
     $failed = aiPageCheck('myshop.example', aiPageContent('Welcome to our other shop. We sell hats and scarves. Free delivery over fifty dollars.'), 0);
     expect($failed['available'])->toBeFalse()->and($failed['points'])->toBe(0);
 });
+
+test('the scan page tells people about the outside AI service only when it is switched on', function () {
+    $this->withoutVite();
+
+    config(['services.ai_text.enabled' => false, 'services.ai_text.key' => 'test-key']);
+    $this->get(route('scan.index'))->assertOk()->assertDontSee('Gemini');
+
+    aiOn();
+    $this->get(route('scan.index'))->assertOk()->assertSee('Gemini');
+});
+
+test('a result says it used the built-in rules only when the AI review could not run', function () {
+    $this->withoutVite();
+    $user = \App\Models\User::factory()->create();
+
+    $make = function (array $flags) use ($user) {
+        $scan = \App\Models\Report::factory()->create(['user_id' => $user->id, 'type' => 'email', 'sender_email' => 'a@b.test', 'status' => 'completed']);
+        \App\Models\Analysis::factory()->create(['report_id' => $scan->id, 'verdict' => 'clean', 'risk_score' => 5, 'flags' => $flags]);
+
+        return $scan;
+    };
+
+    $skipped = $make([['name' => 'AI Message Review', 'status' => 'UNKNOWN', 'message' => 'The AI service is busy right now (rate limit).', 'points' => 0]]);
+    $ran = $make([['name' => 'AI Message Review', 'status' => 'SAFE', 'message' => 'Looks normal.', 'points' => 0]]);
+
+    $this->actingAs($user)->get(route('scan.show', $skipped))->assertOk()->assertSee('built-in rules only');
+    $this->actingAs($user)->get(route('scan.show', $ran))->assertOk()->assertDontSee('built-in rules only');
+});

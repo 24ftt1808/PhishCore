@@ -277,6 +277,11 @@
                             <svg x-show="scanning" x-cloak class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                             <span x-text="scanning ? 'Scanning...' : scanLabel"></span>
                         </button>
+                        @if (app(\App\Services\AiTextCheck::class)->enabled())
+                            <p data-ai-privacy class="mt-3 text-center text-[11px] leading-relaxed text-slate-400">
+                                For emails, messages and web pages, the text may be sent to Google's Gemini AI for a second opinion. Please don't paste anything private, like passwords or bank details.
+                            </p>
+                        @endif
                     </div>
                 </form>
             </div>

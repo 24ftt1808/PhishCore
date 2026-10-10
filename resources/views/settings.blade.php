@@ -138,7 +138,8 @@
         .b-ext, .b-ext-in { display: contents; }
         .b-hint, .b-close { display: none; }
         @media (max-width: 639px) {
-            .b-hint, .b-close { touch-action: none; cursor: grab; }
+            .b-swing, .b-card, .b-hint, .b-close { touch-action: none; }
+            .b-hint, .b-close { cursor: pointer; }
             .b-ext { display: block; position: absolute; z-index: 3; left: -1px; right: -1px; top: 100%; height: 0; overflow: hidden; visibility: hidden; border-radius: 0 0 1.4rem 1.4rem; background: #0a1430; box-shadow: 0 12px 20px -12px rgba(0, 0, 0, .7); }
             .b-ext.b-ext-on { visibility: visible; border: 1px solid rgba(148, 163, 184, .3); border-top: 0; }
             .b-ext-in { display: block; }
@@ -162,7 +163,7 @@
 
             return {
                 preview: null, rx: 0, ry: 0, hold: false,
-                th: 0, py: 0, sy: 1, ext: 0, extH: 0, lanH: 0, e: 0, ve: 0, raw: 0, gap: 0, pinned: false, keep: false,
+                th: 0, py: 0, sy: 1, ext: 0, extH: 0, lanH: 0, handle: false, e: 0, ve: 0, gap: 0, pinned: false, keep: false,
                 drag: false, moved: false, raf: null,
                 x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0,
                 downX: 0, downY: 0, baseX: 0, baseY: 0, pid: null, last: 0,
@@ -221,9 +222,8 @@
                         this.vx = (nx - this.x) / dt;
                         this.vy = (ny - this.y) / dt;
                         this.x = nx; this.y = ny;
-                        // how much is unrolled follows the finger: pulling down opens it, pulling up while it is open closes it
-                        const want = this.pinned ? Math.max(0, H + Math.min(0, this.raw) * 1.2) : Math.min(H, Math.max(0, this.raw) * 1.2);
-                        this.e += (want - this.e) * 0.35;
+                        // pulling only stretches the tag: whether the full card is open is decided by tapping alone
+                        this.e += (goal - this.e) * 0.35;
                         this.ve = 0;
                     } else {
                         const ke = 170, ce = reduce ? 2 * Math.sqrt(ke) : 19;
@@ -257,8 +257,8 @@
 
                 down(e) {
                     if (e.pointerType === 'mouse' && e.button !== 0) return;
-                    // phones: only the strip at the bottom of the tag (and the Close row) can be tapped or pulled, the rest of the page scrolls as usual
-                    if (this.compact() && !this.onHandle(e)) return;
+                    // phones: the whole tag can be pulled and stretched, but a tap only opens or closes it from the strip at the bottom (or the Close row)
+                    this.handle = this.compact() && this.onHandle(e);
                     this.measure();
                     this.pid = e.pointerId;
                     this.downX = e.clientX; this.downY = e.clientY;
@@ -276,7 +276,6 @@
                         this.run();
                     }
                     const rx = this.baseX + dx, ry = this.baseY + dy;
-                    this.raw = ry;
                     this.tx = rubber(rx, this.compact() ? 60 : 110);
                     this.ty = ry >= 0 ? rubber(ry, 90) : rubber(ry, 20);
                 },
@@ -287,13 +286,9 @@
                     if (this.drag) {
                         this.drag = false;
                         // pulled all the way down: it stays open (so it can be read). Pulled up a little while open: it closes.
-                        if (this.compact() && this.extH) {
-                            if (this.pinned) { if (this.e < this.extH * 0.7) { this.pinned = false; } }
-                            else if (this.e >= this.extH * 0.9) { this.pinned = true; }
-                        }
                         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
                         this.run();
-                    } else if (this.compact()) {
+                    } else if (this.compact() && this.handle) {
                         // a tap on the tag opens the full card, or closes it when it is already open
                         this.setOpen(!this.pinned);
                     }
@@ -304,7 +299,7 @@
 
     <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[this.tab === 'profile' ? 'tProfile' : 'tSecurity']; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
 
-        <div class="s-in relative z-30 mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1">
+        <div class="s-in relative mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1" style="z-index: 25">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
             <p class="text-slate-300 text-sm">Manage your account and security preferences.</p>
         </div>
@@ -426,7 +421,7 @@
 
                         <div class="b-hint" x-ref="hintRow" :class="ext < 1 ? 'opacity-100' : 'opacity-0'" aria-hidden="true">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                            Tap or pull down for full ID
+                            Tap for full ID
                         </div>
                         </div>
                     </div>

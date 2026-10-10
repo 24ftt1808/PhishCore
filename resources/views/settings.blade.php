@@ -60,9 +60,9 @@
         .s-note li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: var(--dot, #38bdf8); }
 
         /* ---- ID badge on a V-lanyard ---- */
-        /* the badge grows with the screen height (lanyard + card is about 2.3x its width), so it fills the space on phones and tablets without running off the bottom */
-        .b-persp { --w: clamp(15rem, calc((100dvh - 10rem) / 2.31), 18rem); perspective: 800px; width: 100%; max-width: var(--w); margin: 0 auto; }
-        @media (min-width: 640px) { .b-persp { --w: clamp(19rem, calc((100dvh - 9.5rem) / 2.31), 24rem); } }
+        /* phones: a fixed width (the tag is short now). Bigger screens: the badge grows with the screen height (lanyard + card is about 2.3x its width). svh is used because dvh changes while the browser bar hides on scroll, and the badge would widen by itself */
+        .b-persp { --w: 17.5rem; perspective: 800px; width: 100%; max-width: var(--w); margin: 0 auto; }
+        @media (min-width: 640px) { .b-persp { --w: clamp(19rem, calc((100svh - 9.5rem) / 2.31), 24rem); } }
         .b-v-short { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%); mask-image: linear-gradient(to bottom, transparent, #000 40%); }
         @media (min-width: 1280px) { .b-persp { max-width: 21rem; } }
         .b-swing { display: flow-root; transform-origin: 50% 0; transform-style: preserve-3d; animation: b-swing 9s ease-in-out .9s infinite; will-change: transform; }
@@ -136,15 +136,20 @@
         }
         /* phones: the badge rests as a short tag (header + photo + name). Pull it down and the rest of the card unrolls from underneath, let go and it springs back */
         .b-ext, .b-ext-in { display: contents; }
-        .b-hint { display: none; }
+        .b-hint, .b-close { display: none; }
         @media (max-width: 639px) {
-            .b-card { touch-action: none; }
+            .b-swing, .b-card { touch-action: none; }
             .b-ext { display: block; position: absolute; z-index: 3; left: -1px; right: -1px; top: 100%; height: var(--rv, 0px); overflow: hidden; visibility: hidden; border-radius: 0 0 1.4rem 1.4rem; background: #0a1430; box-shadow: 0 22px 40px -16px rgba(0, 0, 0, .75); }
             .b-ext.b-ext-on { visibility: visible; border: 1px solid rgba(148, 163, 184, .3); border-top: 0; }
             .b-ext-in { display: block; }
             .b-face.b-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; box-shadow: none; }
-            .b-hint { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: 0 1rem .7rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; color: rgba(125, 211, 252, .85); text-transform: uppercase; transition: opacity .25s; }
+            .b-hint { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: 0 1rem .7rem; max-height: 3rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; color: rgba(125, 211, 252, .85); text-transform: uppercase; overflow: hidden; transition: opacity .25s, max-height .25s, padding .25s; }
+            .b-face.b-open .b-hint { max-height: 0; padding-bottom: 0; }
             .b-hint svg { animation: b-nudge 1.8s ease-in-out infinite; }
+            .b-close { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: .55rem 1rem .8rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(125, 211, 252, .85); }
+            .b-persp { margin-top: -1.6rem; transition: margin-bottom .25s ease-out; }
+            .b-ext.b-ease { transition: height .3s ease-out, visibility 0s linear .3s; }
+            .b-ext.b-ease.b-ext-on { transition: height .3s ease-out, visibility 0s; }
         }
         @keyframes b-nudge { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }
         @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing, .b-hint svg { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
@@ -158,18 +163,26 @@
 
             return {
                 preview: null, rx: 0, ry: 0, hold: false,
-                th: 0, py: 0, sy: 1, ext: 0, pinned: false, hint: true,
+                th: 0, py: 0, sy: 1, ext: 0, gap: 0, pinned: false, ease: false, keep: false,
                 drag: false, moved: false, raf: null,
                 x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0,
                 downX: 0, downY: 0, baseX: 0, baseY: 0, pid: null, last: 0,
 
                 len() { return (window.innerWidth >= 1280 ? 43 : 18) * rem(); },
 
-                init() {
-                    try { this.hint = sessionStorage.getItem('phishcore-badge-hint') !== '1'; } catch (_) {}
+                compact() { return window.innerWidth < 640; },
+
+                setOpen(open) {
+                    this.ease = true;
+                    this.keep = true;
+                    clearTimeout(this.keepTimer);
+                    this.keepTimer = setTimeout(() => { this.keep = false; }, 350);
+                    this.pinned = open;
+                    this.render();
+                    this.run();
                 },
 
-                compact() { return window.innerWidth < 640; },
+                close() { this.setOpen(false); },
 
                 render() {
                     const L = this.len();
@@ -178,6 +191,7 @@
                     this.sy = Math.min(1.5, Math.max(0.85, 1 + this.y / (L - 6 * rem())));
                     const inner = this.compact() ? this.$refs.extIn : null;
                     this.ext = inner ? Math.min(inner.offsetHeight, this.pinned ? Infinity : Math.max(0, this.y) * 1.35) : 0;
+                    this.gap = inner && this.pinned ? this.ext : 0;
                     this.ry = Math.max(-22, Math.min(22, this.vx * 0.03));
                     this.rx = Math.max(-18, Math.min(18, -this.vy * 0.02));
                 },
@@ -223,6 +237,7 @@
                     this.downX = e.clientX; this.downY = e.clientY;
                     this.baseX = this.x; this.baseY = this.y;
                     this.moved = false;
+                    this.ease = false;
                 },
 
                 move(e) {
@@ -231,7 +246,6 @@
                     if (!this.drag) {
                         if (Math.hypot(dx, dy) < 5) return;
                         this.drag = true; this.moved = true; this.hold = true;
-                        if (this.hint) { this.hint = false; try { sessionStorage.setItem('phishcore-badge-hint', '1'); } catch (_) {} }
                         e.currentTarget.setPointerCapture(e.pointerId);
                         this.run();
                     }
@@ -245,11 +259,15 @@
                     this.pid = null;
                     if (this.drag) {
                         this.drag = false;
+                        // pulled all the way down: it stays open (so it can be read). Pulled up a little while open: it closes.
+                        const inner = this.compact() ? this.$refs.extIn : null;
+                        if (this.pinned) { if (this.y < -10) { this.pinned = false; } }
+                        else if (inner && this.ext >= inner.offsetHeight * 0.9) { this.pinned = true; }
                         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
                         this.run();
-                    } else if (this.compact()) {
-                        // a tap on the short tag: a little tug (people who prefer less motion get the card opened and closed instead)
-                        if (reduce) { this.pinned = !this.pinned; this.render(); } else { this.vy = 650; this.hold = true; this.run(); }
+                    } else if (this.compact() && !e.target.closest('label, button, input')) {
+                        // a tap on the tag opens the full card, or closes it when it is already open
+                        this.setOpen(!this.pinned);
                     }
                 },
             };
@@ -258,17 +276,17 @@
 
     <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[this.tab === 'profile' ? 'tProfile' : 'tSecurity']; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
 
-        <div class="s-in mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1">
+        <div class="s-in relative z-30 mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
             <p class="text-slate-300 text-sm">Manage your account and security preferences.</p>
         </div>
 
         {{-- ID BADGE --}}
         <aside class="relative z-20 mx-auto w-full mb-6 xl:mb-0 xl:col-start-1 xl:row-start-1 xl:row-span-2" x-data="idBadge()">
-            <div class="b-drop b-persp" @mousemove="if (drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
+            <div class="b-drop b-persp" :style="`margin-bottom: ${gap}px`" @mousemove="if (drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
                  @mouseleave="if (drag || raf) return; rx = 0; ry = 0; hold = false">
                 
-                <div class="b-swing" :class="hold ? 'b-hold' : ''">
+                <div class="b-swing" :class="hold ? 'b-hold' : ''" @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up($event)" @pointercancel="up($event)" @click.capture="if (moved) { $event.preventDefault(); $event.stopPropagation(); moved = false }">
                     <div class="b-pull" :style="`transform: rotate(${th}deg)`">
                     <div class="b-tilt" :style="`transform: rotateX(${rx}deg) rotateY(${ry}deg)`">
                     <svg class="b-v b-v-long hidden xl:block" :style="`transform: scaleY(${sy})`" viewBox="0 -400 300 530" aria-hidden="true">
@@ -291,7 +309,7 @@
                     <div class="b-crimp"></div>
                     <div class="b-tail"></div>
 
-                    <div class="b-card" :class="drag ? 'b-drag' : ''" @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up($event)" @pointercancel="up($event)" @click.capture="if (moved) { $event.preventDefault(); $event.stopPropagation(); moved = false }">
+                    <div class="b-card" :class="drag ? 'b-drag' : ''">
                         <span class="b-layer" style="--z:-1.5px"></span>
                         <span class="b-layer" style="--z:-3px"></span>
                         <span class="b-layer" style="--z:-4.5px"></span>
@@ -299,7 +317,7 @@
                         <span class="b-layer" style="--z:-7.5px"></span>
                         <span class="b-layer" style="--z:-9px"></span>
                         <span class="b-swivel"></span>
-                        <div class="b-face" :class="ext > 0.5 ? 'b-open' : ''">
+                        <div class="b-face" :class="(ext > 0.5 || keep) ? 'b-open' : ''">
                         <span class="b-shine"></span>
                         <span class="b-slot"></span>
 
@@ -345,7 +363,7 @@
                             </div>
                         </div>
 
-                        <div class="b-ext" :class="ext > 0.5 ? 'b-ext-on' : ''" :style="`--rv: ${ext}px`">
+                        <div class="b-ext" :class="[(ext > 0.5 || keep) ? 'b-ext-on' : '', ease ? 'b-ease' : '']" :style="`--rv: ${ext}px`">
                         <div class="b-ext-in" x-ref="extIn">
                         <div class="b-mail px-5 sm:px-6 pb-4 sm:pb-5 flex flex-col items-center text-center b-z" style="--zz:0px">
                             <p class="mt-2 max-sm:mt-1 text-xs text-slate-300 break-all max-w-full" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">{{ $user->email }}</p>
@@ -371,12 +389,16 @@
                         <div class="b-barwrap px-5 sm:px-6 pb-5 sm:pb-6 pt-1 b-z" style="--zz:6px">
                             <div class="b-bars"></div>
                         </div>
+                        <button type="button" class="b-close" @click="close()">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                            Close
+                        </button>
                         </div>
                         </div>
 
-                        <div class="b-hint" :class="hint && ext < 1 ? 'opacity-100' : 'opacity-0'" aria-hidden="true">
+                        <div class="b-hint" :class="ext < 1 ? 'opacity-100' : 'opacity-0'" aria-hidden="true">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                            Pull down for full ID
+                            Tap or pull down for full ID
                         </div>
                         </div>
                     </div>

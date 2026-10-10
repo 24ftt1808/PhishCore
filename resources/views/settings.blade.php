@@ -138,18 +138,17 @@
         .b-ext, .b-ext-in { display: contents; }
         .b-hint, .b-close { display: none; }
         @media (max-width: 639px) {
-            .b-swing, .b-card { touch-action: none; }
-            .b-ext { display: block; position: absolute; z-index: 3; left: -1px; right: -1px; top: 100%; height: var(--rv, 0px); overflow: hidden; visibility: hidden; border-radius: 0 0 1.4rem 1.4rem; background: #0a1430; box-shadow: 0 22px 40px -16px rgba(0, 0, 0, .75); }
+            .b-hint, .b-close { touch-action: none; cursor: grab; }
+            .b-ext { display: block; position: absolute; z-index: 3; left: -1px; right: -1px; top: 100%; height: 0; overflow: hidden; visibility: hidden; border-radius: 0 0 1.4rem 1.4rem; background: #0a1430; box-shadow: 0 12px 20px -12px rgba(0, 0, 0, .7); }
             .b-ext.b-ext-on { visibility: visible; border: 1px solid rgba(148, 163, 184, .3); border-top: 0; }
             .b-ext-in { display: block; }
             .b-face.b-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; box-shadow: none; }
-            .b-hint { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: 0 1rem .7rem; max-height: 3rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; color: rgba(125, 211, 252, .85); text-transform: uppercase; overflow: hidden; transition: opacity .25s, max-height .25s, padding .25s; }
-            .b-face.b-open .b-hint { max-height: 0; padding-bottom: 0; }
+            .b-hint { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: .35rem 1rem .85rem; max-height: 3.5rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; color: rgba(125, 211, 252, .85); text-transform: uppercase; overflow: hidden; transition: opacity .25s, max-height .25s, padding .25s; }
+            .b-face.b-open .b-hint { max-height: 0; padding-top: 0; padding-bottom: 0; }
+            .b-hint { transform: translateZ(10px); }
             .b-hint svg { animation: b-nudge 1.8s ease-in-out infinite; }
-            .b-close { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: .55rem 1rem .8rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(125, 211, 252, .85); }
-            .b-persp { margin-top: -1.6rem; transition: margin-bottom .25s ease-out; }
-            .b-ext.b-ease { transition: height .3s ease-out, visibility 0s linear .3s; }
-            .b-ext.b-ease.b-ext-on { transition: height .3s ease-out, visibility 0s; }
+            .b-close { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: .75rem 1rem .95rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(125, 211, 252, .85); }
+            .b-persp { margin-top: -1.6rem; }
         }
         @keyframes b-nudge { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }
         @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing, .b-hint svg { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
@@ -163,7 +162,7 @@
 
             return {
                 preview: null, rx: 0, ry: 0, hold: false,
-                th: 0, py: 0, sy: 1, ext: 0, gap: 0, pinned: false, ease: false, keep: false,
+                th: 0, py: 0, sy: 1, ext: 0, extH: 0, lanH: 0, e: 0, ve: 0, raw: 0, gap: 0, pinned: false, keep: false,
                 drag: false, moved: false, raf: null,
                 x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0,
                 downX: 0, downY: 0, baseX: 0, baseY: 0, pid: null, last: 0,
@@ -172,13 +171,26 @@
 
                 compact() { return window.innerWidth < 640; },
 
+                onHandle(e) {
+                    if (e.target.closest('.b-hint, .b-close')) { return true; }
+                    const row = this.pinned ? this.$refs.closeRow : this.$refs.hintRow;
+                    if (!row) { return false; }
+                    const r = row.getBoundingClientRect();
+                    return e.clientX >= r.left - 8 && e.clientX <= r.right + 8 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
+                },
+
+                measure() {
+                    const inner = this.$refs.extIn;
+                    this.extH = inner ? inner.offsetHeight : 0;
+                    this.lanH = this.$refs.lan ? this.$refs.lan.getBoundingClientRect().width * 160 / 300 : 0;
+                },
+
                 setOpen(open) {
-                    this.ease = true;
+                    this.measure();
                     this.keep = true;
                     clearTimeout(this.keepTimer);
-                    this.keepTimer = setTimeout(() => { this.keep = false; }, 350);
+                    this.keepTimer = setTimeout(() => { this.keep = false; this.render(); }, 600);
                     this.pinned = open;
-                    this.render();
                     this.run();
                 },
 
@@ -186,12 +198,13 @@
 
                 render() {
                     const L = this.len();
+                    const phone = this.compact();
                     this.th = -Math.atan(this.x / L) * 180 / Math.PI;
                     this.py = this.y;
-                    this.sy = Math.min(1.5, Math.max(0.85, 1 + this.y / (L - 6 * rem())));
-                    const inner = this.compact() ? this.$refs.extIn : null;
-                    this.ext = inner ? Math.min(inner.offsetHeight, this.pinned ? Infinity : Math.max(0, this.y) * 1.35) : 0;
-                    this.gap = inner && this.pinned ? this.ext : 0;
+                    // on a phone the lanyard stretches by exactly as much as the card moves, so the two never come apart
+                    this.sy = phone && this.lanH ? Math.max(0.85, 1 + this.y / this.lanH) : Math.min(1.5, Math.max(0.85, 1 + this.y / (L - 6 * rem())));
+                    this.ext = phone ? Math.max(0, Math.min(this.extH, this.e)) : 0;
+                    this.gap = phone && (this.pinned || this.keep) ? this.extH : 0;
                     this.ry = Math.max(-22, Math.min(22, this.vx * 0.03));
                     this.rx = Math.max(-18, Math.min(18, -this.vy * 0.02));
                 },
@@ -199,20 +212,31 @@
                 step(t) {
                     const dt = Math.min((t - this.last) / 1000 || 0.016, 1 / 30);
                     this.last = t;
+                    const phone = this.compact();
+                    const H = phone ? this.extH : 0;
+                    const goal = phone && this.pinned ? H : 0;
                     if (this.drag) {
                         const nx = this.x + (this.tx - this.x) * 0.35;
                         const ny = this.y + (this.ty - this.y) * 0.35;
                         this.vx = (nx - this.x) / dt;
                         this.vy = (ny - this.y) / dt;
                         this.x = nx; this.y = ny;
+                        // how much is unrolled follows the finger: pulling down opens it, pulling up while it is open closes it
+                        const want = this.pinned ? Math.max(0, H + Math.min(0, this.raw) * 1.2) : Math.min(H, Math.max(0, this.raw) * 1.2);
+                        this.e += (want - this.e) * 0.35;
+                        this.ve = 0;
                     } else {
+                        const ke = 170, ce = reduce ? 2 * Math.sqrt(ke) : 19;
+                        this.ve += (-ke * (this.e - goal) - ce * this.ve) * dt;
+                        this.e += this.ve * dt;
                         const k = 170, c = reduce ? 2 * Math.sqrt(k) : 8;
                         this.vx += (-k * this.x - c * this.vx) * dt;
                         this.vy += (-k * this.y - c * this.vy) * dt;
                         this.x += this.vx * dt;
                         this.y += this.vy * dt;
-                        if (Math.abs(this.x) < 0.2 && Math.abs(this.y) < 0.2 && Math.abs(this.vx) < 3 && Math.abs(this.vy) < 3) {
+                        if (Math.abs(this.x) < 0.2 && Math.abs(this.y) < 0.2 && Math.abs(this.vx) < 3 && Math.abs(this.vy) < 3 && Math.abs(this.e - goal) < 0.5 && Math.abs(this.ve) < 3) {
                             this.x = this.y = this.vx = this.vy = 0;
+                            this.e = goal; this.ve = 0;
                             this.render();
                             this.raf = null;
                             this.hold = false;
@@ -233,11 +257,13 @@
 
                 down(e) {
                     if (e.pointerType === 'mouse' && e.button !== 0) return;
+                    // phones: only the strip at the bottom of the tag (and the Close row) can be tapped or pulled, the rest of the page scrolls as usual
+                    if (this.compact() && !this.onHandle(e)) return;
+                    this.measure();
                     this.pid = e.pointerId;
                     this.downX = e.clientX; this.downY = e.clientY;
                     this.baseX = this.x; this.baseY = this.y;
                     this.moved = false;
-                    this.ease = false;
                 },
 
                 move(e) {
@@ -250,8 +276,9 @@
                         this.run();
                     }
                     const rx = this.baseX + dx, ry = this.baseY + dy;
-                    this.tx = rubber(rx, 110);
-                    this.ty = ry >= 0 ? rubber(ry, this.compact() ? 190 : 90) : rubber(ry, 20);
+                    this.raw = ry;
+                    this.tx = rubber(rx, this.compact() ? 60 : 110);
+                    this.ty = ry >= 0 ? rubber(ry, 90) : rubber(ry, 20);
                 },
 
                 up(e) {
@@ -260,12 +287,13 @@
                     if (this.drag) {
                         this.drag = false;
                         // pulled all the way down: it stays open (so it can be read). Pulled up a little while open: it closes.
-                        const inner = this.compact() ? this.$refs.extIn : null;
-                        if (this.pinned) { if (this.y < -10) { this.pinned = false; } }
-                        else if (inner && this.ext >= inner.offsetHeight * 0.9) { this.pinned = true; }
+                        if (this.compact() && this.extH) {
+                            if (this.pinned) { if (this.e < this.extH * 0.7) { this.pinned = false; } }
+                            else if (this.e >= this.extH * 0.9) { this.pinned = true; }
+                        }
                         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
                         this.run();
-                    } else if (this.compact() && !e.target.closest('label, button, input')) {
+                    } else if (this.compact()) {
                         // a tap on the tag opens the full card, or closes it when it is already open
                         this.setOpen(!this.pinned);
                     }
@@ -283,8 +311,8 @@
 
         {{-- ID BADGE --}}
         <aside class="relative z-20 mx-auto w-full mb-6 xl:mb-0 xl:col-start-1 xl:row-start-1 xl:row-span-2" x-data="idBadge()">
-            <div class="b-drop b-persp" :style="`margin-bottom: ${gap}px`" @mousemove="if (drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
-                 @mouseleave="if (drag || raf) return; rx = 0; ry = 0; hold = false">
+            <div class="b-drop b-persp" :style="`margin-bottom: ${gap}px`" @mousemove="if (compact() || drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
+                 @mouseleave="if (compact() || drag || raf) return; rx = 0; ry = 0; hold = false">
                 
                 <div class="b-swing" :class="hold ? 'b-hold' : ''" @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up($event)" @pointercancel="up($event)" @click.capture="if (moved) { $event.preventDefault(); $event.stopPropagation(); moved = false }">
                     <div class="b-pull" :style="`transform: rotate(${th}deg)`">
@@ -297,7 +325,7 @@
                         <path d="M78 -400 L78 -4 C78 44 128 92 150 126 M222 -400 L222 -4 C222 44 172 92 150 126" stroke="rgba(255,255,255,.07)" stroke-width="17" stroke-dasharray="1 2.5"/>
                     </g>
                 </svg>
-                <svg class="b-v b-v-short block xl:hidden" :style="`transform: scaleY(${sy})`" viewBox="0 -30 300 160" aria-hidden="true">
+                <svg class="b-v b-v-short block xl:hidden" x-ref="lan" :style="`transform: scaleY(${sy})`" viewBox="0 -30 300 160" aria-hidden="true">
                     <g fill="none">
                         <path d="M78 -30 L78 -4 C78 44 128 92 150 126 M222 -30 L222 -4 C222 44 172 92 150 126" stroke="#080f22" stroke-width="20"/>
                         <path d="M78 -30 L78 -4 C78 44 128 92 150 126 M222 -30 L222 -4 C222 44 172 92 150 126" stroke="#1a2c55" stroke-width="17"/>
@@ -363,7 +391,7 @@
                             </div>
                         </div>
 
-                        <div class="b-ext" :class="[(ext > 0.5 || keep) ? 'b-ext-on' : '', ease ? 'b-ease' : '']" :style="`--rv: ${ext}px`">
+                        <div class="b-ext" :class="(ext > 0.5 || keep) ? 'b-ext-on' : ''" :style="`height: ${ext}px`">
                         <div class="b-ext-in" x-ref="extIn">
                         <div class="b-mail px-5 sm:px-6 pb-4 sm:pb-5 flex flex-col items-center text-center b-z" style="--zz:0px">
                             <p class="mt-2 max-sm:mt-1 text-xs text-slate-300 break-all max-w-full" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">{{ $user->email }}</p>
@@ -389,14 +417,14 @@
                         <div class="b-barwrap px-5 sm:px-6 pb-5 sm:pb-6 pt-1 b-z" style="--zz:6px">
                             <div class="b-bars"></div>
                         </div>
-                        <button type="button" class="b-close" @click="close()">
+                        <button type="button" class="b-close" x-ref="closeRow" @click="close()">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                             Close
                         </button>
                         </div>
                         </div>
 
-                        <div class="b-hint" :class="ext < 1 ? 'opacity-100' : 'opacity-0'" aria-hidden="true">
+                        <div class="b-hint" x-ref="hintRow" :class="ext < 1 ? 'opacity-100' : 'opacity-0'" aria-hidden="true">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                             Tap or pull down for full ID
                         </div>

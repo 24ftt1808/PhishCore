@@ -101,7 +101,7 @@
         .b-slot { position: absolute; top: 1rem; left: 50%; width: 3.2rem; height: .55rem; margin-left: -1.6rem; border-radius: 999px; background: #050b1e; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .8), 0 0 0 1px rgba(148, 163, 184, .25); }
 
         .b-photo { position: relative; display: block; width: 8.5rem; height: 8.5rem; border-radius: 1.2rem; overflow: hidden; box-shadow: 0 0 0 3px rgba(56, 189, 248, .45), 0 10px 24px -8px rgba(0, 0, 0, .6); }
-        @media (max-width: 639px) { .b-photo { width: 7rem; height: 7rem; } .s-initials { font-size: 2.3rem; } }
+        @media (max-width: 639px) { .b-photo { width: 4.5rem; height: 4.5rem; border-radius: 1rem; box-shadow: 0 0 0 2px rgba(56, 189, 248, .45), 0 6px 14px -6px rgba(0, 0, 0, .6); } .s-initials { font-size: 1.6rem; } }
         .b-photo img, .b-photo .s-initials { width: 100%; height: 100%; object-fit: cover; }
         .s-initials { display: grid; place-items: center; background: linear-gradient(135deg, #38bdf8, #2563eb); color: #fff; font-size: 2.8rem; font-weight: 700; }
         .b-cam { position: absolute; inset: 0; background: rgba(2, 6, 23, .55); display: grid; place-items: center; opacity: 0; transition: opacity .2s; }
@@ -129,11 +129,25 @@
         @media (min-width: 640px) and (max-width: 1279px) and (max-height: 860px) {
             .b-persp { --w: 20rem; }
             .b-v-short { margin-top: -4.6rem; opacity: .75; -webkit-mask-image: linear-gradient(to bottom, transparent 35%, #000 85%); mask-image: linear-gradient(to bottom, transparent 35%, #000 85%); }
-            .b-face > :nth-child(4) { padding-top: 1.4rem; padding-bottom: 1rem; }
-            .b-face > :nth-child(4) > p:first-of-type { margin-top: .75rem; }
-            .b-face > :nth-child(6) { padding-bottom: 1.4rem; }
+            .b-id { padding-top: 1.4rem; }
+            .b-who { margin-top: .75rem; }
+            .b-mail { padding-bottom: 1rem; }
+            .b-barwrap { padding-bottom: 1.4rem; }
         }
-        @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
+        /* phones: the badge rests as a short tag (header + photo + name). Pull it down and the rest of the card unrolls from underneath, let go and it springs back */
+        .b-ext, .b-ext-in { display: contents; }
+        .b-hint { display: none; }
+        @media (max-width: 639px) {
+            .b-card { touch-action: none; }
+            .b-ext { display: block; position: absolute; z-index: 3; left: -1px; right: -1px; top: 100%; height: var(--rv, 0px); overflow: hidden; visibility: hidden; border-radius: 0 0 1.4rem 1.4rem; background: #0a1430; box-shadow: 0 22px 40px -16px rgba(0, 0, 0, .75); }
+            .b-ext.b-ext-on { visibility: visible; border: 1px solid rgba(148, 163, 184, .3); border-top: 0; }
+            .b-ext-in { display: block; }
+            .b-face.b-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; box-shadow: none; }
+            .b-hint { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: 0 1rem .7rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; color: rgba(125, 211, 252, .85); text-transform: uppercase; transition: opacity .25s; }
+            .b-hint svg { animation: b-nudge 1.8s ease-in-out infinite; }
+        }
+        @keyframes b-nudge { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }
+        @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing, .b-hint svg { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
     </style>
 
     <script>
@@ -144,18 +158,26 @@
 
             return {
                 preview: null, rx: 0, ry: 0, hold: false,
-                th: 0, py: 0, sy: 1,
+                th: 0, py: 0, sy: 1, ext: 0, pinned: false, hint: true,
                 drag: false, moved: false, raf: null,
                 x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0,
                 downX: 0, downY: 0, baseX: 0, baseY: 0, pid: null, last: 0,
 
                 len() { return (window.innerWidth >= 1280 ? 43 : 18) * rem(); },
 
+                init() {
+                    try { this.hint = sessionStorage.getItem('phishcore-badge-hint') !== '1'; } catch (_) {}
+                },
+
+                compact() { return window.innerWidth < 640; },
+
                 render() {
                     const L = this.len();
                     this.th = -Math.atan(this.x / L) * 180 / Math.PI;
                     this.py = this.y;
-                    this.sy = Math.max(0.85, 1 + this.y / (L - 6 * rem()));
+                    this.sy = Math.min(1.5, Math.max(0.85, 1 + this.y / (L - 6 * rem())));
+                    const inner = this.compact() ? this.$refs.extIn : null;
+                    this.ext = inner ? Math.min(inner.offsetHeight, this.pinned ? Infinity : Math.max(0, this.y) * 1.35) : 0;
                     this.ry = Math.max(-22, Math.min(22, this.vx * 0.03));
                     this.rx = Math.max(-18, Math.min(18, -this.vy * 0.02));
                 },
@@ -209,12 +231,13 @@
                     if (!this.drag) {
                         if (Math.hypot(dx, dy) < 5) return;
                         this.drag = true; this.moved = true; this.hold = true;
+                        if (this.hint) { this.hint = false; try { sessionStorage.setItem('phishcore-badge-hint', '1'); } catch (_) {} }
                         e.currentTarget.setPointerCapture(e.pointerId);
                         this.run();
                     }
                     const rx = this.baseX + dx, ry = this.baseY + dy;
                     this.tx = rubber(rx, 110);
-                    this.ty = ry >= 0 ? rubber(ry, 90) : rubber(ry, 20);
+                    this.ty = ry >= 0 ? rubber(ry, this.compact() ? 190 : 90) : rubber(ry, 20);
                 },
 
                 up(e) {
@@ -224,6 +247,9 @@
                         this.drag = false;
                         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
                         this.run();
+                    } else if (this.compact()) {
+                        // a tap on the short tag: a little tug (people who prefer less motion get the card opened and closed instead)
+                        if (reduce) { this.pinned = !this.pinned; this.render(); } else { this.vy = 650; this.hold = true; this.run(); }
                     }
                 },
             };
@@ -273,7 +299,7 @@
                         <span class="b-layer" style="--z:-7.5px"></span>
                         <span class="b-layer" style="--z:-9px"></span>
                         <span class="b-swivel"></span>
-                        <div class="b-face">
+                        <div class="b-face" :class="ext > 0.5 ? 'b-open' : ''">
                         <span class="b-shine"></span>
                         <span class="b-slot"></span>
 
@@ -285,7 +311,7 @@
                             </div>
                         </div>
 
-                        <div class="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 flex flex-col items-center text-center b-z" style="--zz:0px">
+                        <div class="b-id px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-0 flex flex-col items-center text-center b-z max-sm:flex-row max-sm:text-left max-sm:gap-3.5 max-sm:pt-3.5 max-sm:pb-3" style="--zz:0px">
                             <form id="photo-upload-form" method="POST" action="{{ route('profile.photo.update') }}" enctype="multipart/form-data" class="contents">
                                 @csrf
                                 <label for="photo-input" class="b-photo cursor-pointer block" title="Change photo">
@@ -313,9 +339,16 @@
                                        ">
                             </form>
 
-                            <p class="text-white font-bold text-xl mt-4 sm:mt-5 leading-tight break-words max-w-full">{{ $user->name }}</p>
-                            <p class="mt-1 text-[11px] font-bold tracking-[.2em] {{ $isAdmin ? 'text-sky-300' : 'text-slate-300' }}">{{ $isAdmin ? 'ADMINISTRATOR' : 'MEMBER' }}</p>
-                            <p class="mt-2 text-xs text-slate-300 break-all max-w-full" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">{{ $user->email }}</p>
+                            <div class="b-who mt-4 sm:mt-5 max-sm:mt-0 min-w-0 max-w-full">
+                                <p class="text-white font-bold text-xl max-sm:text-lg leading-tight break-words max-w-full">{{ $user->name }}</p>
+                                <p class="mt-1 text-[11px] font-bold tracking-[.2em] {{ $isAdmin ? 'text-sky-300' : 'text-slate-300' }}">{{ $isAdmin ? 'ADMINISTRATOR' : 'MEMBER' }}</p>
+                            </div>
+                        </div>
+
+                        <div class="b-ext" :class="ext > 0.5 ? 'b-ext-on' : ''" :style="`--rv: ${ext}px`">
+                        <div class="b-ext-in" x-ref="extIn">
+                        <div class="b-mail px-5 sm:px-6 pb-4 sm:pb-5 flex flex-col items-center text-center b-z" style="--zz:0px">
+                            <p class="mt-2 max-sm:mt-1 text-xs text-slate-300 break-all max-w-full" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">{{ $user->email }}</p>
 
                             @if ($user->is_team_member)
                                 <span class="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-violet-300 px-2.5 py-1 rounded-md" style="background: rgba(167,139,250,.14); border: 1px solid rgba(167,139,250,.4)">
@@ -335,8 +368,15 @@
                             </div>
                         </div>
 
-                        <div class="px-5 sm:px-6 pb-5 sm:pb-6 pt-1 b-z" style="--zz:6px">
+                        <div class="b-barwrap px-5 sm:px-6 pb-5 sm:pb-6 pt-1 b-z" style="--zz:6px">
                             <div class="b-bars"></div>
+                        </div>
+                        </div>
+                        </div>
+
+                        <div class="b-hint" :class="hint && ext < 1 ? 'opacity-100' : 'opacity-0'" aria-hidden="true">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                            Pull down for full ID
                         </div>
                         </div>
                     </div>

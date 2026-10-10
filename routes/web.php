@@ -6,6 +6,7 @@ use App\Http\Controllers\ChatPageController;
 use App\Http\Controllers\PlayController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NumberReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicFeedController;
@@ -83,6 +84,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/investigations/{report}/request', [InvestigationController::class, 'request'])->name('investigations.request');
     Route::patch('/investigations/{investigation}', [InvestigationController::class, 'update'])->name('investigations.update');
     Route::get('/investigations', [InvestigationController::class, 'index'])->name('investigations.index');
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::get('/notifications/{id}', [NotificationController::class, 'open'])->name('notifications.open');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::delete('/notifications', [NotificationController::class, 'clear'])->name('notifications.clear');
 
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
 

@@ -1,0 +1,152 @@
+[
+  {
+    "label": "scam",
+    "from": "support@bibd-secure-alerts.com",
+    "text": "Your BIBD account has been limited. Confirm your details within 24 hours at http://bibd-secure-alerts.com/verify or your card will be blocked."
+  },
+  {
+    "label": "scam",
+    "from": "noreply@baiduri-update-center.net",
+    "text": "Dear customer, we detected unusual sign-in to your Baiduri account. Verify your identity now to avoid suspension: https://baiduri-update-center.net/login"
+  },
+  {
+    "label": "scam",
+    "from": "+6738123999",
+    "text": "Brunei Post: your parcel could not be delivered. Pay a B$2.50 redelivery fee here: http://bruneipost-redelivery.top/pay"
+  },
+  {
+    "label": "scam",
+    "from": "hr@global-jobs-offer.com",
+    "text": "Congratulations! You are selected for a work-from-home job paying B$300 per day. No experience needed. Send your IC number and bank details to start today."
+  },
+  {
+    "label": "scam",
+    "from": "admin@royal-prize-draw.top",
+    "text": "You have won a free flight ticket in the Royal Brunei lucky draw! Claim within 12 hours by paying a small handling fee."
+  },
+  {
+    "label": "scam",
+    "from": "officer@police-bn-summons.com",
+    "text": "This is the police traffic department. You have an unpaid fine. Pay now at http://police-bn-summons.com/pay to avoid arrest."
+  },
+  {
+    "label": "scam",
+    "from": "+447700900123",
+    "text": "Hi, I am your boss. I am in a meeting and cannot talk. Please buy 5 gift cards for a client and send me the codes quickly, I will reimburse you."
+  },
+  {
+    "label": "scam",
+    "from": "service@paypal-account-help.com",
+    "text": "Your PayPal account is suspended. Click to restore access and confirm your card number and security code."
+  },
+  {
+    "label": "scam",
+    "from": "invest@crypto-double.io",
+    "text": "Send 0.1 BTC and receive 0.2 BTC back in one hour. Limited time offer, guaranteed returns, no risk."
+  },
+  {
+    "label": "scam",
+    "from": "helpdesk@staff-mailbox-upgrade.com",
+    "text": "Your staff mailbox is almost full. Sign in with your username and password to upgrade storage, or your account will be deleted today."
+  },
+  {
+    "label": "scam",
+    "from": "+60123450000",
+    "text": "Hi, this is Mr Tan from LHDN. You have unpaid tax. Transfer RM1,800 to this account today or legal action will follow."
+  },
+  {
+    "label": "scam",
+    "from": "lottery@intl-lotto-winner.org",
+    "text": "Dear winner, you have been chosen to receive USD 2,500,000. Reply with your full name, address and passport copy to claim."
+  },
+  {
+    "label": "scam",
+    "from": "billing@dst-bill-pay.xyz",
+    "text": "Your DST internet bill is overdue. Pay now to avoid disconnection: http://dst-bill-pay.xyz/bayar"
+  },
+  {
+    "label": "scam",
+    "from": "support@netflix-billing-help.com",
+    "text": "Your Netflix payment failed. Update your payment method within 24 hours or your membership will be cancelled: http://netflix-billing-help.com/update"
+  },
+  {
+    "label": "scam",
+    "from": "friend.rina@gmail.com",
+    "text": "Hey, I'm stuck overseas and lost my wallet. Can you send me B$500 urgently? I will pay you back tomorrow. Please don't call, just transfer."
+  },
+  {
+    "label": "legit",
+    "from": "statements@bibd.com.bn",
+    "text": "Your BIBD e-statement for September is now available. Please log in to the BIBD app to view it."
+  },
+  {
+    "label": "legit",
+    "from": "mum@gmail.com",
+    "text": "Dinner at 7 tonight. Can you pick up some milk on the way home?"
+  },
+  {
+    "label": "legit",
+    "from": "alice@polibrunei.edu.bn",
+    "text": "Hi all, the weekly meeting notes are below. Please send me your follow-ups by Friday."
+  },
+  {
+    "label": "legit",
+    "from": "news@canva.com",
+    "text": "Your design is ready. Open Canva to view, edit or share it."
+  },
+  {
+    "label": "legit",
+    "from": "noreply@grab.com",
+    "text": "Your Grab receipt: trip on 8 October, total B$6.50, paid by cash. Thanks for riding with us."
+  },
+  {
+    "label": "legit",
+    "from": "+6737123456",
+    "text": "Your OTP is 482913. It expires in 5 minutes. Do not share this code with anyone."
+  },
+  {
+    "label": "legit",
+    "from": "orders@lazada.com.bn",
+    "text": "Your order has shipped. Track it in the Lazada app. Estimated delivery: 12 October."
+  },
+  {
+    "label": "legit",
+    "from": "registrar@pb.edu.bn",
+    "text": "Reminder: semester 5 registration closes on 15 October. Please complete your course selection in the student portal."
+  },
+  {
+    "label": "legit",
+    "from": "hr@company.com.bn",
+    "text": "Please find attached the offer letter we discussed. Let me know if you have any questions before Friday."
+  },
+  {
+    "label": "legit",
+    "from": "no-reply@accounts.google.com",
+    "text": "Security alert: a new sign-in to your Google Account on a Windows device. If this was you, no action is needed."
+  },
+  {
+    "label": "legit",
+    "from": "billing@streamco.com",
+    "text": "Your monthly subscription of B$9.90 will renew on 20 October. You can manage or cancel it anytime in your account settings."
+  },
+  {
+    "label": "legit",
+    "from": "friend.hafiz@gmail.com",
+    "text": "Are we still on for futsal on Saturday? Booking the court for 5pm, tell me by tomorrow."
+  },
+  {
+    "label": "legit",
+    "from": "service@baiduri.com.bn",
+    "text": "Your debit card ending 4321 was used for B$25.00 at a supermarket on 9 October. If you did not make this purchase, call the number on the back of your card."
+  },
+  {
+    "label": "legit",
+    "from": "delivery@dhl.com",
+    "text": "Your DHL shipment is out for delivery today. Someone should be available to receive it. Track at dhl.com."
+  },
+  {
+    "label": "legit",
+    "from": "team@github.com",
+    "text": "A new personal access token was added to your account. If you did not do this, please review your account security settings."
+  }
+]

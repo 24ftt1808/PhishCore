@@ -118,7 +118,7 @@
                     <select name="assigned_to"
                         class="w-full r-well px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-slate-400/60">
                         <option value="">Unassigned</option>
-                        @foreach (\App\Models\User::where('is_team_member', true)->orderBy('name')->get() as $user)
+                        @foreach (\App\Models\User::where(fn ($q) => $q->where('is_team_member', true)->orWhere('role', 'admin'))->orderBy('name')->get() as $user)
                             <option value="{{ $user->id }}">{{ $user->name }}</option>
                         @endforeach
                     </select>
@@ -203,7 +203,7 @@
                     <select name="assigned_to"
                         class="r-well px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-slate-400/60">
                         <option value="">Unassigned</option>
-                        @foreach (\App\Models\User::where('is_team_member', true)->orderBy('name')->get() as $user)
+                        @foreach (\App\Models\User::where(fn ($q) => $q->where('is_team_member', true)->orWhere('role', 'admin'))->orderBy('name')->get() as $user)
                             <option value="{{ $user->id }}" @selected($investigation->assigned_to === $user->id)>{{ $user->name }}</option>
                         @endforeach
                     </select>

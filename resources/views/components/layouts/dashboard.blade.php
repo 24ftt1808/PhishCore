@@ -27,11 +27,17 @@
 </span>
                 <span class="font-bold text-white">PhishCore</span>
             </a>
-            <button @click="sidebarOpen = true" class="p-2 text-slate-300">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-                </svg>
+            <div class="flex items-center gap-1">
+                <button type="button" @click.stop="$store.bell.toggle()" :aria-expanded="$store.bell.open" aria-label="Notifications" class="nb-btn ">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                <span class="nb-count" x-show="$store.bell.unread > 0" x-cloak x-text="$store.bell.unread > 99 ? '99+' : $store.bell.unread"></span>
             </button>
+                <button @click="sidebarOpen = true" class="p-2 text-slate-300">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         {{-- MOBILE BACKDROP --}}
@@ -207,6 +213,10 @@
                             <span class="block mt-0.5 text-[10px] font-semibold tracking-[0.14em] text-sky-200">DETECTION PLATFORM</span>
                         </span>
                     </a>
+                    <button type="button" @click.stop="$store.bell.toggle()" :aria-expanded="$store.bell.open" aria-label="Notifications" class="nb-btn nb-desktop">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                <span class="nb-count" x-show="$store.bell.unread > 0" x-cloak x-text="$store.bell.unread > 99 ? '99+' : $store.bell.unread"></span>
+            </button>
                     <button @click="sidebarOpen = false" class="lg:hidden p-1 text-slate-400 hover:text-white">
                         <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -334,6 +344,54 @@
             </div>
         </aside>
 
+        {{-- NOTIFICATION BELL: the list opens from either bell button (top bar on phones, sidebar on desktop) --}}
+        <style>
+            .nb-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: .5rem; border-radius: .75rem; color: #cbd5e1; transition: background-color .15s, color .15s; }
+            .nb-btn:hover { background: rgba(125, 211, 252, .12); color: #fff; }
+            .nb-desktop { display: none; }
+            @media (min-width: 1024px) { .nb-desktop { display: inline-flex; } }
+            .nb-count { position: absolute; top: .1rem; right: .05rem; min-width: 1.05rem; height: 1.05rem; padding: 0 .28rem; border-radius: 999px; background: #ef4444; color: #fff; font-size: .65rem; font-weight: 700; line-height: 1.05rem; text-align: center; box-shadow: 0 0 0 2px #020617; }
+            .nb-panel { position: fixed; z-index: 60; top: 3.75rem; left: .75rem; right: .75rem; max-height: calc(100vh - 5rem); display: flex; flex-direction: column; overflow: hidden; border-radius: 1rem; background: #08101f; border: 1px solid rgba(125, 211, 252, .22); box-shadow: 0 18px 50px -12px rgba(0, 0, 0, .75); }
+            @media (min-width: 1024px) { .nb-panel { top: 1rem; left: 16.75rem; right: auto; width: 23rem; max-height: calc(100vh - 2rem); } }
+            .nb-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+            .nb-list { overflow-y: auto; }
+            .nb-row { display: flex; align-items: flex-start; border-bottom: 1px solid rgba(255, 255, 255, .06); transition: background-color .15s; }
+            .nb-row:hover { background: rgba(125, 211, 252, .08); }
+            .nb-item { flex: 1; min-width: 0; display: flex; gap: .7rem; padding: .8rem .25rem .8rem 1rem; color: #cbd5e1; }
+            .nb-dot { flex: none; width: .5rem; height: .5rem; margin-top: .42rem; border-radius: 999px; background: transparent; }
+            .nb-row.is-unread .nb-dot { background: #38bdf8; }
+            .nb-row.is-unread .nb-msg { color: #fff; font-weight: 600; }
+            .nb-del { flex: none; margin: .4rem .5rem 0 .1rem; padding: .5rem; border-radius: .5rem; color: #94a3b8; transition: background-color .15s, color .15s; }
+            .nb-del:hover { background: rgba(248, 113, 113, .18); color: #fecaca; }
+        </style>
+        <div class="nb-panel" x-show="$store.bell.open" x-cloak @click.outside="$store.bell.open = false" @keydown.escape.window="$store.bell.open = false" role="dialog" aria-label="Notifications"
+             x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+            <div class="nb-head">
+                <p class="text-sm font-semibold text-white">Notifications</p>
+                <span class="flex items-center gap-3">
+                    <button type="button" x-show="$store.bell.unread > 0" @click="$store.bell.readAll()" class="text-xs font-medium text-sky-300 hover:text-white">Mark all as read</button>
+                    <button type="button" x-show="$store.bell.items.length > 0" @click="$store.bell.clearAll()" class="text-xs font-medium text-slate-400 hover:text-white">Clear all</button>
+                </span>
+            </div>
+            <div class="nb-list">
+                <template x-for="n in $store.bell.items" :key="n.id">
+                    <div class="nb-row" :class="n.unread ? 'is-unread' : ''">
+                        <a :href="n.url" class="nb-item">
+                            <span class="nb-dot" aria-hidden="true"></span>
+                            <span class="min-w-0">
+                                <span class="nb-msg block text-sm break-words" x-text="n.message"></span>
+                                <span class="block mt-0.5 text-xs text-slate-400" x-text="n.when"></span>
+                            </span>
+                        </a>
+                        <button type="button" class="nb-del" @click.stop="$store.bell.remove(n.id)" aria-label="Delete notification" title="Delete">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </template>
+                <p x-show="$store.bell.items.length === 0" class="px-4 py-8 text-center text-sm text-slate-400">No notifications yet. Investigation updates will show up here.</p>
+            </div>
+        </div>
+
         {{-- MAIN CONTENT --}}
                 <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-64 overflow-y-auto min-w-0">
             {{ $slot }}
@@ -342,6 +400,44 @@
     </div>
 
     @include('components.chat-widget')
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            const initial = @json(\App\Http\Controllers\NotificationController::summary(auth()->user()));
+            Alpine.store('bell', {
+                open: false,
+                unread: initial.unread,
+                items: initial.items,
+                toggle() { this.open = ! this.open; if (this.open) { this.load(); } },
+                apply(data) { this.unread = data.unread; this.items = data.items; },
+                async load() {
+                    try {
+                        const res = await fetch(@json(route('notifications.index')), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                        if (res.ok) { this.apply(await res.json()); }
+                    } catch (e) { /* offline or signed out: keep what is shown */ }
+                },
+                async send(url, method) {
+                    try {
+                        const res = await fetch(url, { method, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': @json(csrf_token()) } });
+                        if (res.ok) { this.apply(await res.json()); }
+                    } catch (e) { /* ignore */ }
+                },
+                remove(id) { return this.send(@json(url('/notifications')) + '/' + id, 'DELETE'); },
+                clearAll() { return this.send(@json(route('notifications.clear')), 'DELETE'); },
+                async readAll() {
+                    try {
+                        const res = await fetch(@json(route('notifications.read-all')), {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': @json(csrf_token()) },
+                        });
+                        if (res.ok) { this.apply(await res.json()); }
+                    } catch (e) { /* ignore */ }
+                },
+            });
+            // Check for new notifications once a minute while the page is visible.
+            setInterval(() => { if (! document.hidden) { Alpine.store('bell').load(); } }, 60000);
+        });
+    </script>
 
     @stack('scripts')
 </body>

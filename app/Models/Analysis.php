@@ -3,6 +3,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Services\BruneiScamAlert;
+use App\Services\CommunityStats;
 class Analysis extends Model
 {
     use HasFactory;
@@ -25,6 +27,16 @@ protected $casts = [
     'redirect_chain' => 'array',
     'flags' => 'array',
 ];
+    protected static function booted(): void
+    {
+        // A phishing scan that imitates a Brunei brand rings the team's bell.
+        static::created(fn (Analysis $analysis) => BruneiScamAlert::notifyFor($analysis));
+
+        // The Analytics "Community" numbers are recalculated on the next page load.
+        static::saved(fn () => CommunityStats::forget());
+        static::deleted(fn () => CommunityStats::forget());
+    }
+
     public function report(): BelongsTo
     {
         return $this->belongsTo(Report::class);

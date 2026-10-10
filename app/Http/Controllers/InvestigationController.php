@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Investigation;
 use App\Models\InvestigationStatusLog;
 use App\Models\Report;
+use App\Models\User;
+use App\Notifications\InvestigationNotice;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
 
 class InvestigationController extends Controller
@@ -85,6 +88,13 @@ class InvestigationController extends Controller
             'changed_by' => auth()->id(),
         ]);
 
+        if ($investigation->assigned_to) {
+            $this->tellAssignee($investigation, null);
+        } else {
+            // Nobody owns it yet, so tell the rest of the team and the admins that it needs someone.
+            Notification::send($this->teamAndAdmins(), new InvestigationNotice($investigation->load('report'), InvestigationNotice::UNASSIGNED));
+        }
+
         return redirect()->route('scan.show', $report)
             ->with('success', 'Investigation opened for this report.');
     }
@@ -119,7 +129,10 @@ class InvestigationController extends Controller
             'changed_by' => auth()->id(),
         ]);
 
-              return redirect()->route('scan.show', $report)
+        // Tell the team and the admins (everyone active, except the person who asked) so it shows in their bell.
+        Notification::send($this->teamAndAdmins(), new InvestigationNotice($investigation->load('report'), InvestigationNotice::REQUESTED));
+
+        return redirect()->route('scan.show', $report)
             ->with('success', 'Investigation requested. Our team will review this report.');
     }
 
@@ -142,6 +155,7 @@ class InvestigationController extends Controller
             : null;
 
         $statusChanged = $investigation->status !== $validated['status'];
+        $previousAssignee = $investigation->assigned_to;
 
         $investigation->update([
             'status' => $validated['status'],
@@ -161,7 +175,41 @@ class InvestigationController extends Controller
             ]);
         }
 
+        // Tell the person it was just handed to.
+        $this->tellAssignee($investigation, $previousAssignee);
+
+        // Tell the person who asked for the investigation when its status really changes.
+        if ($statusChanged && $investigation->requested_by && (int) $investigation->requested_by !== (int) auth()->id()) {
+            $investigation->requestedBy?->notify(new InvestigationNotice($investigation->load('report'), InvestigationNotice::STATUS_CHANGED));
+        }
+
         return redirect()->route('scan.show', $investigation->report)
             ->with('success', 'Investigation updated.');
+    }
+
+    /**
+     * Tell whoever the investigation is now assigned to, but only when it is a new person,
+     * not the one making the change, and not a suspended account.
+     */
+    private function tellAssignee(Investigation $investigation, ?int $previousAssignee): void
+    {
+        $assigneeId = $investigation->assigned_to;
+
+        if (! $assigneeId || (int) $assigneeId === (int) $previousAssignee || (int) $assigneeId === (int) auth()->id()) {
+            return;
+        }
+
+        $assignee = User::whereNull('suspended_at')->find($assigneeId);
+
+        $assignee?->notify(new InvestigationNotice($investigation->load('report'), InvestigationNotice::ASSIGNED));
+    }
+
+    /** Every active team member and admin, except the person making this change. */
+    private function teamAndAdmins()
+    {
+        return User::whereNull('suspended_at')
+            ->where(fn ($q) => $q->where('is_team_member', true)->orWhere('role', 'admin'))
+            ->where('id', '!=', auth()->id())
+            ->get();
     }
 }

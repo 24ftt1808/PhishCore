@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Analysis;
 use App\Models\Report;
+use App\Services\CommunityStats;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -186,6 +187,7 @@ class AnalyticsController extends Controller
             'topCountries' => $topCountries,
             'maxCountryCount' => $maxCountryCount,
             'performance' => $performance,
+            'community' => CommunityStats::get(),
         ]);
     }
 

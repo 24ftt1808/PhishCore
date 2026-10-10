@@ -20,7 +20,8 @@ class ReportsController extends Controller
 
         $statsBase = fn () => Report::query();
         $stats = [
-            'total' => $statsBase()->count(),
+            // Only scans that have a result, so Total always equals Safe + Suspicious + Phishing.
+            'total' => $statsBase()->whereHas('analyses', fn ($q) => $q->whereIn('verdict', ['clean', 'suspicious', 'phishing']))->count(),
             'safe' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'clean'))->count(),
             'suspicious' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'suspicious'))->count(),
             'phishing' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'phishing'))->count(),

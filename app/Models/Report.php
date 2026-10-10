@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CommunityStats;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Report extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        // The Analytics "Community" numbers are recalculated on the next page load.
+        static::saved(fn () => CommunityStats::forget());
+        static::deleted(fn () => CommunityStats::forget());
+    }
 
     protected $fillable = [
         'user_id',
@@ -69,4 +77,4 @@ class Report extends Model
     {
         return $this->hasOne(Investigation::class);
     }
-}   
+}

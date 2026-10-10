@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CommunityStats;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -22,6 +23,13 @@ class NumberReport extends Model
         'investment' => 'Investment or money scam',
         'other' => 'Other scam',
     ];
+
+    protected static function booted(): void
+    {
+        // The Analytics "Community" Top 10 is recalculated on the next page load.
+        static::saved(fn () => CommunityStats::forget());
+        static::deleted(fn () => CommunityStats::forget());
+    }
 
     protected $fillable = ['user_id', 'phone', 'category'];
 

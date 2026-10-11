@@ -24,6 +24,7 @@ class ScanHistoryController extends Controller
             'safe' => $statsBase()->where('verdict', 'clean')->count(),
             'suspicious' => $statsBase()->where('verdict', 'suspicious')->count(),
             'phishing' => $statsBase()->where('verdict', 'phishing')->count(),
+            'review' => $statsBase()->where('verdict', 'review')->count(),
         ];
 
         $rows = (int) $request->input('rows', 8);
@@ -50,7 +51,7 @@ class ScanHistoryController extends Controller
             ->limit(self::EXPORT_MAX_ROWS)
             ->get();
 
-        $verdictLabels = ['clean' => 'Safe', 'suspicious' => 'Suspicious', 'phishing' => 'Phishing'];
+        $verdictLabels = ['clean' => 'Safe', 'suspicious' => 'Suspicious', 'phishing' => 'Phishing', 'review' => 'Needs review'];
         $filename = 'phishcore-scan-history-'.now()->format('Y-m-d').'.csv';
 
         return response()->streamDownload(function () use ($reports, $verdictLabels): void {
@@ -101,7 +102,7 @@ class ScanHistoryController extends Controller
         }
 
         $status = $request->input('status', 'all');
-        $verdictMap = ['safe' => 'clean', 'suspicious' => 'suspicious', 'phishing' => 'phishing'];
+        $verdictMap = ['safe' => 'clean', 'suspicious' => 'suspicious', 'phishing' => 'phishing', 'review' => 'review'];
         if (isset($verdictMap[$status])) {
             $query->whereHas('analyses', fn ($q) => $q->where('verdict', $verdictMap[$status]));
         }

@@ -24,11 +24,12 @@
         ['label' => 'SAFE', 'short' => 'Safe', 'value' => $stats['safe'], 'status' => 'safe', 'rgb' => '52,211,153', 'text' => 'text-emerald-400', 'icon' => 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
         ['label' => 'SUSPICIOUS', 'short' => 'Suspicious', 'value' => $stats['suspicious'], 'status' => 'suspicious', 'rgb' => '251,146,60', 'text' => 'text-orange-400', 'icon' => 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z'],
         ['label' => 'PHISHING', 'short' => 'Phishing', 'value' => $stats['phishing'], 'status' => 'phishing', 'rgb' => '248,113,113', 'text' => 'text-red-400', 'icon' => 'M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z'],
+        ['label' => 'NEEDS REVIEW', 'short' => 'Review', 'value' => $stats['review'], 'status' => 'review', 'rgb' => '125,211,252', 'text' => 'text-sky-300', 'icon' => 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z'],
     ];
 
     $activeAdvanced = collect(['date_from', 'date_to', 'min_score', 'max_score'])->filter(fn ($key) => filled($filters[$key] ?? null))->count();
-    $statusCounts = ['all' => $stats['total'], 'safe' => $stats['safe'], 'suspicious' => $stats['suspicious'], 'phishing' => $stats['phishing']];
-    $statusDots = ['all' => 'bg-sky-300', 'safe' => 'bg-emerald-400', 'suspicious' => 'bg-orange-400', 'phishing' => 'bg-red-400'];
+    $statusCounts = ['all' => $stats['total'], 'safe' => $stats['safe'], 'suspicious' => $stats['suspicious'], 'phishing' => $stats['phishing'], 'review' => $stats['review']];
+    $statusDots = ['all' => 'bg-sky-300', 'safe' => 'bg-emerald-400', 'suspicious' => 'bg-orange-400', 'phishing' => 'bg-red-400', 'review' => 'bg-sky-300'];
 @endphp
 
 <x-layouts.dashboard>
@@ -107,10 +108,10 @@
     </div>
 
     {{-- STATS (click to filter) --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6 md:max-xl:landscape:mb-4 md:max-xl:portrait:gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 md:max-xl:landscape:mb-4 md:max-xl:portrait:gap-4">
         @foreach ($statCards as $card)
             <a href="{{ route('scan.history', array_filter(['status' => $card['status'] === 'all' ? null : $card['status']])) }}"
-               class="h-card h-stat h-in p-3.5 sm:p-5 md:max-xl:p-4 md:max-xl:landscape:py-3 md:max-xl:portrait:py-5 {{ $currentStatus === $card['status'] ? 'h-stat-on' : '' }}"
+               class="h-card h-stat h-in {{ $loop->first ? 'col-span-2 md:col-span-1' : '' }} p-3.5 sm:p-5 md:max-xl:p-4 md:max-xl:landscape:py-3 md:max-xl:portrait:py-5 {{ $currentStatus === $card['status'] ? 'h-stat-on' : '' }}"
                style="--c: {{ $card['rgb'] }}; --d: {{ $loop->index * 0.06 }}s">
                 <div class="flex items-center sm:items-start justify-between gap-2 sm:gap-3 md:max-xl:gap-2">
                     <div class="min-w-0">
@@ -159,7 +160,7 @@
         </div>
 
         <div class="um-scroll flex items-center gap-2 mt-3.5 sm:mt-4 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
-            @foreach (['all' => 'All Results', 'safe' => 'Safe', 'suspicious' => 'Suspicious', 'phishing' => 'Phishing'] as $key => $label)
+            @foreach (['all' => 'All Results', 'safe' => 'Safe', 'suspicious' => 'Suspicious', 'phishing' => 'Phishing', 'review' => 'Needs review'] as $key => $label)
                 <button type="submit" name="status" value="{{ $key }}" class="h-chip {{ $currentStatus === $key ? 'h-chip-on' : '' }}">
                     <span class="w-1.5 h-1.5 rounded-full {{ $statusDots[$key] }}"></span>
                     {{ $label }}

@@ -99,3 +99,23 @@ test('the history page links to the export, keeping the current filters', functi
         ->assertOk()
         ->assertSee(route('scan.history.export', ['status' => 'phishing']), false);
 });
+
+test('scans that need a manual review get their own counter and filter, and are labelled in the export', function () {
+    $me = User::factory()->create();
+    $someoneElse = User::factory()->create();
+
+    historyScan($me, 'review', 45, ['url' => 'http://unsure.test/']);
+    historyScan($me, 'review', 50);
+    historyScan($me, 'clean', 2);
+    historyScan($someoneElse, 'review', 50);
+
+    $page = $this->actingAs($me)->get(route('scan.history'))->assertOk();
+    $filtered = $this->actingAs($me)->get(route('scan.history', ['status' => 'review']))->assertOk();
+    $rows = exportedRows($this->actingAs($me)->get(route('scan.history.export', ['status' => 'review']))->streamedContent());
+
+    expect($page->viewData('stats')['review'])->toBe(2)
+        ->and($page->viewData('stats')['total'])->toBe(3)
+        ->and($filtered->viewData('reports')->total())->toBe(2)
+        ->and($rows)->toHaveCount(3)
+        ->and($rows[1][3])->toBe('Needs review');
+});

@@ -2200,6 +2200,36 @@ class AnalysisEngine
     }
 
     /**
+     * Domains written without "http://" or "https://" in screenshot text, such as the "polydrop.top"
+     * in a fake giveaway post. Scammers often write links this way, so the full-link search misses them.
+     *
+     * To avoid false alarms the domain must end in a real, known ending, and email addresses, full links,
+     * file names ("photo.png"), numbers ("2.5K", "v1.2.3") and abbreviations ("e.g.") are all ignored.
+     *
+     * @return array<int, string> lower-case domains without "www.", in the order they appear
+     */
+    public function extractBareDomainsFromText(string $text): array
+    {
+        $endings = 'com|net|org|info|biz|edu|gov|mil|io|co|me|app|dev|top|xyz|online|site|store|shop|live|club|vip|icu|cc|tk|ml|ga|cf|gq|ws|link|click|cloud|tech|pro|fun|buzz|work|world|today|page|pages|win|bid|loan|men|rest|cyou|sbs|mobi|bn|my|sg|id|in|uk|us|au|ph|th|vn|cn|hk|jp|kr|de|fr|ru';
+
+        $withoutEmails = preg_replace('/[a-z0-9._%+\-]+@[a-z0-9.\-]+/i', ' ', $text) ?? $text;
+        $withoutLinks = preg_replace('~https?://[^\s"\'<>]+~i', ' ', $withoutEmails) ?? $withoutEmails;
+
+        preg_match_all(
+            '/(?<![\w@\/:\-])((?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)+(?:'.$endings.'))(?![\w@\-]|\.\w)/i',
+            $withoutLinks,
+            $matches
+        );
+
+        $domains = [];
+        foreach ($matches[1] as $domain) {
+            $domains[preg_replace('/^www\./', '', strtolower($domain))] = true;
+        }
+
+        return array_keys($domains);
+    }
+
+    /**
      * OCR often introduces stray spaces around "@" and "." in email addresses
      * (e.g. "services @ paypal - accounts . com"). Normalize those artifacts
      * before matching so noisy-but-readable text still extracts correctly.
@@ -2934,6 +2964,17 @@ class AnalysisEngine
         }
         $urlCameFromQr = $qrUrl && $extractedUrl === $qrUrl;
 
+        // No full link anywhere? Scammers often write the address without "https://" (e.g. "polydrop.top").
+        $urlWasBare = false;
+        if ($extractedUrl === null) {
+            $bareDomains = array_map(fn ($domain) => 'https://'.$domain, $this->extractBareDomainsFromText($text));
+            if (! empty($bareDomains)) {
+                usort($bareDomains, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
+                $extractedUrl = $bareDomains[0];
+                $urlWasBare = true;
+            }
+        }
+
         $candidateEmails = $this->extractAllEmailsFromText($text);
         $extractedEmail = null;
         if (! empty($candidateEmails)) {
@@ -2972,7 +3013,9 @@ class AnalysisEngine
 
         $extractionParts = [];
         if ($extractedUrl) {
-            $extractionParts[] = ($urlCameFromQr ? 'URL (from QR code): ' : 'URL: ').$extractedUrl;
+            $extractionParts[] = $urlWasBare
+                ? 'Link written without https://: '.preg_replace('~^https://~', '', $extractedUrl)
+                : (($urlCameFromQr ? 'URL (from QR code): ' : 'URL: ').$extractedUrl);
         }
         if ($extractedEmail) {
             $extractionParts[] = "Sender: {$extractedEmail}";

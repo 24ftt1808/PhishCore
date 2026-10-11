@@ -150,7 +150,7 @@
 
                 <form method="POST" action="{{ route('scan.store') }}" enctype="multipart/form-data" class="p-5 sm:p-6 flex-1 flex flex-col" @submit="if (!canScan) { $event.preventDefault() } else { scanning = true }">
                     @csrf
-                    <x-scan-guard />
+                    <x-scan-guard part="trap" />
 
                     {{-- type selector --}}
                     <div class="relative grid grid-cols-4 p-1 rounded-2xl bg-[#07122b]/60 border border-sky-200/10" role="tablist">
@@ -272,6 +272,8 @@
                     </div>
 
                     <div class="mt-auto pt-5">
+                        <x-scan-guard part="check" />
+
                         <button type="submit" :disabled="scanning || !canScan" :class="!canScan && !scanning ? 'opacity-50 cursor-not-allowed saturate-50 shadow-none' : ''"
                                 class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-semibold shadow-[0_0_20px_-2px_rgba(56,189,248,0.45)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-70 disabled:cursor-not-allowed">
                             <svg x-show="!scanning" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>

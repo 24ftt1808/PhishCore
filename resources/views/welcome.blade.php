@@ -333,7 +333,7 @@
 
             <form method="POST" action="{{ route('scan.store') }}" enctype="multipart/form-data" class="p-4 sm:p-6" @submit="scanning = true">
                 @csrf
-                <x-scan-guard />
+                <x-scan-guard part="trap" />
 
                 {{-- Type selector --}}
                 <div class="relative grid grid-cols-4 p-1 rounded-2xl bg-black/25 border border-white/[0.07]" role="tablist">
@@ -450,6 +450,8 @@
                         @enderror
                     </div>
                 </div>
+
+                <x-scan-guard part="check" />
 
                 <button type="submit" :disabled="scanning" class="btn-primary !rounded-xl !py-3.5 !text-sm font-semibold w-full mt-4 transition active:scale-[0.98]">
                     <svg x-show="!scanning" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>

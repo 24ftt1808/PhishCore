@@ -87,7 +87,7 @@ test('a signed-in person also sees the note that the result is from an earlier c
 test('an earlier scan is only reused when it is recent, complete and of the same link', function () {
     $fresh = finishedScan('http://fresh.test/');
     finishedScan('http://old.test/', ['created_at' => now()->subHours(7)]);
-    finishedScan('http://partial.test/', [], ['flags' => [['name' => 'Safe Browsing', 'status' => 'UNKNOWN', 'message' => 'Could not run.', 'points' => 0]]]);
+    finishedScan('http://partial.test/', [], ['flags' => [['name' => 'Blacklist Database', 'status' => 'UNKNOWN', 'message' => 'Could not run.', 'points' => 0]]]);
     finishedScan('http://failed.test/', ['status' => 'failed']);
 
     expect(ScanReuse::find('http://fresh.test/')?->id)->toBe($fresh->id)
@@ -96,6 +96,25 @@ test('an earlier scan is only reused when it is recent, complete and of the same
         ->and(ScanReuse::find('http://partial.test/'))->toBeNull()
         ->and(ScanReuse::find('http://failed.test/'))->toBeNull()
         ->and(ScanReuse::find('http://never-scanned.test/'))->toBeNull();
+});
+
+test('a check that could not reach the site does not stop a result being reused', function () {
+    $blocked = finishedScan('http://blocks-us.test/', [], ['flags' => [
+        ['name' => 'SSL Certificate', 'status' => 'UNKNOWN', 'message' => 'Could not connect.', 'points' => 0],
+        ['name' => 'Page Content Analysis', 'status' => 'UNKNOWN', 'message' => 'Could not load the page.', 'points' => 0],
+        ['name' => 'Site Availability', 'status' => 'UNKNOWN', 'message' => 'Could not tell.', 'points' => 0],
+        ['name' => 'Domain Age', 'status' => 'SAFE', 'message' => 'Old domain.', 'points' => 0],
+    ]]);
+
+    expect(ScanReuse::find('http://blocks-us.test/')?->id)->toBe($blocked->id);
+});
+
+test('the same link typed with or without a trailing slash, or in capitals, finds the earlier scan', function () {
+    $earlier = finishedScan('http://slash.test');
+
+    expect(ScanReuse::find('http://slash.test/')?->id)->toBe($earlier->id)
+        ->and(ScanReuse::find('HTTP://SLASH.test')?->id)->toBe($earlier->id)
+        ->and(ScanReuse::find('http://slash.test/other'))->toBeNull();
 });
 
 test('reusing results can be switched off', function () {

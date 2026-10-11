@@ -15,6 +15,14 @@ use App\Models\Report;
 class ScanReuse
 {
     /**
+     * Checks that depend on whether our server can reach the site itself. If the site blocks us or is
+     * already taken down, they come back UNKNOWN every time, so a retry would not change anything and
+     * the result is still worth reusing. Any other UNKNOWN check (VirusTotal, Safe Browsing, WHOIS, the
+     * AI review and so on) means an outside service failed, so the result is incomplete and is not reused.
+     */
+    private const SITE_REACH_CHECKS = ['SSL Certificate', 'Page Content Analysis', 'Site Availability', 'Redirect Chain'];
+
+    /**
      * The recent finished scan of exactly this link, or null when a fresh scan is needed.
      * A scan where some check could not run is not reused, because its result is incomplete.
      */
@@ -29,7 +37,7 @@ class ScanReuse
 
         $candidates = Report::query()
             ->where('type', 'url')
-            ->where('url', $url)
+            ->whereIn('url', self::variants($url))
             ->where('status', 'completed')
             ->where('created_at', '>=', now()->subHours($hours))
             ->whereHas('analyses')
@@ -43,8 +51,37 @@ class ScanReuse
 
             return is_array($flags)
                 && $flags !== []
-                && ! collect($flags)->contains(fn ($check) => is_array($check) && ($check['status'] ?? null) === 'UNKNOWN');
+                && ! collect($flags)->contains(
+                    fn ($check) => is_array($check)
+                        && ($check['status'] ?? null) === 'UNKNOWN'
+                        && ! in_array($check['name'] ?? '', self::SITE_REACH_CHECKS, true)
+                );
         });
+    }
+
+    /**
+     * The ways the same link might have been typed: with or without a trailing slash, and with the
+     * scheme and host in capitals. Anything after the host (the path) is kept exactly as typed.
+     *
+     * @return array<int, string>
+     */
+    private static function variants(string $url): array
+    {
+        $url = trim($url);
+        $lowerHost = fn (string $u): string => (string) preg_replace_callback(
+            '~^([a-z][a-z0-9+.-]*://)([^/?#]+)~i',
+            fn (array $m): string => strtolower($m[1].$m[2]),
+            $u
+        );
+
+        $variants = [];
+
+        foreach ([$url, $lowerHost($url)] as $candidate) {
+            $trimmed = rtrim($candidate, '/');
+            array_push($variants, $candidate, $trimmed, $trimmed.'/');
+        }
+
+        return array_values(array_unique($variants));
     }
 
     /** Copy the earlier result into a new finished report owned by this person. */

@@ -21,7 +21,9 @@
 {{-- Footer --}}
 <x-slot:footer>
 <x-mail::footer>
-PhishCore protects people in Brunei from phishing and scams.
+**{{ config('app.name') }}** helps keep people in Brunei safe from phishing and scams.
+
+[Open {{ config('app.name') }}]({{ config('app.url') }})
 
 This is an automated message, please don't reply to it.
 

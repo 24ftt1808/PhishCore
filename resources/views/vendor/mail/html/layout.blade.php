@@ -4,8 +4,8 @@
 <title>{{ config('app.name') }}</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="dark light">
-<meta name="supported-color-schemes" content="dark light">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <link href="https://fonts.bunny.net/css?family=manrope:400,600,700,800&display=swap" rel="stylesheet">
 <style>
 @media only screen and (max-width: 600px) {
@@ -42,6 +42,10 @@ width: 100% !important;
 <tr>
 <td class="body" width="100%" cellpadding="0" cellspacing="0" style="border: hidden !important;">
 <table class="inner-body" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation" bgcolor="#0f172a">
+<!-- Accent bar -->
+<tr>
+<td height="5" bgcolor="#2563eb" style="height: 5px; font-size: 0; line-height: 0; background-color: #2563eb; background-image: linear-gradient(90deg, #38bdf8, #2563eb 55%, #6366f1);">&nbsp;</td>
+</tr>
 <!-- Body content -->
 <tr>
 <td class="content-cell">

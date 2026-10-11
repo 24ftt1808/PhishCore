@@ -73,7 +73,15 @@ test('a guest can open the result they were given', function () {
     $this->post(route('scan.store'), ['url' => 'http://reuse-me.test/']);
     $copy = Report::latest('id')->first();
 
-    $this->get(route('scan.show', $copy))->assertOk()->assertSee('checked');
+    $this->get(route('scan.show', $copy))->assertOk()->assertSee('so you are seeing that result');
+});
+
+test('a signed-in person also sees the note that the result is from an earlier check', function () {
+    finishedScan('http://reuse-me.test/');
+    $me = User::factory()->create();
+
+    $this->actingAs($me)->followingRedirects()->post(route('scan.store'), ['url' => 'http://reuse-me.test/'])
+        ->assertOk()->assertSee('so you are seeing that result');
 });
 
 test('an earlier scan is only reused when it is recent, complete and of the same link', function () {

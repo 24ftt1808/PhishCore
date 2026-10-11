@@ -20,11 +20,12 @@ class ReportsController extends Controller
 
         $statsBase = fn () => Report::query();
         $stats = [
-            // Only scans that have a result, so Total always equals Safe + Suspicious + Phishing.
-            'total' => $statsBase()->whereHas('analyses', fn ($q) => $q->whereIn('verdict', ['clean', 'suspicious', 'phishing']))->count(),
+            // Only scans that have a result, so Total always equals Safe + Suspicious + Phishing + Needs review.
+            'total' => $statsBase()->whereHas('analyses', fn ($q) => $q->whereIn('verdict', ['clean', 'suspicious', 'phishing', 'review']))->count(),
             'safe' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'clean'))->count(),
             'suspicious' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'suspicious'))->count(),
             'phishing' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'phishing'))->count(),
+            'review' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'review'))->count(),
         ];
 
         $query = Report::with(['analyses', 'user', 'investigation'])->where('status', 'completed');
@@ -38,7 +39,7 @@ class ReportsController extends Controller
         }
 
         $status = $request->input('status', 'all');
-        $verdictMap = ['safe' => 'clean', 'suspicious' => 'suspicious', 'phishing' => 'phishing'];
+        $verdictMap = ['safe' => 'clean', 'suspicious' => 'suspicious', 'phishing' => 'phishing', 'review' => 'review'];
         if (isset($verdictMap[$status])) {
             $query->whereHas('analyses', fn ($q) => $q->where('verdict', $verdictMap[$status]));
         }

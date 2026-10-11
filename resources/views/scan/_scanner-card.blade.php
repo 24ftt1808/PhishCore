@@ -150,6 +150,7 @@
 
                 <form method="POST" action="{{ route('scan.store') }}" enctype="multipart/form-data" class="p-5 sm:p-6 flex-1 flex flex-col" @submit="if (!canScan) { $event.preventDefault() } else { scanning = true }">
                     @csrf
+                    <x-scan-guard />
 
                     {{-- type selector --}}
                     <div class="relative grid grid-cols-4 p-1 rounded-2xl bg-[#07122b]/60 border border-sky-200/10" role="tablist">

@@ -34,8 +34,11 @@ Route::get('/', function () {
     ]);
 })->name('welcome');
 
+Route::view('/terms', 'legal.terms')->name('terms');
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+
 Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
-Route::post('/scan', [ScanController::class, 'store'])->name('scan.store');
+Route::post('/scan', [ScanController::class, 'store'])->middleware('throttle:60,1')->name('scan.store');
 Route::get('/scan/{report}', [ScanController::class, 'show'])->name('scan.show');
 Route::get('/scan/{report}/pdf', ScanPdfController::class)->name('scan.pdf');
 

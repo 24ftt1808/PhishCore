@@ -137,6 +137,7 @@
             <div class="p-4 sm:p-6" x-data="{ url: '' }">
                 <form method="POST" action="{{ route('scan.store') }}" class="flex flex-col sm:flex-row gap-3" @submit="busy = true">
                     @csrf
+                    <x-scan-guard />
                     <div class="relative flex-1">
                         <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" /></svg>
                         <input type="text" name="url" required x-model="url" :readonly="busy" placeholder="https://example.com"

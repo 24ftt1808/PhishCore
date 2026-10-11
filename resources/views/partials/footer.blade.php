@@ -61,6 +61,8 @@
                 PhishCore &copy; 2026. Results are provided for security guidance and should not be treated as a guarantee.
             </p>
             <div class="flex items-center gap-5 shrink-0">
+                <a href="{{ route('terms') }}" class="text-xs text-slate-500 hover:text-white transition">Terms</a>
+                <a href="{{ route('privacy') }}" class="text-xs text-slate-500 hover:text-white transition">Privacy</a>
                 <span class="text-xs text-slate-500">Built with care for a safer Brunei.</span>
                 <a href="{{ route('welcome') }}#home" aria-label="Back to top"
                    class="w-9 h-9 grid place-items-center rounded-full border border-white/10 text-slate-400 hover:text-white hover:border-white/25 hover:bg-white/5 transition">

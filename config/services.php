@@ -35,8 +35,14 @@ return [
         ],
     ],
 
-     'google_safe_browsing' => [
+    'google_safe_browsing' => [
         'key' => env('GOOGLE_SAFE_BROWSING_API_KEY'),
+    ],
+
+    // Optional "are you human" check for guest scans (Cloudflare Turnstile, free). Off until both keys are set.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
     // Optional extra check: a language model reads the message text. Off unless AI_TEXT_CHECK=true.
@@ -57,14 +63,14 @@ return [
     ],
 
     'ocr_space' => [
-    'key' => env('OCR_SPACE_API_KEY'),
-],
+        'key' => env('OCR_SPACE_API_KEY'),
+    ],
 
-       'virustotal' => [
+    'virustotal' => [
         'key' => env('VIRUSTOTAL_API_KEY'),
     ],
 
-        'abstractapi_phone' => [
+    'abstractapi_phone' => [
         'key' => env('ABSTRACTAPI_PHONE_KEY'),
     ],
 

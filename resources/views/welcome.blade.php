@@ -333,6 +333,7 @@
 
             <form method="POST" action="{{ route('scan.store') }}" enctype="multipart/form-data" class="p-4 sm:p-6" @submit="scanning = true">
                 @csrf
+                <x-scan-guard />
 
                 {{-- Type selector --}}
                 <div class="relative grid grid-cols-4 p-1 rounded-2xl bg-black/25 border border-white/[0.07]" role="tablist">
@@ -555,8 +556,84 @@
     </div>
 </section>
 
+{{-- CONTACT --}}
+<section id="contact" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-4xl mx-auto px-6 pt-4 pb-10 md:pb-14">
+    <div class="text-center mb-8 md:mb-10">
+        <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Contact</span>
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Get in Touch</h2>
+        <p class="text-slate-400 text-[15px] md:text-base max-w-xl mx-auto">Questions, feedback, or a scam you want us to know about? Reach the PhishCore team through our official email.</p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+        {{-- Official email (primary) --}}
+        <div class="glass-card rounded-2xl p-5 sm:p-6 sm:col-span-2 flex flex-col md:flex-row md:items-center gap-4 md:gap-6"
+             x-data="{
+                copied: false,
+                failed: false,
+                flash(ok) { this.copied = ok; this.failed = ! ok; setTimeout(() => { this.copied = false; this.failed = false; }, 2200); },
+                legacyCopy(text) {
+                    const box = document.createElement('textarea');
+                    box.value = text;
+                    box.setAttribute('readonly', '');
+                    box.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+                    document.body.appendChild(box);
+                    box.select();
+                    box.setSelectionRange(0, text.length);
+                    let ok = false;
+                    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                    document.body.removeChild(box);
+                    return ok;
+                },
+                copy() {
+                    const text = 'phishcorebn@gmail.com';
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(text).then(() => this.flash(true), () => this.flash(this.legacyCopy(text)));
+                    } else {
+                        this.flash(this.legacyCopy(text));
+                    }
+                }
+            }">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <span class="shrink-0 w-12 h-12 rounded-xl bg-sky-400/10 border border-sky-300/25 grid place-items-center text-sky-300">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                </span>
+                <div class="min-w-0">
+                    <p class="text-xs tracking-[0.14em] text-slate-500 mb-1">OFFICIAL EMAIL</p>
+                    <a href="mailto:phishcorebn@gmail.com" class="block text-white font-semibold text-[15px] sm:text-lg break-all hover:text-sky-300 transition">phishcorebn@gmail.com</a>
+                    <p class="text-sm text-slate-400 mt-1">Support, feedback and partnership questions.</p>
+                </div>
+            </div>
+            <div class="flex gap-2.5 shrink-0">
+                <a href="mailto:phishcorebn@gmail.com?subject=PhishCore%20enquiry" class="btn-primary !rounded-lg !px-5 !py-3 md:!py-2.5 flex-1 md:flex-none text-center">Send email</a>
+                <button type="button" @click="copy()" class="btn-ghost !rounded-lg !px-5 !py-3 md:!py-2.5 flex-1 md:flex-none min-w-[6.5rem]" :aria-label="copied ? 'Email address copied' : 'Copy email address'">
+                    <span x-show="! copied && ! failed">Copy</span><span x-show="copied" x-cloak class="text-emerald-300">Copied</span><span x-show="failed" x-cloak class="text-amber-300">Press and hold</span>
+                </button>
+            </div>
+        </div>
+
+        {{-- Report a scam --}}
+        <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <span class="w-10 h-10 rounded-lg bg-amber-400/10 border border-amber-300/25 grid place-items-center text-amber-300 mb-3">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            </span>
+            <h3 class="text-white font-semibold mb-1">Seen a suspicious message?</h3>
+            <p class="text-sm text-slate-400 mb-3">Scan the link, email, number or screenshot yourself. Confirmed threats appear on the public reports page.</p>
+            <a href="{{ route('reports.public') }}" class="text-sm text-sky-300 hover:text-sky-200 transition">View public reports &rarr;</a>
+        </div>
+
+        {{-- About the project --}}
+        <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <span class="w-10 h-10 rounded-lg bg-emerald-400/10 border border-emerald-300/25 grid place-items-center text-emerald-300 mb-3">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" /></svg>
+            </span>
+            <h3 class="text-white font-semibold mb-1">A student project</h3>
+            <p class="text-sm text-slate-400">Built at Politeknik Brunei as a 2026 final year project, for a safer Brunei.</p>
+        </div>
+    </div>
+</section>
+
 {{-- CTA --}}
-<section id="contact" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-4xl mx-auto px-6 pb-16 md:pb-24">
+<section class="reveal max-w-4xl mx-auto px-6 pb-16 md:pb-24">
     <div class="glass-panel rounded-2xl p-6 md:p-12 text-center">
         <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Ready to Check a Suspicious Link?</h2>
         <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8">Create an account or sign in to begin scanning websites and protecting your digital activity.</p>

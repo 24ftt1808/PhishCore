@@ -7,10 +7,13 @@ use App\Models\CtiLookup;
 use App\Models\Report;
 use App\Services\AnalysisEngine;
 use App\Support\PhoneCountries;
+use App\Support\ScanGuard;
+use App\Support\ScanRateLimit;
+use App\Support\ScanReuse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
 
 class ScanController extends Controller
 {
@@ -33,6 +36,34 @@ class ScanController extends Controller
     {
         $type = $this->resolveType($request);
 
+        // A robot filled in the hidden trap field: do nothing, and say nothing.
+        if (ScanGuard::honeypotTripped($request)) {
+            return redirect()->back();
+        }
+
+        // Guests prove they are human once (when the Turnstile keys are set), then are trusted for a while.
+        if (ScanGuard::needsHumanCheck($request) && ! ScanGuard::passesHumanCheck($request)) {
+            return ScanRateLimit::back($request, 'Please complete the human check and try again.');
+        }
+
+        // A link scanned recently is not scanned again: the earlier result is copied for this person,
+        // which is instant, uses none of the outside quotas and does not count against the scan limit.
+        if ($type === 'url' && is_string($request->input('url')) && ($earlier = ScanReuse::find($request->input('url')))) {
+            $report = ScanReuse::copyFor($earlier, auth()->id());
+
+            if (! auth()->check()) {
+                session()->push('guest_report_ids', $report->id);
+            }
+
+            return redirect()->route('scan.show', $report)
+                ->with('info', 'This link was checked '.$earlier->created_at->diffForHumans().', so you are seeing that result. Scan it again later for a fresh check.');
+        }
+
+        // A real scan is about to run, so count it against the person's allowance.
+        if ($limited = ScanRateLimit::attempt($request)) {
+            return $limited;
+        }
+
         $request->validate($this->rulesFor($type));
 
         // A local-style number is read as belonging to the country picked on
@@ -49,8 +80,8 @@ class ScanController extends Controller
         if ($type === 'screenshot') {
             $uploadedFile = $request->file('screenshot');
             $storedPath = $uploadedFile->store('screenshots', 'public');
-            $screenshotStoragePath = storage_path('app/public/' . $storedPath);
-            $screenshotPath = asset('storage/' . $storedPath);
+            $screenshotStoragePath = storage_path('app/public/'.$storedPath);
+            $screenshotPath = asset('storage/'.$storedPath);
         }
 
         // Create the report first so we have a report_id to attach CTI lookups to.
@@ -79,10 +110,10 @@ class ScanController extends Controller
         set_time_limit(120);
 
         try {
-            $engine = new AnalysisEngine();
+            $engine = new AnalysisEngine;
             $startTime = microtime(true);
 
-                     $result = $engine->analyze(
+            $result = $engine->analyze(
                 type: $type,
                 url: $request->input('url'),
                 email: $request->input('email'),
@@ -95,7 +126,7 @@ class ScanController extends Controller
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
-            if (!empty($result['cti'])) {
+            if (! empty($result['cti'])) {
                 CtiLookup::create([
                     'report_id' => $report->id,
                     'source' => $result['cti']['source'],
@@ -104,7 +135,7 @@ class ScanController extends Controller
                 ]);
             }
 
-                     Analysis::create([
+            Analysis::create([
                 'report_id' => $report->id,
                 'domain_age_days' => $result['domain_age_days'],
                 'url_syntax_score' => $result['url_syntax_score'],
@@ -151,6 +182,7 @@ class ScanController extends Controller
         abort_unless($report->canBeViewedBy(auth()->user()), 404);
 
         $report->load(['analyses', 'ctiLookups']);
+
         return view('scan.show', [
             'report' => $report,
             'analysis' => $report->analyses->first(),
@@ -161,19 +193,20 @@ class ScanController extends Controller
     /**
      * Determine which scan type was submitted based on which field is filled.
      */
-   private function resolveType(Request $request): string
-{
-    if ($request->hasFile('screenshot')) {
-        return 'screenshot';
+    private function resolveType(Request $request): string
+    {
+        if ($request->hasFile('screenshot')) {
+            return 'screenshot';
+        }
+        if ($request->filled('email') || $request->filled('subject') || $request->filled('body')) {
+            return 'email';
+        }
+        if ($request->filled('phone')) {
+            return 'phone';
+        }
+
+        return 'url';
     }
-    if ($request->filled('email') || $request->filled('subject') || $request->filled('body')) {
-        return 'email';
-    }
-    if ($request->filled('phone')) {
-        return 'phone';
-    }
-    return 'url';
-}
 
     private function rulesFor(string $type): array
     {

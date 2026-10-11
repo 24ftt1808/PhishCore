@@ -88,9 +88,9 @@
                        class="mt-0.5 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500">
                 <span>
                     I agree to the
-                    <a href="#" class="text-sky-400 hover:text-sky-300">Terms of Use</a>
+                    <a href="{{ route('terms') }}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">Terms of Use</a>
                     and
-                    <a href="#" class="text-sky-400 hover:text-sky-300">Privacy Policy</a>
+                    <a href="{{ route('privacy') }}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">Privacy Policy</a>
                 </span>
             </label>
 

@@ -243,6 +243,7 @@
                                 <p class="flex items-center gap-2.5 min-w-0" title="{{ $itemLabel }}">
                                     <svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
                                     <span class="truncate {{ $isMono ? 'h-url' : '' }} text-slate-100">@if ($scheme)<span class="text-slate-400">{{ $scheme }}</span>@endif{{ $rest }}</span>
+                                    @if ($report->reused_from_report_id)<span class="ml-1 shrink-0 rounded-full border border-sky-300/30 bg-sky-300/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300" title="Result copied from an earlier scan of this link">Reused</span>@endif
                                 </p>
                                 <p class="hidden md:max-xl:flex items-center gap-1.5 mt-1 pl-[1.65rem] text-xs text-slate-400 min-w-0">
                                     @if ($submitterPhoto)
@@ -341,6 +342,7 @@
                     <p class="text-slate-100 text-sm flex items-start gap-2 min-w-0">
                         <svg class="w-4 h-4 text-slate-300 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
                         <span class="break-all {{ $isMono ? 'h-url' : '' }}">{{ $itemLabel }}</span>
+                        @if ($report->reused_from_report_id)<span class="ml-1 shrink-0 rounded-full border border-sky-300/30 bg-sky-300/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300" title="Result copied from an earlier scan of this link">Reused</span>@endif
                     </p>
                 </div>
                 <div class="flex items-center gap-2.5 mb-3">

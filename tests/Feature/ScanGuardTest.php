@@ -183,3 +183,41 @@ test('a guest who sends no human check answer at all is turned back', function (
 
     Http::assertNothingSent();
 });
+
+test('a reused result remembers which scan it was copied from', function () {
+    $earlier = finishedScan('http://reuse-me.test/');
+
+    $this->post(route('scan.store'), ['url' => 'http://reuse-me.test/']);
+
+    $copy = Report::where('id', '!=', $earlier->id)->first();
+
+    expect($copy->reused_from_report_id)->toBe($earlier->id)
+        ->and($earlier->fresh()->reused_from_report_id)->toBeNull();
+});
+
+test('a copied result does not restart the reuse window of the scan it came from', function () {
+    $original = finishedScan('http://chain.test/', ['created_at' => now()->subHours(7)]);
+    $copy = finishedScan('http://chain.test/', ['reused_from_report_id' => $original->id]);
+
+    expect($copy->created_at->isAfter(now()->subHours(6)))->toBeTrue()
+        ->and(ScanReuse::find('http://chain.test/'))->toBeNull();
+});
+
+test('the reports list marks reused scans', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'is_team_member' => true]);
+    $earlier = finishedScan('http://reuse-me.test/');
+    finishedScan('http://reuse-me.test/', ['reused_from_report_id' => $earlier->id]);
+
+    $this->actingAs($admin)->get(route('reports.index'))
+        ->assertOk()
+        ->assertSee('Result copied from an earlier scan of this link', false);
+});
+
+test('the reports list shows no reused tag when every scan was fresh', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'is_team_member' => true]);
+    finishedScan('http://fresh-only.test/');
+
+    $this->actingAs($admin)->get(route('reports.index'))
+        ->assertOk()
+        ->assertDontSee('Result copied from an earlier scan of this link', false);
+});

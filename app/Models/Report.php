@@ -29,6 +29,7 @@ class Report extends Model
         'phone_number',
         'description',
         'status',
+        'reused_from_report_id',
     ];
 
     /**

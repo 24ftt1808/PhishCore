@@ -39,6 +39,8 @@ class ScanReuse
             ->where('type', 'url')
             ->whereIn('url', self::variants($url))
             ->where('status', 'completed')
+            // Only real scans count: a copy must not restart the clock on the result it was copied from.
+            ->whereNull('reused_from_report_id')
             ->where('created_at', '>=', now()->subHours($hours))
             ->whereHas('analyses')
             ->with(['analyses', 'ctiLookups'])
@@ -92,6 +94,7 @@ class ScanReuse
             'type' => 'url',
             'url' => $previous->url,
             'status' => 'completed',
+            'reused_from_report_id' => $previous->id,
         ]);
 
         $analysis = $previous->analyses->first();

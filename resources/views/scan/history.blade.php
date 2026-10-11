@@ -92,10 +92,18 @@
             <h1 class="text-2xl font-bold text-white mb-1">Scan History</h1>
             <p class="text-slate-300 text-sm">Review and manage all reports previously analysed by PhishCore.</p>
         </div>
-        <span class="h-btn h-btn-ghost shrink-0 max-sm:!w-10 max-sm:!h-10 max-sm:!p-0 opacity-60 cursor-not-allowed" title="Coming soon" aria-label="Export History">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-            <span class="hidden sm:inline">Export History</span>
-        </span>
+        @if ($stats['total'] > 0)
+            <a href="{{ route('scan.history.export', array_filter(\Illuminate\Support\Arr::except($filters, ['rows']), fn ($value) => filled($value))) }}"
+               class="h-btn h-btn-ghost shrink-0 max-sm:!w-10 max-sm:!h-10 max-sm:!p-0" title="Download your scans as a CSV file (uses the filters below)" aria-label="Export History">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                <span class="hidden sm:inline">Export History</span>
+            </a>
+        @else
+            <span class="h-btn h-btn-ghost shrink-0 max-sm:!w-10 max-sm:!h-10 max-sm:!p-0 opacity-60 cursor-not-allowed" title="Scan something first, then you can export it" aria-label="Export History">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                <span class="hidden sm:inline">Export History</span>
+            </span>
+        @endif
     </div>
 
     {{-- STATS (click to filter) --}}

@@ -1,5 +1,7 @@
 @php
-    $periods = [7 => 'Last 7 Days', 30 => 'Last 30 Days', 90 => 'Last 3 Months', 180 => 'Last 6 Months'];
+    $periods = [7 => 'Last 7 Days', 30 => 'Last 30 Days', 90 => 'Last 3 Months', 180 => 'Last 6 Months', 'this_month' => 'This Month', 'last_month' => 'Last Month', 'all' => 'All Time'];
+
+    $periodGroups = ['Recent' => [7, 30, 90, 180], 'Calendar' => ['this_month', 'last_month'], 'Everything' => ['all']];
 
     if (! function_exists('trendArrow')) {
         function trendArrow($value) {
@@ -55,6 +57,26 @@
         .a-chip { display: inline-flex; align-items: center; padding: .5rem 1rem; border-radius: 999px; font-size: .8rem; font-weight: 600; color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .22); background: rgba(8, 15, 32, .35); transition: background-color .15s, border-color .15s, color .15s; white-space: nowrap; }
         .a-chip:hover { color: #fff; border-color: rgba(148, 163, 184, .45); }
         .a-chip-on { color: #fff; background: rgba(56, 189, 248, .16); border-color: rgba(56, 189, 248, .5); }
+        button.a-chip { font-family: inherit; cursor: pointer; }
+        .a-menu { position: absolute; left: 0; top: calc(100% + .4rem); min-width: 14.5rem; padding: .35rem; border-radius: 14px; background: rgba(10, 18, 38, .98); border: 1px solid rgba(148, 163, 184, .22); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); backdrop-filter: blur(12px); }
+        .a-menu-h { padding: .5rem .7rem .25rem; font-size: .62rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+        .a-menu-item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; padding: .5rem .7rem; border-radius: 9px; font-size: .82rem; font-weight: 600; color: #cbd5e1; text-align: left; font-family: inherit; cursor: pointer; background: transparent; border: 0; }
+        .a-menu-item:hover, .a-menu-item:focus-visible { background: rgba(148, 163, 184, .12); color: #fff; outline: none; }
+        .a-menu-on { color: #fff; background: rgba(56, 189, 248, .14); }
+        .a-menu-sep { height: 1px; margin: .35rem .4rem; background: rgba(148, 163, 184, .18); }
+        .a-chip-open { color: #fff; border-color: rgba(56, 189, 248, .55); }
+        .a-date { background: rgba(8, 15, 32, .6); border: 1px solid rgba(148, 163, 184, .28); border-radius: .8rem; padding: .65rem .85rem; color: #f1f5f9; font-size: .9rem; font-weight: 600; font-family: inherit; color-scheme: dark; transition: border-color .2s, box-shadow .2s; }
+        .a-date:hover { border-color: rgba(148, 163, 184, .5); }
+        .a-date:focus { outline: none; border-color: rgba(56, 189, 248, .7); box-shadow: 0 0 0 3px rgba(56, 189, 248, .18); }
+        .a-btn-main { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .7rem 1.4rem; border: 0; border-radius: .8rem; font-family: inherit; font-size: .88rem; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(90deg, #38bdf8, #2563eb); box-shadow: 0 8px 20px -8px rgba(56, 189, 248, .6); transition: opacity .2s, transform .2s, box-shadow .2s; }
+        .a-btn-main:hover { opacity: .93; transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(56, 189, 248, .75); }
+        .a-btn-main:active { transform: scale(.97); }
+        .a-btn-main:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .a-btn-main:focus-visible, .a-quick:focus-visible, .a-x:focus-visible { outline: 2px solid rgba(125, 211, 252, .8); outline-offset: 2px; }
+        .a-quick { padding: .35rem .8rem; border-radius: 999px; border: 1px solid rgba(148, 163, 184, .24); background: rgba(8, 15, 32, .4); color: #cbd5e1; font-family: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; transition: color .2s, border-color .2s, background-color .2s; }
+        .a-quick:hover { color: #fff; border-color: rgba(56, 189, 248, .55); background: rgba(56, 189, 248, .1); }
+        .a-x { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .6rem; border: 0; background: transparent; color: #94a3b8; cursor: pointer; transition: color .2s, background-color .2s; }
+        .a-x:hover { color: #fff; background: rgba(255, 255, 255, .08); }
 
         .a-chip { flex-shrink: 0; white-space: nowrap; }
         .a-scroll { scrollbar-width: none; }
@@ -212,10 +234,10 @@
             <h1 class="text-2xl font-bold text-white mb-1">Detection Analytics</h1>
             <p class="text-slate-300 text-sm">Monitor phishing trends, report activity and detection performance.</p>
         </div>
-        <span class="inline-flex items-center justify-center shrink-0 gap-2 max-sm:w-10 max-sm:h-10 sm:px-4 sm:py-2.5 rounded-xl border border-slate-500/30 text-slate-200 text-sm font-semibold opacity-60 cursor-not-allowed" title="Coming soon">
+        <a href="{{ route('analytics.export', $exportParams) }}" class="inline-flex items-center justify-center shrink-0 gap-2 max-sm:w-10 max-sm:h-10 sm:px-4 sm:py-2.5 rounded-xl border border-slate-500/30 text-slate-200 text-sm font-semibold hover:bg-white/5 hover:border-slate-400/50 transition" title="Download these numbers as a CSV file (uses the range you picked)" aria-label="Export Analytics">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
             <span class="hidden sm:inline">Export Analytics</span>
-        </span>
+        </a>
     </div>
 
     <div x-data="{ tab: location.hash === '#community' ? 'community' : 'mine', squish: false, go(to) { if (this.tab === to) return; this.tab = to; this.squish = true; clearTimeout(this.sq); this.sq = setTimeout(() => this.squish = false, 650); } }" x-init="$watch('tab', v => { history.replaceState(null, '', v === 'community' ? '#community' : location.pathname + location.search); $nextTick(() => window.dispatchEvent(new Event('resize'))); })" data-analytics-tabs>
@@ -365,11 +387,98 @@
     </div>
 
     {{-- PERIOD --}}
-    <div class="a-scroll a-in flex gap-2 mb-5 sm:mb-6 md:max-xl:landscape:mb-4 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0" style="--d:.04s">
-        @foreach ($periods as $days => $label)
-            <a href="{{ route('analytics', ['period' => $days]) }}" class="a-chip {{ $period == $days ? 'a-chip-on' : '' }}">{{ $label }}</a>
-        @endforeach
-        <span class="a-chip opacity-50 cursor-not-allowed" title="Coming soon">Custom Range</span>
+    <div x-data="{
+        open: false,
+        custom: {{ $period === 'custom' ? 'true' : 'false' }},
+        from: '{{ $period === 'custom' ? $rangeFrom : '' }}',
+        to: '{{ $period === 'custom' ? $rangeTo : '' }}',
+        today: '{{ now()->format('Y-m-d') }}',
+        fmt(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); },
+        fill(days) { const end = new Date(this.today + 'T00:00:00'); const start = new Date(end); start.setDate(end.getDate() - (days - 1)); this.from = this.fmt(start); this.to = this.today; },
+        yearToDate() { this.from = this.today.slice(0, 4) + '-01-01'; this.to = this.today; },
+        get ready() { return this.from !== '' && this.to !== '' && this.from <= this.to; },
+        get days() { return this.ready ? Math.round((new Date(this.to + 'T00:00:00') - new Date(this.from + 'T00:00:00')) / 86400000) + 1 : 0; },
+        get summary() {
+            if (this.from === '' || this.to === '') { return 'Choose a start date and an end date.'; }
+            if (! this.ready) { return 'The start date has to come before the end date.'; }
+            if (this.days > 366) { return this.days + ' days selected. Only the most recent 12 months will be used.'; }
+            return this.days + (this.days === 1 ? ' day' : ' days') + ' selected.';
+        }
+    }">
+    <div class="relative z-30 a-in mb-5 sm:mb-6 md:max-xl:landscape:mb-4 w-full sm:w-auto sm:inline-block" style="--d:.04s" @click.outside="open = false" @keydown.escape.window="open = false">
+        <button type="button" class="a-chip w-full sm:w-auto justify-between gap-2.5 {{ $period === 'custom' ? 'a-chip-on' : '' }}" :class="open ? 'a-chip-open' : ''" @click="open = ! open" aria-haspopup="menu" :aria-expanded="open.toString()">
+            <span class="inline-flex items-center gap-2">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                {{ $rangeLabel }}
+            </span>
+            <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+        </button>
+
+        <div class="a-menu w-full sm:w-auto" x-show="open" x-cloak x-transition.opacity.duration.150ms role="menu">
+            @foreach ($periodGroups as $groupLabel => $keys)
+                <div class="a-menu-h">{{ $groupLabel }}</div>
+                @foreach ($keys as $key)
+                    @php $active = (string) $period === (string) $key; @endphp
+                    <a href="{{ route('analytics', ['period' => $key]) }}" role="menuitem" class="a-menu-item {{ $active ? 'a-menu-on' : '' }}" @if ($active) aria-current="true" @endif>
+                        {{ $periods[$key] }}
+                        @if ($active)
+                            <svg class="w-3.5 h-3.5 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                        @endif
+                    </a>
+                @endforeach
+            @endforeach
+            <div class="a-menu-sep"></div>
+            <button type="button" role="menuitem" class="a-menu-item {{ $period === 'custom' ? 'a-menu-on' : '' }}" @click="custom = true; open = false" aria-controls="a-custom-range">
+                Custom range…
+                @if ($period === 'custom')
+                    <svg class="w-3.5 h-3.5 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                @endif
+            </button>
+        </div>
+    </div>
+
+    <form id="a-custom-range" method="GET" action="{{ route('analytics') }}" x-show="custom" x-cloak x-transition.opacity.duration.200ms class="a-card p-4 sm:p-5 mb-5 sm:mb-6">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div class="min-w-0">
+                <h3 class="text-white font-semibold text-sm">Custom range</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Pick any dates, up to 12 months. It is compared with the same number of days just before your start date.</p>
+            </div>
+            <button type="button" class="a-x shrink-0" @click="custom = false" aria-label="Close custom range">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+            <label class="flex-1 min-w-0 flex flex-col gap-1.5 text-[11px] font-semibold tracking-wider text-slate-300">FROM
+                <input type="date" name="from" x-model="from" :max="to || today" required class="a-date w-full">
+            </label>
+            <span class="hidden sm:grid place-items-center h-[2.75rem] text-slate-500" aria-hidden="true">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+            </span>
+            <label class="flex-1 min-w-0 flex flex-col gap-1.5 text-[11px] font-semibold tracking-wider text-slate-300">TO
+                <input type="date" name="to" x-model="to" :min="from" :max="today" required class="a-date w-full">
+            </label>
+            <button type="submit" class="a-btn-main sm:min-w-[8rem]" :disabled="! ready">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                Apply
+            </button>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 mr-1">Quick fill</span>
+            <button type="button" class="a-quick" @click="fill(7)">Last 7 days</button>
+            <button type="button" class="a-quick" @click="fill(14)">Last 14 days</button>
+            <button type="button" class="a-quick" @click="fill(60)">Last 60 days</button>
+            <button type="button" class="a-quick" @click="yearToDate()">Year to date</button>
+            <button type="button" class="a-quick" @click="fill(365)">Last 12 months</button>
+        </div>
+
+        <p class="mt-3 text-xs font-medium" :class="ready && days <= 366 ? 'text-sky-300' : 'text-amber-300'" x-text="summary" aria-live="polite"></p>
+    </form>
+
+    @if ($rangeNotice)
+        <p class="a-in mb-5 text-xs font-medium text-amber-300" role="status">{{ $rangeNotice }}</p>
+    @endif
     </div>
 
     {{-- TOP STAT CARDS --}}
@@ -383,9 +492,13 @@
                     </span>
                 </div>
                 <p class="text-2xl sm:text-3xl font-bold text-white mb-1">{{ $card['value'] }}{{ $card['suffix'] }}</p>
-                <p class="text-xs font-medium {{ trendColor($card['change'], $card['goodUp']) }}">
-                    {{ trendArrow($card['change']) }} {{ $card['change'] > 0 ? '+' : '' }}{{ $card['change'] }}% <span class="hidden sm:inline md:max-xl:hidden text-slate-400 font-normal">vs prev. period</span><span class="hidden md:max-xl:inline text-slate-400 font-normal">vs prev.</span>
-                </p>
+                @if ($hasComparison)
+                    <p class="text-xs font-medium {{ trendColor($card['change'], $card['goodUp']) }}">
+                        {{ trendArrow($card['change']) }} {{ $card['change'] > 0 ? '+' : '' }}{{ $card['change'] }}% <span class="hidden sm:inline md:max-xl:hidden text-slate-400 font-normal">vs prev. period</span><span class="hidden md:max-xl:inline text-slate-400 font-normal">vs prev.</span>
+                    </p>
+                @else
+                    <p class="text-xs font-medium text-slate-400">Across all your scans</p>
+                @endif
             </div>
         @endforeach
     </div>
@@ -395,7 +508,7 @@
         <div class="lg:col-span-2 a-card a-in p-4 sm:p-6" style="--d:.1s">
             <div class="flex items-center justify-between gap-3 mb-1">
                 <h2 class="text-white font-semibold">Report Activity Over Time</h2>
-                <span class="text-xs font-medium text-slate-300">{{ $periods[$period] ?? '' }}</span>
+                <span class="text-xs font-medium text-slate-300">{{ $rangeLabel }}</span>
             </div>
             <p class="text-sm text-slate-300 mb-4">Daily report totals for the selected period</p>
             <div class="relative h-48 sm:h-56 md:max-xl:h-64 xl:h-auto"><canvas id="activityChart" height="90"></canvas></div>
@@ -403,7 +516,7 @@
 
         <div class="a-card a-in p-4 sm:p-6 md:max-xl:p-4 md:max-lg:portrait:grid md:max-lg:portrait:grid-cols-[auto_1fr] md:max-lg:portrait:items-center md:max-lg:portrait:gap-x-10" style="--d:.16s">
             <h2 class="text-white font-semibold mb-1 md:max-lg:portrait:col-span-2">Detection Results</h2>
-            <p class="text-sm text-slate-300 mb-4 md:max-lg:portrait:col-span-2">Result breakdown for {{ $periods[$period] ?? '' }}</p>
+            <p class="text-sm text-slate-300 mb-4 md:max-lg:portrait:col-span-2">Result breakdown for {{ $rangeLabel }}</p>
             <div class="relative w-40 h-40 mx-auto mb-5 md:max-lg:portrait:mb-0 md:max-lg:portrait:ml-4">
                 <canvas id="breakdownChart"></canvas>
                 <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -531,7 +644,8 @@
     <div class="grid md:grid-cols-2 gap-4 mb-4 md:max-xl:landscape:mb-3">
         <div class="a-card a-in p-4 sm:p-6" style="--d:.1s">
             <h2 class="text-white font-semibold mb-1">Period Comparison</h2>
-            <p class="text-sm text-slate-300 mb-5">Current vs previous {{ strtolower($periods[$period] ?? '') }}</p>
+            <p class="text-sm text-slate-300 mb-5">{{ $hasComparison ? 'Current range vs the same number of days just before it' : 'All Time has nothing before it to compare with' }}</p>
+            @if ($hasComparison)
             <div class="space-y-4">
                 @foreach ($breakdownRows as $row)
                     @php
@@ -562,6 +676,9 @@
                 <span class="flex items-center gap-1.5"><span class="w-3 h-1.5 rounded-full bg-slate-400/60"></span> Previous</span>
                 <span class="flex items-center gap-1.5"><span class="w-3 h-1.5 rounded-full bg-sky-400"></span> Current</span>
             </div>
+            @else
+                <p class="a-well p-4 text-sm text-slate-300">Pick a date range or one of the shorter periods above to see how this compares with the time before.</p>
+            @endif
         </div>
 
         <div class="a-card a-in p-4 sm:p-6" style="--d:.16s">

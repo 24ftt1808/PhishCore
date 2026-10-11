@@ -3,11 +3,11 @@
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChatPageController;
-use App\Http\Controllers\PlayController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NumberReportController;
+use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\PublicReportsController;
@@ -78,7 +78,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/chat', ChatController::class)->middleware('throttle:15,1')->name('chat.send');
 
     Route::get('/scan-history', [ScanHistoryController::class, 'index'])->name('scan.history');
+    Route::get('/scan-history/export', [ScanHistoryController::class, 'export'])->middleware('throttle:10,1')->name('scan.history.export');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
+    Route::get('/analytics/export', [AnalyticsController::class, 'export'])->middleware('throttle:10,1')->name('analytics.export');
 
     Route::post('/investigations/{report}', [InvestigationController::class, 'store'])->name('investigations.store');
     Route::post('/investigations/{report}/request', [InvestigationController::class, 'request'])->name('investigations.request');

@@ -7,6 +7,7 @@ use App\Models\Report;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Iodev\Whois\Factory;
 use Iodev\Whois\Loaders\SocketLoader;
@@ -2068,23 +2069,51 @@ class AnalysisEngine
 
         $lastError = 'OCR processing failed';
 
-        for ($attempt = 0; $attempt < 2; $attempt++) {
+        // The free OCR plan rejects files over about 1 MB, and phone screenshots are often larger.
+        [$imageBytes, $imageName] = $this->shrinkImageForOcr((string) file_get_contents($imagePath), basename($imagePath));
+
+        // Engine 2 is the best reader; if it is throttled or fails, the retry uses engine 3,
+        // which runs on separate servers and often stays up when engines 1 and 2 are overloaded.
+        $engines = ['2', '3'];
+
+        for ($attempt = 0; $attempt < count($engines); $attempt++) {
             try {
                 $response = Http::asMultipart()
-                    ->attach('file', file_get_contents($imagePath), basename($imagePath))
+                    ->attach('file', $imageBytes, $imageName)
                     ->timeout(30)
                     ->post('https://api.ocr.space/parse/image', [
                         'apikey' => $apiKey,
                         'language' => 'eng',
                         'isOverlayRequired' => 'false',
-                        'OCREngine' => '2',
+                        'OCREngine' => $engines[$attempt],
                         'scale' => 'true',
                     ]);
 
                 $data = $response->json();
 
+                // OCR.space throttles free keys when it is busy (HTTP 503, error E571). That is temporary.
+                if ($response->status() === 503 || $response->status() === 429 || str_contains($response->body(), 'E571')) {
+                    $lastError = 'the free OCR service is overloaded right now, please try again in a few minutes';
+                    Log::warning('OCR.space is throttling the free key', ['status' => $response->status(), 'body' => Str::limit($response->body(), 300)]);
+
+                    continue;
+                }
+
+                if (! is_array($data)) {
+                    // Not a normal OCR answer (blocked key, outage): keep the real reason.
+                    $body = trim(preg_replace('/\s+/', ' ', strip_tags($response->body())) ?? '');
+                    $lastError = 'OCR service answered HTTP '.$response->status().($body !== '' ? ': '.Str::limit($body, 140) : '');
+                    Log::warning('OCR.space gave an unreadable answer', ['status' => $response->status(), 'body' => Str::limit($body, 300)]);
+
+                    continue;
+                }
+
                 if (($data['IsErroredOnProcessing'] ?? true) === true) {
-                    $lastError = $data['ErrorMessage'][0] ?? 'OCR processing failed';
+                    $reason = $data['ErrorMessage'] ?? $data['error'] ?? null;
+                    $reason = is_array($reason) ? implode(' ', array_map('strval', $reason)) : (string) $reason;
+                    $reason = trim($reason !== '' ? $reason : (string) ($data['ErrorDetails'] ?? $data['details'] ?? ''));
+                    $lastError = $reason !== '' ? Str::limit($reason, 160) : 'OCR processing failed (HTTP '.$response->status().')';
+                    Log::warning('OCR.space could not process the image', ['status' => $response->status(), 'reason' => $lastError]);
 
                     continue; // try again before giving up
                 }
@@ -2100,10 +2129,61 @@ class AnalysisEngine
                 return ['success' => true, 'text' => $text, 'error' => null];
             } catch (\Throwable $e) {
                 $lastError = 'Could not reach the OCR service';
+                Log::warning('OCR.space request failed', ['error' => $e->getMessage()]);
             }
         }
 
         return ['success' => false, 'text' => '', 'error' => $lastError];
+    }
+
+    /**
+     * Scales a large image down (and saves it as a JPEG) until it fits the OCR service's 1 MB limit.
+     * Small images, and images that cannot be decoded, are sent exactly as uploaded.
+     *
+     * @return array{0: string, 1: string} the image bytes and the file name to send
+     */
+    private function shrinkImageForOcr(string $bytes, string $name): array
+    {
+        $limit = 1_000_000;
+
+        if (strlen($bytes) <= $limit || ! function_exists('imagecreatefromstring')) {
+            return [$bytes, $name];
+        }
+
+        $image = @imagecreatefromstring($bytes);
+
+        if ($image === false) {
+            return [$bytes, $name];
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $longest = max($width, $height);
+        $jpegName = pathinfo($name, PATHINFO_FILENAME).'.jpg';
+        $best = $bytes;
+
+        foreach ([[1800, 85], [1500, 80], [1200, 75], [900, 70]] as [$maxSide, $quality]) {
+            $scale = min(1, $maxSide / $longest);
+            $resized = imagescale($image, max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale)));
+
+            if ($resized === false) {
+                continue;
+            }
+
+            ob_start();
+            imagejpeg($resized, null, $quality);
+            $jpeg = (string) ob_get_clean();
+
+            if ($jpeg !== '') {
+                $best = $jpeg;
+            }
+
+            if (strlen($best) <= $limit) {
+                break;
+            }
+        }
+
+        return $best === $bytes ? [$bytes, $name] : [$best, $jpegName];
     }
 
     /**

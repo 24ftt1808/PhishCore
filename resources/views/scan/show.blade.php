@@ -29,6 +29,7 @@
             'DETECTED' => 'bg-red-500/10 text-red-300 border-red-500/25',
             'REVIEW' => 'bg-sky-500/10 text-sky-300 border-sky-500/25',
             'UNKNOWN' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
+            'INFO' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
             'LIVE' => 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
             'OFFLINE' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
             'TAKEN DOWN' => 'bg-sky-500/10 text-sky-300 border-sky-500/25',

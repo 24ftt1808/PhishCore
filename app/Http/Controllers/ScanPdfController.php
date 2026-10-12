@@ -38,6 +38,7 @@ class ScanPdfController extends Controller
         'REVIEW' => ['#7dd3fc', '56,189,248'],
         'TAKEN DOWN' => ['#7dd3fc', '56,189,248'],
         'UNKNOWN' => ['#cbd5e1', '148,163,184'],
+        'INFO' => ['#cbd5e1', '148,163,184'],
         'OFFLINE' => ['#cbd5e1', '148,163,184'],
     ];
 

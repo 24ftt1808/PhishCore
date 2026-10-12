@@ -283,9 +283,9 @@
 @php
     $allChecks = collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c))->values();
     $checkGroups = [
-        'warn' => ['title' => 'Things that look wrong', 'note' => null, 'open' => true, 'rgb' => '251, 191, 36'],
-        'ok' => ['title' => 'Things that look fine', 'note' => null, 'open' => false, 'rgb' => '52, 211, 153'],
-        'info' => ['title' => "Things we couldn't check, or that are just for information", 'rgb' => '148, 163, 184', 'open' => false, 'note' => "\"Couldn't check\" is not good or bad by itself. It only means we couldn't get an answer, so it did not count against the score.", 'open' => false],
+        'warn' => ['title' => 'Warnings', 'note' => null, 'open' => true, 'rgb' => '251, 191, 36'],
+        'ok' => ['title' => 'No issues found', 'note' => 'Each of these checks found nothing wrong on its own. The overall result is based on all checks together.', 'open' => false, 'rgb' => '52, 211, 153'],
+        'info' => ['title' => 'Unavailable or for information', 'rgb' => '148, 163, 184', 'open' => false, 'note' => '"Unavailable" means the check could not get an answer, for example because the website is offline. It is neither good nor bad, and it does not affect the score.'],
     ];
     $checkIconPaths = [
         'SSL Certificate' => 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
@@ -364,7 +364,7 @@
                     <p class="text-sm text-slate-200 leading-relaxed">{{ \App\Services\CheckExplainer::plain((string) ($check['message'] ?? '')) }}</p>
                     @if ($meaning)
                         <details class="mt-3">
-                            <summary class="cursor-pointer select-none text-xs text-sky-300">What does this mean?</summary>
+                            <summary class="cursor-pointer select-none text-xs text-sky-300">What does this check mean?</summary>
                             <p class="mt-2 text-xs text-slate-400 leading-relaxed">{{ $meaning }}</p>
                         </details>
                     @endif

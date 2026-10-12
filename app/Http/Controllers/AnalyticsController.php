@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Analysis;
 use App\Models\Report;
+use App\Services\CheckExplainer;
 use App\Services\CommunityStats;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -176,7 +177,8 @@ class AnalyticsController extends Controller
         $indicatorCounts = [];
         foreach ($current as $a) {
             foreach (($a->flags ?? []) as $check) {
-                if (($check['status'] ?? 'SAFE') !== 'SAFE') {
+                // Only real warnings count; "couldn't check" and information cards do not.
+                if (CheckExplainer::group((string) ($check['status'] ?? 'SAFE')) === 'warn') {
                     $name = $check['name'] ?? 'Unknown';
                     $indicatorCounts[$name] = ($indicatorCounts[$name] ?? 0) + 1;
                 }

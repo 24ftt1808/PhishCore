@@ -700,6 +700,7 @@ class AnalysisEngine
         $chain = [$url];
         $originalHost = parse_url($url, PHP_URL_HOST);
         $current = $url;
+        $reached = false;
 
         for ($hop = 0; $hop < 5; $hop++) {
             try {
@@ -710,6 +711,7 @@ class AnalysisEngine
                 break;
             }
 
+            $reached = true;
             $status = $response->status();
 
             if (! in_array($status, [301, 302, 303, 307, 308])) {
@@ -728,6 +730,18 @@ class AnalysisEngine
 
             $chain[] = $location;
             $current = $location;
+        }
+
+        // If the site never answered (offline, or the name no longer exists) we cannot
+        // know where the link leads, so say so instead of "no redirects".
+        if (! $reached) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'reasons' => ['Could not reach the website, so where the link leads could not be checked'],
+                'chain' => $chain,
+                'unavailable' => true,
+            ];
         }
 
         $hopCount = count($chain) - 1;
@@ -3383,7 +3397,7 @@ class AnalysisEngine
 
         $checks[] = [
             'name' => 'Screenshot Text Extraction',
-            'status' => $hasAnyEvidence ? 'SAFE' : 'REVIEW',
+            'status' => $hasAnyEvidence ? 'INFO' : 'REVIEW',
             'message' => $hasAnyEvidence
                 ? ('Extracted from image: '.implode(' | ', $extractionParts ?: ['phishing-style language']))
                 : 'No URL, email address, phone number, brand reference, QR code, or phishing-style language was found in the image. Extracted text: "'.Str::limit($text, 200).'"',

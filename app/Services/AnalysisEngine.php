@@ -40,8 +40,8 @@ class AnalysisEngine
         'brunei customs' => ['customs.gov.bn'],
         'royal customs and excise' => ['customs.gov.bn'],
         'royal brunei airlines' => ['flyroyalbrunei.com'],
-        'royal brunei police force' => ['polis.gov.bn'],
-        'polis diraja brunei' => ['polis.gov.bn'],
+        'royal brunei police force' => ['polis.gov.bn', 'police.gov.bn'],
+        'polis diraja brunei' => ['polis.gov.bn', 'police.gov.bn'],
         'immigration and national registration department' => ['immigration.gov.bn'],
         'jabatan imigresen' => ['immigration.gov.bn'],
         'land transport department' => ['jpd.gov.bn'],
@@ -50,6 +50,32 @@ class AnalysisEngine
         'jabatan perkhidmatan elektrik' => ['des.gov.bn'],
         'brunei post' => ['post.gov.bn'],
         'brunei postal services' => ['post.gov.bn'],
+        // Added Oct 2026. BIBD's full name, Pos Brunei (the Malay name) and TAP (tap.com.bn, its
+        // own site). The police list police.gov.bn as well as polis.gov.bn (Wikipedia infobox).
+        'bank islam brunei darussalam' => ['bibd.com.bn'],
+        'pos brunei' => ['post.gov.bn'],
+        'tabung amanah pekerja' => ['tap.com.bn'],
+    ];
+
+    /**
+     * Government names whose real home is any .gov.bn site (the e-Darussalam portal is
+     * www.gov.bn). Kept out of BRUNEI_BRANDS on purpose: listing "gov.bn" there would make every
+     * .gov.bn site count as an "official brand page", which switches off the redirect check for
+     * a hacked ministry site that sends people elsewhere.
+     */
+    private const BRUNEI_GOV_NAMES = ['e-darussalam', 'edarussalam'];
+
+    /**
+     * Short Brunei names that are only treated as the brand when written in capitals ("DST",
+     * "JPD"), the same way "UPS" is handled: in lower case they are ordinary words or parts of
+     * words ("tap the button", "dst" in a file name).
+     */
+    private const BRUNEI_ACRONYMS = [
+        'DST' => ['dst.com.bn'],
+        'JPD' => ['jpd.gov.bn'],
+        'TAP' => ['tap.com.bn'],
+        'TAIB' => ['taib.com.bn', 'insuranstaib.com.bn'],
+        'RBPF' => ['polis.gov.bn', 'police.gov.bn'],
     ];
 
     /**
@@ -101,8 +127,10 @@ class AnalysisEngine
         'citibank' => ['citibank.com', 'citi.com'],
         'standard chartered' => ['sc.com'],
         // E-commerce
-        'shopee' => ['shopee.com'],
-        'lazada' => ['lazada.com'],
+        // Regional sites Bruneians use: shopee.sg/.co.id/.com.br are listed as Shopee's own
+        // domains (netify.ai); the Lazada country sites are on its Wikipedia page.
+        'shopee' => ['shopee.com', 'shopee.com.my', 'shopee.sg', 'shopee.co.id', 'shopee.ph', 'shopee.co.th', 'shopee.vn', 'shopee.tw', 'shopee.com.br', 'shopeemobile.com'],
+        'lazada' => ['lazada.com', 'lazada.com.my', 'lazada.sg', 'lazada.co.id', 'lazada.co.th', 'lazada.vn', 'lazada.com.ph'],
         'alibaba' => ['alibaba.com'],
         'ebay' => ['ebay.com'],
         // Telco
@@ -187,12 +215,46 @@ class AnalysisEngine
                 'bdcb' => ['bdcb.gov.bn'],
                 'progresif' => ['progresif.com'],
                 'bruneipost' => ['post.gov.bn'],
+                'posbrunei' => ['post.gov.bn'],
+                'posbn' => ['post.gov.bn'],
                 'royalbrunei' => ['flyroyalbrunei.com'],
+                'edarussalam' => ['gov.bn'],
+                'shopee' => self::OFFICIAL_BRAND_DOMAINS['shopee'],
+                'lazada' => self::OFFICIAL_BRAND_DOMAINS['lazada'],
             ];
+            // Short names only count as a hyphenated word in the address ("dst-update.online", not
+            // "midstream.com" or another country's "dst.com"); TAP also needs a pension word, as
+            // "tap" is an everyday word.
+            $bnWords = [
+                'dst' => ['dst.com.bn'],
+                'jpd' => ['jpd.gov.bn'],
+                'rbpf' => ['polis.gov.bn', 'police.gov.bn'],
+                'taib' => ['taib.com.bn', 'insuranstaib.com.bn'],
+                'tap' => ['tap.com.bn'],
+            ];
+            // A "1" can stand for "i" as well as "l" ("b1bd"), so both readings are tried.
+            $hostReadings = array_unique([$normalizedHost, strtr($host, ['0' => 'o', '1' => 'i', '3' => 'e', '4' => 'a', '5' => 's', '7' => 't', '8' => 'b']), str_replace('-', '', $normalizedHost)]);
+            $imitated = null;
             foreach ($bnBrands as $bnBrand => $officialDomains) {
-                if (! str_contains($normalizedHost, $bnBrand)) {
+                // Shopee and Lazada run many real sites of their own (shopeepay, shopeefood), so
+                // only a name joined with a hyphen ("shopee-buyer-pay", "shopee-jkt1777") counts.
+                if (in_array($bnBrand, ['shopee', 'lazada'], true) && ! preg_match('/(^|[.\-])'.$bnBrand.'-|-'.$bnBrand.'([.\-]|$)/', $host)) {
                     continue;
                 }
+                foreach ($hostReadings as $reading) {
+                    if (str_contains($reading, $bnBrand)) {
+                        $imitated ??= [$bnBrand, $officialDomains];
+                    }
+                }
+            }
+            foreach ($bnWords as $word => $officialDomains) {
+                if ($imitated === null && preg_match('/(^|[.\-])'.$word.'-|-'.$word.'([.\-]|$)/', $host)
+                    && ($word !== 'tap' || preg_match('/spk|pencen|pension|caruman|amanah|withdraw|pengeluaran/', $host))) {
+                    $imitated = [$word, $officialDomains];
+                }
+            }
+            if ($imitated !== null) {
+                [$bnBrand, $officialDomains] = $imitated;
                 $isOfficial = false;
                 foreach ($officialDomains as $official) {
                     if ($host === $official || str_ends_with($host, '.'.$official)) {
@@ -201,9 +263,10 @@ class AnalysisEngine
                     }
                 }
                 if (! $isOfficial) {
-                    $reasons[] = "Domain imitates the Brunei brand \"{$bnBrand}\" but is not its official domain";
+                    $label = in_array($bnBrand, ['shopee', 'lazada'], true) ? 'the shopping site' : 'the Brunei brand';
+                    $shown = isset($bnWords[$bnBrand]) ? strtoupper($bnBrand) : $bnBrand;
+                    $reasons[] = "Domain imitates {$label} \"{$shown}\" but is not its official domain";
                     $points += 30;
-                    break;
                 }
             }
         }
@@ -215,11 +278,11 @@ class AnalysisEngine
             $points += 30;
         } elseif (
             preg_match('/brunei|(^|[.\-])bn([.\-]|$)/', $host)
-            && preg_match('/customs|kastam|police|polis|ministry|refund|fine|gov/', $host)
+            && preg_match('/customs|kastam|police|polis|ministry|kementerian|refund|fine|saman|gov|zakat|bantuan|relief|immigration|imigresen|cukai|tax/', $host)
             && ! str_ends_with($host, '.bn')
             && ! str_ends_with($host, 'flyroyalbrunei.com')
         ) {
-            $reasons[] = 'Domain uses Brunei authority wording (customs, police, ministry, refund) outside a .bn domain';
+            $reasons[] = 'Domain uses Brunei authority wording (customs, police, ministry, refund, aid) outside a .bn domain';
             $points += 20;
         }
 
@@ -982,7 +1045,7 @@ class AnalysisEngine
             $reasons[] = "Page requests sensitive information without a login form: {$fieldList} — a common non-login credential/PII harvesting pattern (e.g. fake refund or OTP-verification pages)";
             $points += 12;
         }
-        $patternResult = $this->checkContentPatterns($combinedText);
+        $patternResult = $this->checkContentPatterns($combinedText, true);
         // Deliberately requires 2+ co-occurring lure patterns, not just 1 —
         // confirmed via testing that a single matched category (e.g. the
         // word "account" or "verify" appearing anywhere) triggers on
@@ -1200,11 +1263,17 @@ class AnalysisEngine
      * True when the host is, or is a subdomain of, a domain on the official
      * brand list (the same list the page-content brand check uses).
      */
+    /** Every known brand (lower case) => its official domains, Brunei names and acronyms included. */
+    private function brandDomainMap(): array
+    {
+        return array_merge(self::OFFICIAL_BRAND_DOMAINS, self::BRUNEI_BRANDS, array_change_key_case(self::BRUNEI_ACRONYMS, CASE_LOWER));
+    }
+
     private function isOfficialBrandDomain(string $host): bool
     {
         $host = strtolower(preg_replace('/^www\./', '', $host));
 
-        foreach (array_merge(self::OFFICIAL_BRAND_DOMAINS, self::BRUNEI_BRANDS) as $domains) {
+        foreach ($this->brandDomainMap() as $domains) {
             foreach ($domains as $official) {
                 if ($host === $official || str_ends_with($host, '.'.$official)) {
                     return true;
@@ -1482,7 +1551,11 @@ class AnalysisEngine
     {
         $host = strtolower(preg_replace('/^www\./', '', $host));
 
-        $brandDomains = array_merge(self::OFFICIAL_BRAND_DOMAINS, self::BRUNEI_BRANDS);
+        if (in_array($brand, self::BRUNEI_GOV_NAMES, true) && $this->isBruneiGovernmentHost($host)) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+        }
+
+        $brandDomains = $this->brandDomainMap();
 
         $allowed = $brandDomains[$brand] ?? [$brand.'.com'];
         foreach ($allowed as $officialDomain) {
@@ -1491,9 +1564,10 @@ class AnalysisEngine
             }
         }
 
+        $brandName = isset(self::BRUNEI_ACRONYMS[strtoupper($brand)]) ? strtoupper($brand) : ucfirst($brand);
         $displayBrand = $surfaceText && $surfaceText !== $brand
-            ? strtoupper($surfaceText).'" (a lookalike of "'.ucfirst($brand).'")'
-            : ucfirst($brand);
+            ? strtoupper($surfaceText).'" (a lookalike of "'.$brandName.'")'
+            : $brandName;
 
         return [
             'flagged' => true,
@@ -1787,81 +1861,210 @@ class AnalysisEngine
         }
     }
 
-    private function checkContentPatterns(string $text): array
+    private function checkContentPatterns(string $text, bool $forPage = false): array
     {
         $text = mb_strtolower($text);
         $reasons = [];
         $points = 0;
         $matchedCategories = 0;
+        $disguised = false;
+        if (! $forPage) {
+            [$text, $disguised] = $this->unmaskText($text);
+        }
+
+        // Secrecy is read from the original text: "jangan bagitau sesiapa" is a scam cue, and the
+        // warning clean-up below would otherwise remove it.
+        $secrecy = (bool) preg_match('/(keep (this|the) (matter |call |conversation )?(confidential|secret|private)|rahsiakan|jangan (beritahu|bagitau|bagitahu|bagi tau|kasi tau|cerita) (\S+\s+){0,2}?(sesiapa|siapa|orang|keluarga|family)|(don\'?t|do not|never) (tell|inform) (anyone|your family|family|the bank)|between you and me)/u', $text);
+
+        // Safety warnings quote the words scams use ("never share your OTP", "jangan kongsi kod
+        // OTP", "banks will never ask for your PIN", "returns are not guaranteed"). Those clauses
+        // are removed first so a warning is not scored as the scam it warns about.
+        // Web pages keep their original scoring (see below), so this is for messages only.
+        $text = $forPage ? $text : preg_replace([
+            '/\b(never|do not|don\'t|dont|jangan|usah|tidak (?:boleh|perlu)|supaya tidak|not to)\s+(?:\S+\s+){0,2}?(share|give|send|disclose|reveal|forward|kongsi|berkongsi|beri|berikan|bagi|hantar|dedahkan)\s+(?:\S+\s+){0,4}?(otp|tac|pin|password|passcode|kata laluan|code|codes|kod|card|kad|bank|banking|perbankan|details|maklumat|personal|ic|this code)\b[^.!?\n]*/u',
+            '/\b(will never|would never|never|tidak akan|tidak pernah|takkan|tak akan)\s+(?:\S+\s+){0,2}?(ask|request|call|meminta|minta|bertanya|menghubungi|menelefon)\b[^.!?\n]*/u',
+            '/\b(not|tidak|tak|bukan)\s+(guaranteed|dijamin)\b/u',
+            // Public warnings ("police warn the public about job scams on Telegram...") describe a scam.
+            '/[^.!?\n]*\b(warns?|warned|warning) (the public|people|everyone|orang ramai|customers|members of the public)\b[^.!?\n]*/u',
+            '/[^.!?\n]*\b(beware of|be careful of|berhati-hati dengan|waspada (dengan|terhadap)|(diingatkan|dinasihatkan) supaya|scam alert|amaran penipuan)\b[^.!?\n]*/u',
+        ], ' ', $text) ?? $text;
 
         $patterns = [
             'urgency' => [
                 'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|within (24|48|72) hours|expires? in \d+ (hours|days)|act now|act immediately|urgent|urgently|final notice|immediately|offer ends|ends today|tindakan segera|segera (sahkan|kemas kini|bertindak|hubungi)|dalam masa 24 jam|notis akhir|amaran terakhir|at[eé] amanh[aã]|pr[oó]ximos de expirar|[uú]ltimo aviso|intento final|aviso final|dringend|sofort)\b/u',
+                'message_regex' => '/\b(within (the )?next 24 hours|less than 24 hours|within (24|48|72) hours|within \d+ (minutes|hours|days)|expires? in \d+ (hours|days)|act now|act immediately|urgent|urgently|final notice|immediately|offer ends|ends today|today only|before midnight|please hurry|hurry|tindakan segera|segera|dalam masa \d+ (jam|minit)|sebelum (jam|tarikh|tengah malam|slot)|hari ani|hari ini juga|cepat|penting (ni|ani)|notis akhir|amaran terakhir|at[eé] amanh[aã]|pr[oó]ximos de expirar|[uú]ltimo aviso|intento final|aviso final|dringend|sofort)\b/u',
                 'points' => 15,
-                'label' => 'Urgency language detected (e.g. "urgent", "24 hours", "act now")',
+                'label' => 'Urgency language detected (e.g. "urgent", "24 hours", "act now", "segera")',
+                'lure' => true,
             ],
             'account_threat' => [
                 'regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
+                'message_regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired|frozen)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|has been frozen|will be (suspended|deactivated|disconnected|frozen|terminated|cut off)|(access|account|banking) will expire|expire today|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|(akaun|kad|card|talian|line|lesen|pasport|nombor|bekalan|supply|akses)\s+(\S+\s+){0,3}?(akan |telah |sudah |kena |kana |sedang )?(di)?(sekat|bekukan|beku|gantung|putuskan|potong|tamat tempoh|block|blocked|suspend|suspended|deactivated|disconnected|frozen|cut off)\b|(kena|kana) (sekat|block|gantung)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
                 'points' => 15,
-                'label' => 'Account threat language detected (suspension/deactivation)',
+                'label' => 'Account threat language detected (suspension/deactivation, "akaun disekat")',
+                'lure' => true,
             ],
             'credential_request' => [
                 'regex' => '/(verify your account|verify my|verify your (identity|wallet|email)|confirm your (password|information|identity|details)|enter your login|verification code|verify now|update your (payment|billing|account)|reset access|secret recovery phrase|seed phrase|recovery phrase|connect (your )?wallet|wallet verification|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kod pengesahan|kod otp|confirme (seus|suas) dados|atualize (seus|suas|sua) (dados|conta|cadastro)|aktualisieren sie|kontoinformationen|mettez [aà] jour)/u',
+                'message_regex' => '/(verify your account|verify my|verify your (identity|wallet|email)|confirm your (password|information|identity|details)|enter your login|enter your (ic|bank|card|online banking|account)|submit your (ic|identity card|bank|online banking|password|card)|update (your )?(ic|personal|account|bank) (details|information|number)|update your details|(fill in|isi) (your )?(bank|card|maklumat bank|butiran bank)|(bank|card|login) details|verification code|verify now|update your (payment|billing|account)|reset access|secret recovery phrase|seed phrase|recovery phrase|connect (your )?wallet|wallet verification|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kemas ?kini (maklumat|butiran|akaun|data)|maklumat (bank|akaun|perbankan|kad)|butiran (bank|akaun|kad)|card number|nombor kad|isi borang|kod pengesahan|kod otp|confirme (seus|suas) dados|atualize (seus|suas|sua) (dados|conta|cadastro)|aktualisieren sie|kontoinformationen|mettez [aà] jour)/u',
                 'points' => 20,
                 'label' => 'Credential/verification request detected',
+                'ask' => true,
+            ],
+            'secret_ask' => [
+                'message_regex' => '/((send|share|give|forward|tell|reply with|provide|bagi|beri|berikan|hantar|kongsi)\s+(\S+\s+){0,3}?(otp|tac|pin|password|passcode|kata laluan|verification code|kod pengesahan|security code|the code|that code|kod (atu|itu|ani|ini|tadi|tu)|6[- ]digit|six[- ]digit|card number|nombor kad|no\.? kad|cvv)\b(?!\s+(setup|guide|form|settings|policy|manual|document|instructions|app|feature|generator|device|token))|terhantar kod|tersalah hantar kod|sent (my|the|a) (verification )?code to your number|forward it to me)/u',
+                'points' => 30,
+                'label' => 'Asks you to send a code, OTP, PIN or card number (no real bank, agency or friend needs these)',
+                'ask' => true,
+            ],
+            'money_ask' => [
+                'message_regex' => '/(transfer (me |us )?(bnd|b\$|\$|rm|sgd)\s?\d|pay (bnd|b\$|\$|rm)\s?\d|transfer (it |the money |a deposit |your savings |all )?(to|into) (our|my|this|the following|a safe|a secure|another)|send (me |us )?(bnd|b\$|\$|rm)\s?\d|send (me |us )?money|pay (a |the )?(deposit|processing fee|admin fee|registration fee|clearance fee|release fee|small admin fee|fee first)|(processing|admin|administration|registration|clearance|release) fee|transfer (a |the )?deposit|bayar (deposit|yuran|cagaran|duti|caj)|(bayar|transfer|pindah|hantar)\s(\S+\s){0,3}?dulu\b|transfer ke akaun|pindah(kan)? (semua )?(wang|duit)|hantar duit|yuran (proses|pemprosesan|pendaftaran|pelepasan|penghantaran)|invest (bnd|b\$|\$)\s?\d|minimum deposit|deposit minimum|bayar (zakat|derma|sumbangan)|(donation|derma|sumbangan) (needed|diperlukan|segera))/u',
+                'points' => 15,
+                'label' => 'Asks you to send money, pay a fee or pay a deposit first',
+                'ask' => true,
             ],
             'financial_request' => [
                 'regex' => '/(transfer (of )?funds|payment required|invoice|bank account|refund|pindahan wang|pindah wang|bayaran (diperlukan|segera)|akaun bank|bayaran balik)/',
                 'points' => 15,
                 'label' => 'Financial request or invoice language detected',
             ],
+            'identity_claim' => [
+                'message_regex' => '/(new number|nombor baru|nombor baharu|no\.? baru|nombor lama (sudah |dah )?(inda|tidak|tak) aktif|(lost|broke|changed) my phone|using a friend\'?s? phone|phone (ku|aku|saya|kamu) (rosak|hilang)|this is (the )?(royal brunei )?(police|polis|bank|bdcb|customs|immigration)|(kami|saya|aku|ani|i am|we are|i\'m)\s+(\S+\s+)?(dari|from) (pihak )?(bank|polis|police|kastam|customs|jpd|bdcb|imigresen|immigration|mahkamah|court)\b|ani pegawai|saya pegawai|this is (officer|inspector)|(whatsapp|customer|technical|account|security) support|(bank|bdcb) officer|pegawai (bank|penyiasat|polis))/u',
+                'points' => 15,
+                'label' => 'Claims to be someone you trust (a family member on a "new number", a bank, the police or "support")',
+                'lure' => true,
+            ],
+            'too_good' => [
+                'message_regex' => '/(guaranteed? (profit|returns?|income|payout)|(profit|returns?|pulangan|untung|keuntungan)\s+(\S+\s+){0,3}?(guaranteed|dijamin)|dijamin (halal|untung)|(earn|make|dapat|gaji|rate|pendapatan|upah|komisen)\s+(up to\s+)?(bnd|b\$|\$|rm)?\s?\d[\d,]*(\s?(to|hingga|-)\s?(bnd|b\$|\$)?\s?\d[\d,]*)?\s*(per |a |\/ ?)?(day|hari|sehari|week|weekly|seminggu|daily|hour|jam)\b|(bnd|b\$|\$)\s?\d[\d,]*\s*(sehari|per day|a day|daily|weekly|seminggu)|(sehari|per day|a day|daily) (bnd|b\$|\$)\s?\d|\d+\s?% (sebulan|setiap bulan|seminggu|a month|per month|monthly|every month|a week|per week|weekly|daily|sehari)|passive income|kerja (sambilan|online|dari rumah)|part[- ]time job|data entry from home|work from home|like (and|dan|&) subscribe|liking (\S+ )?videos|no experience (needed|required)|tanpa pengalaman|modal kecil|untung besar|receive (bnd|b\$|\$)\s?\d[\d,]* in \d+ days|made (bnd|b\$|\$)\s?\d[\d,]* in|no guarantor|tanpa penjamin|tiada semakan kredit|no credit check|(approved|lulus) (in|dalam) \d+ (minutes?|minit|hours?|jam)|fast cash loan|\b(job|kerja|jawatan|position|work permit|visa)\b.{0,80}\b(fee|yuran)\b|\b(fee|yuran)\b.{0,60}\b(job|kerja|jawatan|work permit|visa)\b)/u',
+                'points' => 20,
+                'label' => 'Too-good-to-be-true offer (easy money, guaranteed returns, an instant loan, or a job that needs a fee)',
+                'lure' => true,
+            ],
             'prize_scam' => [
                 'regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?)|weekly lottery|survey zone|redeem (your|for) |tahniah.{0,40}(menang|dipilih|terpilih)|anda (telah )?memenangi|tuntut hadiah|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
+                'message_regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?|tickets?)|weekly lottery|survey zone|redeem (your|for) |lucky draw|cabutan bertuah|giving away|giveaway|lucky you|selected as the winner|winner of|tahniah.{0,40}(menang|dipilih|terpilih|layak)|anda (telah )?memenangi|\b(menang|memenangi|pemenang)\b|layak menerima|eligible to (receive|withdraw|claim)|bantuan (kerajaan|tunai|khas)|tuntut (hadiah|bantuan|wang|tunai)|can claim|claim (it|now|bnd|\$)|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
                 'points' => 20,
-                'label' => 'Prize/reward language detected (e.g. "you have won", "claim your reward", "tahniah anda menang")',
+                'label' => 'Prize/reward language detected (e.g. "you have won", "claim your reward", "tahniah anda menang", "cabutan bertuah")',
+                'lure' => true,
             ],
             'crypto_scam' => [
                 'regex' => '/(airdrop|token allocation|free mint|erc-?20|ethereum 2\.0|claim your (xrp|usdt|eth|btc|nft)|usdt|nft cashback|bitcoin (payment|accounts?)|crypto(currency)? (giveaway|reward))/',
                 'points' => 25,
                 'label' => 'Cryptocurrency giveaway or wallet-claim language detected (a common scam lure)',
+                'lure' => true,
             ],
             'advance_fee' => [
                 'regex' => '/(dear friend\b(?!s)|god bless you|next of kin|inheritance|you have a donation|donation of \$|contacting you for the second time|reply urgently|powerball|meu caro amigo)/',
                 'points' => 25,
                 'label' => 'Advance-fee / "dear friend" scam language detected',
+                'lure' => true,
             ],
             'fine_lure' => [
                 'regex' => '/(traffic (violation|fine|ticket|challan|record)|red[- ]light|e-?challan|challan|speeding (fine|ticket)|parking (fine|ticket)|unpaid (toll|fine|ticket)|toll (fee|charge)|outstanding (fine|penalty)|saman (trafik|jalan raya|tertunggak|anda)|\bkompaun\b|compound (fine|notice))/',
+                'message_regex' => '/(traffic (violation|fine|ticket|challan|record)|red[- ]light|e-?challan|challan|speeding (fine|ticket)|parking (fine|ticket)|unpaid (toll|fine|ticket)|toll (fee|charge)|outstanding (fine|penalty)|court summons|saman (trafik|jalan raya|tertunggak|anda|mahkamah)|saman (belum|tidak) (bayar|dibayar)|ada saman|\bkompaun\b|compound (fine|notice)|bil (elektrik|air|api)( anda| kamu)? (tertunggak|belum)|tunggakan bil)/',
                 'points' => 20,
                 'label' => 'Traffic-fine / penalty language detected (a common SMS scam: "violation", "e-challan", "unpaid toll", "saman")',
+                'lure' => true,
             ],
             'authority_threat' => [
                 'regex' => '/(notice of involvement|notis (penglibatan|siasatan)|royal brunei police|polis diraja brunei|interpol|waran (tangkap|geledah)|arrest warrant|section 420|seksyen 420|keep (this|the) matter confidential|rahsiakan (perkara|hal) ini)/',
+                'message_regex' => '/(notice of involvement|notis (penglibatan|siasatan)|interpol|waran (tangkap|geledah)|arrest warrant|section 420|seksyen 420|money laundering|pengubahan wang haram|kes dadah|drug case|narcotics|narkotik|illegal items|barang (terlarang|haram)|being investigated|sedang disiasat|clear your name|safe account|akaun selamat|frozen by (bdcb|the police))/',
                 'points' => 20,
-                'label' => 'Authority-impersonation language detected (police/Interpol/investigation notice, or demands for secrecy)',
+                'label' => 'Authority-impersonation language detected (police/Interpol/investigation notice, "safe account")',
+                'lure' => true,
             ],
             'customs_fee' => [
                 'regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan)|redelivery|delivery (attempt )?failed|will be sent back|taxa de recolhimento|alf[aâ]ndega)/u',
+                'message_regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan)|duti kastam|tahan kastam|ditahan (di )?kastam|stuck at customs|held at customs|redelivery|delivery (attempt )?failed|will be sent back|taxa de recolhimento|alf[aâ]ndega)/u',
                 'points' => 15,
                 'label' => 'Customs/delivery-fee language detected (a common parcel scam)',
+                'lure' => true,
+            ],
+            'channel_move' => [
+                'message_regex' => '/((whatsapp|telegram|wechat|pm|dm)\s+(us|me|kami|saya|ku|aku)\b|contact (our|the|my) (agent|officer|manager|admin)|hubungi (ejen|pegawai|agen|admin)|(join|sertai) (our |the |kumpulan )?(telegram|whatsapp)|telegram (group|channel)|kumpulan (telegram|whatsapp)|(di|on|via|through|melalui) (telegram|whatsapp|wechat)\b|call (the )?(bdcb |bank |police )?(officer|inspector|pegawai))/u',
+                'points' => 10,
+                'label' => 'Pushes you to a private chat or to contact an "agent" or "officer"',
+                'ask' => true,
+                'weak' => true,
             ],
             'call_to_action' => [
                 'regex' => '/(click here|click the button|click below|follow the link|klik (di ?sini|pautan|link|butang)|ikut pautan)/',
+                'message_regex' => '/(click here|click the button|click below|follow the link|click (the |this )?link|tap (the |this )?link|klik (di ?sini|sini|pautan|link|butang)|tekan (link|pautan|sini)|ikut pautan|re-?activate now|apply now|register now|daftar sekarang|join (now|sekarang)|sign up now|secure your account|batalkan di)/',
                 'points' => 10,
                 'label' => 'Suspicious call-to-action phrasing detected (click/follow link)',
+                'ask' => true,
+                'weak' => true,
             ],
         ];
 
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern['regex'], $text)) {
-                $reasons[] = $pattern['label'];
-                $points += $pattern['points'];
-                $matchedCategories++;
+        // On a web page only the original wording counts ('regex'): the message-only additions
+        // ('message_regex', e.g. "apply now", "giveaway", "segera") are everyday words on real
+        // shop, bank and job sites and would add false alarms to link scans.
+        // English wording found missing on 230 real phishing emails (phishing_pot) and checked
+        // against 500 ordinary ones (SpamAssassin). Messages only, like 'message_regex'.
+        $extra = [
+            'urgency' => '/\b(as soon as possible|final (warning|reminder|call)|last (warning|reminder|chance)|time is (running out|ticking)|expires? (today|soon|tonight)|before it.s too late|respond by|avoid (suspension|deletion|deactivation|interruption|loss))\b/u',
+            'account_threat' => '/((wallet|assets?|account|access|card|storage|mailbox|service)\s+(\S+\s+){0,3}?(has|have|will) been (temporarily |permanently )?(suspended|locked|blocked|frozen|restricted|disabled|terminated)|will (lose|be locked out of) (all )?(your )?(assets|funds|access|data|files|photos)|lose (all )?your (assets|funds|data|files|photos)|(storage|mailbox|inbox)\s+(\S+\s+){0,2}?(is|are) (\d+% )?(full|almost full|over.?limit)|exceeded your (storage|quota|plan)|(scheduled|marked) for (permanent )?(deletion|removal)|will be (permanently )?(deleted|removed|erased|lost|locked)|data (loss|deletion) warning|password (has )?expired|password (expires|is due to expire)|keep (using )?(the |your )?(same|current) password|inactive account|period (of|without) (in)?activity|confirm (your )?continued use|(payment|billing|renewal)\s+(\S+\s+){0,2}?(failed|declined|could not be (processed|completed))|unable to (process|charge|validate|verify) your (payment|card|account|billing)|could(n.t| not) charge|problem with your (billing|payment)|payment (issue|problem)|update (your )?(payment|billing) (method|details|information)|someone (tried|attempted) to (log|sign) ?in|(new|recent|unusual) (sign|log).?in (attempt|activity))/u',
+            'credential_request' => '/(complete (your )?verification|(has|have) not (yet )?been verified|not (yet )?verified|unverified (account|wallet)s?|\bkyc\b|verify (your )?(recovery phrase|seed|wallet|address|account ownership)|(log|sign) ?in to (review|view|access|confirm)|confirm (your )?(address|identity|account|details|information)|reconfirm your (home )?address|update (your )?(account|personal) (information|details)|reset (your )?(pin|password)s?\b)/u',
+            'prize_scam' => '/(you.ve been selected|you have been selected|been selected (as|to|for)|selected (as )?one of our|valued winners?|lucky (winner|one)|exclusive reward|loyalty (program|reward)|(short|quick) survey|take (this|a|our) survey|complimentary (gift|reward)|free trial offer|reward (is )?(waiting|ready|awaiting)|claim (your|the) (gift|bonus|reward|prize)|(donated|donating) \$?[\d.,]+|(selected|chosen) to receive)/u',
+            'advance_fee' => '/(\bbeneficiary\b|compensation fund|scam victims?|victims? compensation|consignment (box )?of (funds|money)|your consignment|diplomatic agent|abandoned (fund|check|cheque|funds)|unclaimed (balance|fund|funds|holdings)|unreviewed (credits|holdings)|lucrative (deal|business|offer)|business (proposal|dealing)|investment proposal|private client|fund manager|late client|foreign remittance|atm card (delivery|worth|of \$)|your atm card|atm delivery|bank draft|draft worth|charity.{0,20}foundation|(\$\s?[\d.,]+\s?(million|m)\b|[\d.,]+ million (us )?(usd|dollars))[^.]{0,80}(donat|compensat|inherit|claim|beneficiar|lotter|winning|transfer|fund))/u',
+            'crypto_scam' => '/(\bstaking\b|stake your|token (redistribution|distribution|reward)|claim (your )?[\d,]* ?(tokens?|btc|eth|xrp|sol|uni|op)\b|cloud mining|mining platform|upgrade your (wallet|ledger|device)|wallet (connected|upgrade)|withdraw your (\+?\$|btc|funds|assets|earnings)|bitcoin portfolio)/u',
+            'customs_fee' => '/(package (is )?pending|(parcel|package|shipment) (is )?(pending|on hold|waiting)|pending (for )?delivery|schedule (your )?delivery|delivery (fee|charge|payment)|confirm the payment of|shipping fee|(returned|sent back) to (the )?sender)/u',
+            'call_to_action' => '/(click (on )?(the )?(button|link)( below)?|(button|link) below|get started( now)?|confirm (now|here|below)|claim (it )?now|update now|renew now|review (the )?documents?|(sign|log) ?in (now|here|below)|keep (current|same) password|download (the )?(secure )?(attachment|document|invoice|file)|upgrade (your )?(storage|plan) now|renew (your )?(protection|subscription|plan)|restore (your )?(access|storage|account|protection)|reactivate (your )?(account|subscription))/u',
+            'identity_claim' => '/(director of|head of (the )?(foreign|remittance|operations)|on behalf of (mr|mrs|ms|dr)\b|(security|support|billing|account) (team|department|center|centre)|customer (support|service) (team|department))/u',
+        ];
+        $found = [];
+        foreach ($patterns as $key => $pattern) {
+            $regex = $forPage ? ($pattern['regex'] ?? null) : ($pattern['message_regex'] ?? $pattern['regex']);
+            if (($regex !== null && preg_match($regex, $text)) || (! $forPage && isset($extra[$key]) && preg_match($extra[$key], $text))) {
+                $found[$key] = $pattern;
             }
+        }
+        if (! $forPage) {
+            // Callback scam: a "purchase" or "renewal" you never made, a phone number to ring,
+            // and a reason to call ("if you did not authorise this", "to cancel").
+            if (preg_match('/\b(order|purchase|renewal|subscription|transaction|invoice|statement)\b.{0,200}?\b(confirm|approv|processed|paid|complete|renew|charged|placed|active)/su', $text)
+                && preg_match('/(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/', $text)
+                && preg_match('/(did ?n.?t|did not|not you|not authori[sz]e|cancel|dispute|refund|unauthori[sz]ed)/u', $text)) {
+                $found['callback_scam'] = ['points' => 25, 'label' => 'A purchase or renewal you did not make, with a phone number to call (a common "call us to cancel" scam)', 'lure' => true];
+            }
+            if (preg_match('/(your (pc|device|computer|phone) (has been|was) (hacked|infected|compromised)|i (have )?recorded you|(compromising|intimate|private) (video|photos)|(send|pay|transfer) .{0,40}(bitcoin|btc)|(bitcoin|btc) (address|wallet):)/u', $text)) {
+                $found['extortion'] = ['points' => 25, 'label' => 'Threat or blackmail asking for payment (a common "your device was hacked, pay in Bitcoin" scam)', 'lure' => true];
+            }
+            if ($disguised) {
+                $found['disguised'] = ['points' => 20, 'label' => 'Text is disguised with look-alike letters, hidden characters or spaced-out letters (a trick to get past spam filters)', 'lure' => true];
+            }
+        }
+        if ($secrecy && ! $forPage) {
+            $found['secrecy'] = ['points' => 15, 'label' => 'Asks you to keep it secret (scammers say this so no one can warn you)', 'lure' => true];
+        }
+
+        foreach ($found as $pattern) {
+            $reasons[] = $pattern['label'];
+            $points += $pattern['points'];
+            $matchedCategories++;
+        }
+
+        // Hurry-up wording and a "click here" on their own are everyday newsletter style; without a
+        // request, a fake identity or a lure they are not enough to call a message suspicious.
+        if ($found !== [] && array_diff(array_keys($found), ['urgency', 'call_to_action']) === []) {
+            $points = min($points, 20);
         }
 
         if ($matchedCategories >= 3) {
             $reasons[] = "{$matchedCategories} distinct phishing behavior patterns found together — a coordinated social-engineering pattern, not an isolated keyword";
+            $points += 15;
+        }
+
+        // The core of almost every scam: a request (money, a code, your details, or a move to a
+        // private chat) together with a pressure tactic (a fake identity, a threat, a prize, an
+        // easy-money offer). Either one alone is common in normal messages; together they are not.
+        $strongAsk = array_filter($found, fn ($p) => ($p['ask'] ?? false) && ! ($p['weak'] ?? false));
+        $weakAsk = array_filter($found, fn ($p) => $p['weak'] ?? false);
+        $lures = array_filter($found, fn ($p) => $p['lure'] ?? false);
+        $strongLures = array_diff_key($lures, ['urgency' => true]);
+        if (($strongAsk && $lures) || ($weakAsk && $strongLures)) {
+            $reasons[] = 'Asks you to act (pay, share a code or details, or contact someone) while using a pressure tactic: the core pattern of a scam';
             $points += 15;
         }
 
@@ -1871,6 +2074,31 @@ class AnalysisEngine
             'reasons' => $reasons,
             'matched_categories' => $matchedCategories,
         ];
+    }
+
+    /**
+     * Undoes the tricks phishing uses to slip past filters, and reports whether any were used:
+     * invisible characters inside words ("A­m­a­z­o­n"), Cyrillic look-alike letters mixed into
+     * Latin words ("Yоur wаllet") and words spelt out letter by letter ("D e a r  c u s t o m e r").
+     *
+     * @return array{0: string, 1: bool} the cleaned text and whether it was disguised
+     */
+    private function unmaskText(string $text): array
+    {
+        $hidden = '\x{00AD}\x{034F}\x{200B}-\x{200D}\x{2060}\x{FEFF}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}';
+        $disguised = (bool) preg_match('/\p{L}['.$hidden.']+\p{L}/u', $text)
+            || (bool) preg_match('/(?=\w*\p{Latin})(?=\w*\p{Cyrillic})\b\w+\b/u', $text);
+
+        $text = preg_replace('/['.$hidden.']/u', '', $text) ?? $text;
+        $text = strtr($text, ['а' => 'a', 'е' => 'e', 'о' => 'o', 'р' => 'p', 'с' => 'c', 'у' => 'y', 'х' => 'x', 'і' => 'i', 'ј' => 'j', 'ѕ' => 's', 'ԁ' => 'd', 'ӏ' => 'l', 'ո' => 'n', 'ս' => 'u', 'ο' => 'o', 'α' => 'a']);
+
+        $spaced = preg_replace_callback('/(?<!\S)(?:\p{L} ){7,}\p{L}(?!\S)/u', fn ($m) => str_replace(' ', '', $m[0]), $text);
+        if ($spaced !== null && $spaced !== $text) {
+            $disguised = true;
+            $text = $spaced;
+        }
+
+        return [$text, $disguised];
     }
 
     /**
@@ -1891,9 +2119,22 @@ class AnalysisEngine
         $knownBrands = ['dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
             'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd',
             'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp'];
-        $knownBrands = array_merge($knownBrands, array_keys(self::BRUNEI_BRANDS));
+        $knownBrands = array_merge($knownBrands, ['standard chartered'], array_keys(self::BRUNEI_BRANDS));
 
         $lowerText = strtolower($text);
+
+        // Brunei names first: a local scam often also mentions WhatsApp or Google ("contact our
+        // agent on WhatsApp"), and the local bank or agency is the one being impersonated.
+        foreach ([...array_keys(self::BRUNEI_BRANDS), ...self::BRUNEI_GOV_NAMES] as $brand) {
+            if (preg_match('/\b'.preg_quote($brand, '/').'\b/', $lowerText)) {
+                return ['brand' => $brand, 'surface' => $brand];
+            }
+        }
+        foreach (array_keys(self::BRUNEI_ACRONYMS) as $acronym) {
+            if (preg_match('/\b'.$acronym.'\b/', $text)) {
+                return ['brand' => strtolower($acronym), 'surface' => strtolower($acronym)];
+            }
+        }
 
         // Exact match first — cheapest and most reliable when the brand name
         // is spelled correctly in the message.
@@ -1939,6 +2180,34 @@ class AnalysisEngine
         return ['brand' => $bestBrand, 'surface' => $bestSurface];
     }
 
+    /**
+     * Whether a message presents itself AS the brand it names, rather than just mentioning it.
+     * Phishing puts the brand up front ("Microsoft account: unusual sign-in", "Netflix - payment
+     * failed") and pushes the reader; a normal email that only talks about Microsoft or Google
+     * mid-way through (newsletters, mailing lists, colleagues) does neither. Found on 400+
+     * ordinary emails, where a bare brand mention was the biggest single cause of false alarms.
+     *
+     * @param  array{brand: ?string, surface: ?string}  $brandDetection
+     */
+    private function brandSpeaksInMessage(string $text, array $brandDetection, array $contentResult): bool
+    {
+        if (! $brandDetection['brand']) {
+            return false;
+        }
+
+        $opening = mb_strtolower(mb_substr(trim($text), 0, 200));
+        $surface = mb_strtolower((string) ($brandDetection['surface'] ?: $brandDetection['brand']));
+
+        return str_contains($opening, $surface) && ($contentResult['matched_categories'] ?? 0) >= 1;
+    }
+
+    private function brandOnlyMentioned(?string $brand): array
+    {
+        return $brand
+            ? ['flagged' => false, 'points' => 0, 'reasons' => ['"'.ucfirst($brand).'" is mentioned, but the message does not present itself as coming from '.ucfirst($brand)]]
+            : ['flagged' => false, 'points' => 0, 'reasons' => []];
+    }
+
     private function checkBrandSenderMismatch(?string $brand, ?string $surfaceText, ?string $senderEmail): array
     {
         if (! $brand || ! $senderEmail || ! str_contains($senderEmail, '@')) {
@@ -1948,9 +2217,10 @@ class AnalysisEngine
         [$localPart, $domain] = explode('@', $senderEmail, 2);
         $domain = strtolower($domain);
         $localPart = strtolower($localPart);
+        $brandName = isset(self::BRUNEI_ACRONYMS[strtoupper($brand)]) ? strtoupper($brand) : ucfirst($brand);
         $displayBrand = $surfaceText && $surfaceText !== $brand
-            ? strtoupper($surfaceText).'" (a lookalike of "'.ucfirst($brand)
-            : ucfirst($brand);
+            ? strtoupper($surfaceText).'" (a lookalike of "'.$brandName
+            : $brandName;
 
         $brandDomains = [
             'dhl' => ['dhl.com'],
@@ -1974,7 +2244,11 @@ class AnalysisEngine
             'correios' => ['correios.com.br'],
             'whatsapp' => ['whatsapp.com', 'whatsapp.net'],
         ];
-        $brandDomains = array_merge($brandDomains, self::BRUNEI_BRANDS);
+        $brandDomains = array_merge($brandDomains, $this->brandDomainMap());
+
+        if (in_array($brand, self::BRUNEI_GOV_NAMES, true) && $this->isBruneiGovernmentHost($domain)) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+        }
 
         $allowed = $brandDomains[$brand] ?? [$brand.'.com'];
         $isOfficial = false;
@@ -2475,7 +2749,9 @@ class AnalysisEngine
             ? $this->detectBrandInText($combinedText)
             : ['brand' => null, 'surface' => null];
 
-        $brandResult = $this->checkBrandSenderMismatch($brandDetection['brand'], $brandDetection['surface'], $email);
+        $brandResult = $this->brandSpeaksInMessage($combinedText, $brandDetection, $contentResult)
+            ? $this->checkBrandSenderMismatch($brandDetection['brand'], $brandDetection['surface'], $email)
+            : $this->brandOnlyMentioned($brandDetection['brand']);
 
         $rulePoints = $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
             + $domainHistoryResult['points'];
@@ -2929,6 +3205,84 @@ class AnalysisEngine
         }
     }
 
+    /**
+     * Rules-only score for a message's text: the same text steps a screenshot scan runs (wording,
+     * brand vs link, a pressure message with a link, attachments, and 0.6 x the link's address
+     * check), without any network lookup, phone lookup or AI check. Used by the Brunei test set
+     * (php artisan scan:brunei) so its results are repeatable; a real scan can only score higher.
+     *
+     * @return array{score: int, verdict: string, reasons: array<int, string>, url: ?string, brand: ?string}
+     */
+    public function scoreMessageRules(string $text): array
+    {
+        $urls = array_values(array_filter($this->extractAllUrlsFromText($text), fn ($u) => filter_var($u, FILTER_VALIDATE_URL)));
+        if ($urls === []) {
+            $urls = array_map(fn ($domain) => 'https://'.$domain, $this->extractBareDomainsFromText($text));
+        }
+        usort($urls, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
+        $url = $urls[0] ?? null;
+
+        $brand = $this->detectBrandInText($text);
+        $content = $this->checkContentPatterns($text);
+        $attachment = $this->detectAttachment($text);
+
+        $points = 0;
+        $reasons = [];
+        foreach ([$content, $attachment] as $result) {
+            if ($result['flagged']) {
+                $points += $result['points'];
+                $reasons = array_merge($reasons, $result['reasons']);
+            }
+        }
+        if ($brand['brand'] && $url && ($host = parse_url($url, PHP_URL_HOST))) {
+            $mismatch = $this->checkPageBrandMismatch($brand['brand'], $brand['surface'], $host);
+            if ($mismatch['flagged']) {
+                $points += $mismatch['points'];
+                $reasons = array_merge($reasons, $mismatch['reasons']);
+            }
+        }
+        $pressure = $this->checkLinkInPressureMessage($content, $url);
+        if ($pressure['flagged']) {
+            $points += $pressure['points'];
+            $reasons = array_merge($reasons, $pressure['reasons']);
+        }
+        if ($url) {
+            $syntax = $this->checkUrlSyntax($url);
+            $points += (int) round($syntax['points'] * 0.6);
+            $reasons = array_merge($reasons, $syntax['reasons']);
+        }
+
+        $score = min(100, $points);
+        $hasEvidence = $url || $brand['brand'] || $content['flagged'] || $attachment['flagged'];
+        $verdict = ! $hasEvidence ? 'review' : ($score >= 60 ? 'phishing' : ($score >= 25 ? 'suspicious' : 'clean'));
+
+        return ['score' => $score, 'verdict' => $verdict, 'reasons' => $reasons, 'url' => $url, 'brand' => $brand['brand']];
+    }
+
+    /**
+     * Rules-only score for an email: the sender address, the wording and the brand-vs-sender
+     * check, exactly as the email scan does them, without the domain-age lookup, earlier reports
+     * or the AI check. Used for repeatable offline tests; a real scan can only score higher.
+     *
+     * @return array{score: int, reasons: array<int, string>}
+     */
+    public function scoreEmailRules(string $sender, string $subject, string $body): array
+    {
+        $text = trim($subject.' '.$body);
+        $sender = $sender !== '' ? $sender : 'unknown@example.com';
+        $domain = $this->checkEmailDomain($sender);
+        $content = $this->checkContentPatterns($text);
+        $brand = $this->detectBrandInText($text);
+        $brandResult = $this->brandSpeaksInMessage($text, $brand, $content)
+            ? $this->checkBrandSenderMismatch($brand['brand'], $brand['surface'], $sender)
+            : $this->brandOnlyMentioned($brand['brand']);
+
+        $score = min(100, $domain['points'] + $content['points'] + $brandResult['points']);
+        $reasons = array_merge($domain['reasons'], $content['reasons'], $brandResult['points'] > 0 ? $brandResult['reasons'] : []);
+
+        return ['score' => $score, 'reasons' => $reasons];
+    }
+
     private function analyzeScreenshot(string $imagePath, ?int $reportId = null): array
     {
         $ocr = $this->checkScreenshotOcr($imagePath);
@@ -3072,7 +3426,9 @@ class AnalysisEngine
         if ($detectedBrand) {
             $brandCheckLabel = 'Brand / Domain Correlation';
             if ($extractedEmail) {
-                $brandDomainResult = $this->checkBrandSenderMismatch($detectedBrand, $brandSurfaceText, $extractedEmail);
+                $brandDomainResult = $this->brandSpeaksInMessage($text, $brandDetection, $contentResult)
+                    ? $this->checkBrandSenderMismatch($detectedBrand, $brandSurfaceText, $extractedEmail)
+                    : $this->brandOnlyMentioned($detectedBrand);
                 $brandCheckLabel = 'Brand / Sender Correlation';
             } elseif ($extractedUrl && ($urlHost = parse_url($extractedUrl, PHP_URL_HOST))) {
                 $brandDomainResult = $this->checkPageBrandMismatch($detectedBrand, $brandSurfaceText, $urlHost);

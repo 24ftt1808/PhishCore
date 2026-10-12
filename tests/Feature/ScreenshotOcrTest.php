@@ -65,15 +65,18 @@ test('a large image is shrunk below 1 MB before it is sent', function () {
         $this->markTestSkipped('GD is not installed.');
     }
 
-    $canvas = imagecreatetruecolor(1600, 1600);
+    // 800 x 800 random pixels saved without compression is about 1.9 MB, over the limit, while
+    // staying small enough to run inside PHP's default 128 MB test memory.
+    $canvas = imagecreatetruecolor(800, 800);
     mt_srand(7);
-    for ($y = 0; $y < 1600; $y += 2) {
-        for ($x = 0; $x < 1600; $x += 2) {
+    for ($y = 0; $y < 800; $y += 2) {
+        for ($x = 0; $x < 800; $x += 2) {
             imagefilledrectangle($canvas, $x, $y, $x + 1, $y + 1, imagecolorallocate($canvas, mt_rand(0, 255), mt_rand(0, 255), mt_rand(0, 255)));
         }
     }
     $big = tempnam(sys_get_temp_dir(), 'big').'.png';
     imagepng($canvas, $big, 0);
+    unset($canvas);
     expect(filesize($big))->toBeGreaterThan(1_000_000);
 
     Http::fake(['api.ocr.space/*' => Http::response([

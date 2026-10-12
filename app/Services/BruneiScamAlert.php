@@ -22,11 +22,11 @@ class BruneiScamAlert
 
     /** Regex => name shown in the notification. The first one that matches a warning wins. */
     private const BRANDS = [
-        '/\bbibd\b/i' => 'BIBD',
+        '/\bbibd\b|bank islam brunei darussalam/i' => 'BIBD',
         '/baiduri/i' => 'Baiduri',
         '/\bbdcb\b/i' => 'BDCB',
         '/progresif/i' => 'Progresif',
-        '/brunei ?post|bruneipost/i' => 'Brunei Post',
+        '/brunei ?post|bruneipost|pos brunei|posbrunei/i' => 'Brunei Post',
         '/royal ?brunei ?airlines|royalbrunei/i' => 'Royal Brunei Airlines',
         '/polis diraja brunei|royal brunei police/i' => 'Royal Brunei Police',
         '/brunei customs|royal customs|kastam/i' => 'Brunei Customs',
@@ -36,6 +36,10 @@ class BruneiScamAlert
         '/\bdst\b|datastream digital/i' => 'DST',
         '/\btaib\b/i' => 'TAIB',
         '/imagine brunei/i' => 'Imagine',
+        '/\bTAP\b|[Tt]abung [Aa]manah [Pp]ekerja/' => 'TAP',
+        '/e-?darussalam/i' => 'e-Darussalam',
+        '/\bJPD\b/' => 'the Land Transport Department',
+        '/\bRBPF\b/' => 'Royal Brunei Police',
         '/brunei government|brunei authority|gov\.bn|gov-bn/i' => 'a Brunei government body',
     ];
 

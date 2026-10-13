@@ -264,19 +264,145 @@
     </div>
 @endif
 
-@if ($report->screenshot_path)
+@if ($report->screenshot_path && $report->type === 'screenshot')
     <div class="r-in mb-6" style="--d:.3s">
-        <h2 class="text-lg font-bold text-white mb-1">
-            {{ $report->type === 'screenshot' ? 'Uploaded Screenshot' : 'Website Screenshot' }}
-        </h2>
-        <p class="text-sm text-slate-300 mb-4">
-            {{ $report->type === 'screenshot' ? 'The image submitted for this report, analyzed via OCR text extraction.' : 'A live capture of the scanned page at the time of analysis.' }}
-        </p>
+        <h2 class="text-lg font-bold text-white mb-1">Uploaded Screenshot</h2>
+        <p class="text-sm text-slate-300 mb-4">The image submitted for this report, analyzed via OCR text extraction.</p>
         <div class="r-card overflow-hidden flex items-center justify-center">
             <img src="{{ $report->screenshot_path }}" alt="Submitted screenshot" loading="lazy"
                  class="w-full max-h-[500px] object-contain block" onerror="this.closest('div.r-in').style.display='none'">
         </div>
     </div>
+@endif
+
+{{-- PAGE PREVIEW (optional, display only; never changes the score and never shown on public share links) --}}
+@if (! $shared && $report->type === 'url' && $report->status === 'completed' && app(\App\Services\PagePreview::class)->enabled())
+    <section class="r-card r-in p-5 sm:p-6 mb-6" style="--d:.3s"
+             x-data="{
+                src: @js($report->screenshot_path && app(\App\Services\PagePreview::class)->exists($report->screenshot_path) ? $report->screenshot_path : null),
+                state: @js($report->screenshot_path && app(\App\Services\PagePreview::class)->exists($report->screenshot_path) ? 'ready' : 'idle'),
+                message: '',
+                shown: false,
+                viewer: false,
+                zoom: 1,
+                pinchStart: 0,
+                pinchZoom: 1,
+                openViewer() {
+                    if (! this.shown || ! this.src) { return; }
+                    this.zoom = 1;
+                    this.viewer = true;
+                    document.body.style.overflow = 'hidden';
+                    this.$nextTick(() => { const close = document.getElementById('preview-close'); if (close) { close.focus(); } });
+                },
+                closeViewer() {
+                    if (! this.viewer) { return; }
+                    this.viewer = false;
+                    document.body.style.overflow = '';
+                },
+                setZoom(value) {
+                    const box = document.getElementById('preview-pan');
+                    const next = Math.min(5, Math.max(1, value));
+                    if (! box || next === this.zoom) { this.zoom = next; return; }
+                    const cx = (box.scrollLeft + box.clientWidth / 2) / box.scrollWidth;
+                    const cy = (box.scrollTop + box.clientHeight / 2) / box.scrollHeight;
+                    this.zoom = next;
+                    this.$nextTick(() => {
+                        box.scrollLeft = cx * box.scrollWidth - box.clientWidth / 2;
+                        box.scrollTop = cy * box.scrollHeight - box.clientHeight / 2;
+                    });
+                },
+                toggleZoom() { this.setZoom(this.zoom > 1 ? 1 : 2.5); },
+                distance(e) { return Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); },
+                touchStart(e) { if (e.touches.length === 2) { this.pinchStart = this.distance(e); this.pinchZoom = this.zoom; } },
+                touchMove(e) { if (e.touches.length === 2 && this.pinchStart > 0) { e.preventDefault(); this.setZoom(this.pinchZoom * this.distance(e) / this.pinchStart); } },
+                async load() {
+                    this.state = 'loading';
+                    this.message = '';
+                    try {
+                        for (let i = 0; i < 40; i++) {
+                            const res = await fetch(@js(route('scan.preview', $report)), {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/json' },
+                            });
+                            if (res.status === 429) { this.fail('Please wait a minute before trying again.'); return; }
+                            const data = await res.json();
+                            if (data.status === 'ready') { this.src = data.url; this.state = 'ready'; return; }
+                            if (data.status !== 'pending') { this.fail(data.message); return; }
+                            await new Promise(r => setTimeout(r, 4000));
+                        }
+                        this.fail('The preview is taking too long. Please try again later.');
+                    } catch (e) {
+                        this.fail('');
+                    }
+                },
+                fail(text) {
+                    this.message = text || 'The preview could not be loaded. Please try again.';
+                    this.state = 'failed';
+                },
+             }">
+        <h2 class="text-lg font-bold text-white mb-1">Page preview</h2>
+        <p class="text-sm text-slate-300 mb-4">A picture of how the page looks. It is only for you to look at and does not change the result.</p>
+
+        <div x-show="state === 'idle' || state === 'failed'" style="display: none;">
+            <button type="button" x-on:click="load()"
+                    class="px-4 py-2 rounded-lg text-sm font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15">
+                <span x-text="state === 'failed' ? 'Try again' : 'Show page preview'"></span>
+            </button>
+            <p class="text-xs text-slate-400 mt-2">The link is sent to urlscan.io, a security service, to take the picture.</p>
+            <p class="text-sm text-amber-300 mt-3" x-show="state === 'failed'" x-text="message" style="display: none;"></p>
+        </div>
+
+        <p class="text-sm text-slate-300" x-show="state === 'loading'" style="display: none;">
+            Taking the picture. This usually takes 10 to 30 seconds...
+        </p>
+
+        <div x-show="state === 'ready'" style="display: none;">
+            <div class="relative overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                <img :src="src" alt="Preview of the scanned page" loading="lazy"
+                     :class="shown ? 'cursor-zoom-in' : 'blur-xl'"
+                     class="w-full max-h-[500px] object-contain block transition"
+                     x-on:click="openViewer()"
+                     x-on:error="state = 'idle'; src = null">
+                <button type="button" x-show="! shown" x-on:click="shown = true"
+                        class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white bg-black/40" style="display: none;">
+                    Click to show the picture
+                </button>
+            </div>
+            <button type="button" x-show="shown" x-on:click="openViewer()" style="display: none;"
+                    class="mt-3 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15">
+                Enlarge picture
+            </button>
+            <p class="text-xs text-slate-400 mt-2">The picture is blurred until you click it, because the page may be harmful. It was taken when you asked for it, and the page may have changed since.</p>
+        </div>
+
+        {{-- Full-screen viewer: moved to the end of the page so the cards' effects cannot trap it. Drag to move, pinch or use the buttons to zoom. --}}
+        <template x-teleport="body">
+            <div x-show="viewer" x-transition.opacity style="display: none;"
+                 x-on:keydown.escape.window="closeViewer()"
+                 class="fixed inset-0 z-[70] flex flex-col bg-black/95" role="dialog" aria-modal="true" aria-label="Page preview, enlarged">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-white">
+                    <p class="text-xs text-slate-300 max-sm:hidden">Drag to move around. Pinch or use the buttons to zoom.</p>
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button type="button" x-on:click="setZoom(zoom - 0.5)" aria-label="Zoom out"
+                                class="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 text-xl leading-none">&minus;</button>
+                        <span class="w-12 text-center text-sm tabular-nums" x-text="Math.round(zoom * 100) + '%'">100%</span>
+                        <button type="button" x-on:click="setZoom(zoom + 0.5)" aria-label="Zoom in"
+                                class="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 text-xl leading-none">+</button>
+                        <button type="button" x-on:click="setZoom(1)"
+                                class="h-10 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-sm">Fit</button>
+                        <button type="button" id="preview-close" x-on:click="closeViewer()"
+                                class="h-10 px-4 rounded-lg bg-sky-500 hover:bg-sky-400 text-sm font-semibold">Close</button>
+                    </div>
+                </div>
+                <div id="preview-pan" class="flex-1 overflow-auto overscroll-contain" style="touch-action: pan-x pan-y;"
+                     x-on:touchstart="touchStart($event)" x-on:touchmove="touchMove($event)" x-on:dblclick="toggleZoom()">
+                    <img :src="src" alt="Preview of the scanned page, enlarged" draggable="false"
+                         class="block max-w-none h-auto mx-auto select-none"
+                         :style="'width: ' + (zoom * 100) + '%'">
+                </div>
+            </div>
+        </template>
+    </section>
 @endif
 
 {{-- WHAT WE CHECKED (plain-language view of the detection layers) --}}

@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NumberReportController;
+use App\Http\Controllers\PagePreviewController;
 use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicFeedController;
@@ -41,6 +42,12 @@ Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
 Route::post('/scan', [ScanController::class, 'store'])->middleware('throttle:60,1')->name('scan.store');
 Route::get('/scan/{report}', [ScanController::class, 'show'])->name('scan.show');
 Route::get('/scan/{report}/pdf', ScanPdfController::class)->name('scan.pdf');
+
+// Optional "Show page preview" button (404 until PAGE_PREVIEW=true). Only people who can open the result may use it.
+// The page calls it every few seconds while urlscan.io is taking the picture.
+Route::post('/scan/{report}/preview', PagePreviewController::class)
+    ->middleware('throttle:30,1')
+    ->name('scan.preview');
 
 // Opt-in, revocable share links for finished link scans.
 Route::post('/scan/{report}/share', [ScanShareController::class, 'store'])

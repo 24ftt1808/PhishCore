@@ -62,6 +62,18 @@ return [
         'url' => env('GROQ_URL', 'https://api.groq.com/openai/v1/chat/completions'),
     ],
 
+    // Optional "Show page preview" button on link scans (urlscan.io). Off unless PAGE_PREVIEW=true and a key is set.
+    // PRIVACY: when on, the link is sent to urlscan.io as an UNLISTED scan (not shown in its public search) when
+    // someone clicks the button. Pictures are deleted after keep_days (run previews:prune, scheduled daily).
+    // Free plan per day: 1,000 unlisted scans, 50 private scans.
+    'page_preview' => [
+        'enabled' => env('PAGE_PREVIEW', false),
+        'key' => env('URLSCAN_API_KEY'),
+        'visibility' => env('URLSCAN_VISIBILITY', 'unlisted'),
+        'daily_cap' => (int) env('PAGE_PREVIEW_DAILY_CAP', 200),
+        'keep_days' => (int) env('PAGE_PREVIEW_KEEP_DAYS', 7),
+    ],
+
     'ocr_space' => [
         'key' => env('OCR_SPACE_API_KEY'),
     ],

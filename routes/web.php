@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\PublicReportsController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ScamNewsController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ScanHistoryController;
 use App\Http\Controllers\ScanPdfController;
@@ -104,6 +105,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications', [NotificationController::class, 'clear'])->name('notifications.clear');
 
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+
+    // Admin page for the dashboard's "Latest Scam News" box (team members and administrators only).
+    Route::get('/scam-news', [ScamNewsController::class, 'index'])->name('scam-news.index');
+    Route::post('/scam-news', [ScamNewsController::class, 'store'])->middleware('throttle:30,1')->name('scam-news.store');
+    Route::post('/scam-news/fetch', [ScamNewsController::class, 'fetch'])->middleware('throttle:6,1')->name('scam-news.fetch');
+    Route::patch('/scam-news/{scamNews}', [ScamNewsController::class, 'toggle'])->name('scam-news.toggle');
+    Route::delete('/scam-news/{scamNews}', [ScamNewsController::class, 'destroy'])->name('scam-news.destroy');
 
     Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
     Route::patch('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');

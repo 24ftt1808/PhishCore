@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Analysis;
 use App\Models\Report;
+use App\Models\ScamNews;
+use App\Services\ScamNewsFetcher;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -60,14 +62,22 @@ class DashboardController extends Controller
 
         $totalScansCount = Report::where('user_id', $userId)->count();
 
+        // "Latest Scam News" box: the same articles for everyone, newest first.
+        $scamNews = ScamNews::visible()
+            ->latest('published_at')->latest('id')
+            ->limit((int) config('scamnews.display'))
+            ->get();
+
         return view('dashboard', [
+            'scamNews' => $scamNews,
+            'scamNewsFetchedAt' => ScamNewsFetcher::lastRun()['at'] ?? null,
             'stats' => $stats,
             'weekLabels' => $days,
             'weekSafe' => $safeByDay,
             'weekSuspicious' => $suspiciousByDay,
             'weekPhishing' => $phishingByDay,
             'weekTotals' => $weekTotals,
-            'weekRangeLabel' => $weekStart->format('M j') . ' – ' . $weekEnd->format('M j, Y'),
+            'weekRangeLabel' => $weekStart->format('M j').' – '.$weekEnd->format('M j, Y'),
             'recentScans' => $recentScans,
             'totalScansCount' => $totalScansCount,
         ]);

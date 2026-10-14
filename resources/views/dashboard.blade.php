@@ -175,6 +175,8 @@
         </div>
     </div>
 
+    @include('dashboard._scam-news')
+
     {{-- DETECTION OVERVIEW + BREAKDOWN --}}
     <div class="grid grid-cols-1 xl:grid-cols-3 md:max-xl:grid-cols-3 gap-4 mb-6 md:max-xl:landscape:mb-4">
         <div class="d-in d-card min-w-0 p-4 sm:p-6 xl:col-span-2 md:max-xl:col-span-2" style="--d:.3s">

@@ -3198,7 +3198,8 @@ class AnalysisEngine
             $data = $response->json();
 
             if (! $response->successful() || ! is_array($data) || ! isset($data['phone_risk'])) {
-                $empty['reasons'][] = $data['error']['message'] ?? 'Phone reputation lookup unavailable';
+                // never show the vendor's own wording (for example a "subscribe to a paid plan" quota message) to users
+                $empty['reasons'][] = 'The phone reputation service could not be reached right now, so this check was skipped. The other checks still ran.';
 
                 return $empty;
             }

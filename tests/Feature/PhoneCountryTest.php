@@ -115,3 +115,20 @@ test('the front page scanner also offers the country selector', function () {
         ->assertSee('name="phone_country"', false)
         ->assertSee('Brunei (+673)');
 });
+
+test('a quota error from the phone reputation service is shown in plain words, not the vendor message', function () {
+    config(['services.abstractapi_phone.key' => 'test-key']);
+    \Illuminate\Support\Facades\Http::fake([
+        'phoneintelligence.abstractapi.com/*' => \Illuminate\Support\Facades\Http::response(
+            ['error' => ['message' => 'You have reached your quota. Please, subscribe to a paid plan to continue using this API.']],
+            429
+        ),
+    ]);
+
+    $result = app(\App\Services\AnalysisEngine::class)->checkPhoneReputation('+6738123456');
+
+    expect($result['unavailable'])->toBeTrue()
+        ->and($result['points'])->toBe(0)
+        ->and(implode(' ', $result['reasons']))->not->toContain('paid plan')
+        ->and(implode(' ', $result['reasons']))->toContain('could not be reached right now');
+});

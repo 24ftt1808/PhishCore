@@ -42,10 +42,16 @@
         'phishing' => 'Phishing detected',
         'suspicious' => 'This looks suspicious',
         'review' => 'Needs a manual review',
-        default => $report->type === 'url' ? 'This appears safe' : 'No threats detected',
+        default => match ($report->type) {
+            'url' => 'This appears safe',
+            'phone' => 'No reports found',
+            default => 'No threats detected',
+        },
     };
     $cleanCaveat = ($analysis->verdict === 'clean' || ! in_array($analysis->verdict, ['phishing', 'suspicious', 'review'], true)) && $report->type !== 'url'
-        ? 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.'
+        ? ($report->type === 'phone'
+            ? 'This is not a guarantee of safety. A new scam number can have no reports yet. Be careful with anything that asks for money, passwords or codes.'
+            : 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.')
         : null;
     $verdictIcon = match ($analysis->verdict) {
         'clean' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',

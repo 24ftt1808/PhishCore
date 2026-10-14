@@ -153,7 +153,7 @@ test('a clean message scan says no threats detected with a caveat, a clean link 
 
         $this->withSession(['guest_report_ids' => [$report->id]])->get(route('scan.pdf', $report))->assertOk();
 
-        expect($captured->data['verdict']['headline'])->toBe('No threats detected');
+        expect($captured->data['verdict']['headline'])->toBe($type === 'phone' ? 'No reports found' : 'No threats detected');
         expect($captured->data['verdict']['caveat'])->toContain('not a guarantee');
     }
 

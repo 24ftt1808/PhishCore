@@ -2647,9 +2647,13 @@ class AnalysisEngine
             ];
         }
 
+        // A "nothing found" result that says nothing about safety (such as a number nobody has
+        // reported yet) is shown as information, not as a green pass.
+        $passStatus = ($result['neutral'] ?? false) ? 'INFO' : 'SAFE';
+
         return [
             'name' => $name,
-            'status' => $result['flagged'] ? $flaggedStatus : 'SAFE',
+            'status' => $result['flagged'] ? $flaggedStatus : $passStatus,
             'message' => ! empty($result['reasons'])
                 ? $this->joinReasons($result['reasons'])
                 : 'No issues detected for this check.',
@@ -3001,9 +3005,12 @@ class AnalysisEngine
     {
         $normalizedInput = preg_replace('/[\s()\-]/', '', $phone);
 
+        // Only scans by signed-in people count. A guest has no account to tell one
+        // person from another, so each guest scan would otherwise look like a new reporter.
         $query = Report::where('type', 'phone')
             ->where('status', 'completed')
-            ->whereNotNull('phone_number');
+            ->whereNotNull('phone_number')
+            ->whereNotNull('user_id');
 
         if ($excludeReportId) {
             $query->where('id', '!=', $excludeReportId);
@@ -3020,6 +3027,7 @@ class AnalysisEngine
         if ($matchingReports->isEmpty() && $explicitReports->isEmpty()) {
             return [
                 'flagged' => false,
+                'neutral' => true,
                 'points' => 0,
                 'reasons' => [
                     'No prior reports found for this number on PhishCore — note that phone-scam detection relies on crowdsourced reports, so this does not guarantee the number is safe, only that it has not been reported here before.',
@@ -3033,7 +3041,7 @@ class AnalysisEngine
         // distinct reporter's most recent report of this number.
         $entries = [];
 
-        foreach ($matchingReports->groupBy(fn ($r) => $r->user_id ?? 'guest_'.$r->id) as $key => $reportsForReporter) {
+        foreach ($matchingReports->groupBy('user_id') as $key => $reportsForReporter) {
             $entries[$key] = ['when' => $reportsForReporter->max('created_at'), 'explicit' => false];
         }
 

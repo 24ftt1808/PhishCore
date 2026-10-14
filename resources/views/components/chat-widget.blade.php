@@ -159,7 +159,8 @@
         </style>
 
         {{-- The AI Chat page has its own big chat, so the floating one is hidden there. --}}
-        @unless (request()->routeIs('chat.index'))
+        {{-- People can also switch the floating chat off in Settings > Preferences. --}}
+        @unless (request()->routeIs('chat.index') || ! auth()->user()->wantsFloatingChat())
         <div
             x-data="safetyChat(@js(['url' => route('chat.send'), 'token' => csrf_token(), 'reportId' => $chatReportId, 'scope' => $chatScope, 'page' => $chatPage]))"
             @keydown.escape.window="open = false"

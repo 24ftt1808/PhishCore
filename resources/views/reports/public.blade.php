@@ -205,7 +205,7 @@
             @else
                 <p class="text-sm text-slate-400">No number has been reported by two or more people yet. When you scan a phone number and it turns out to be a scam, report it from the result page to start the list.</p>
             @endif
-            <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">Reports come from people and can be wrong, and phone numbers are sometimes given to a new owner. Treat this as a warning sign, not proof.</p>
+            <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">Reports come from people and can be wrong, and phone numbers are sometimes given to a new owner. Treat this as a warning sign, not proof. If a number listed here is yours or looks wrong, email <a href="mailto:phishcorebn@gmail.com?subject=Phone%20number%20listing" class="text-sky-300 hover:text-sky-200 underline">phishcorebn@gmail.com</a> and we will review it.</p>
         </div>
 
         {{-- Filters --}}

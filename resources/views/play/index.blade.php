@@ -789,6 +789,9 @@
             .pl-wrap.in-game:not(.in-story) { padding-bottom: 4.75rem; }
             .pl-wrap.in-game .pl-hero, .pl-wrap.in-game .pl-tabs { display: none; }
         }
+        /* On every screen size, the Phish Lab box and the tabs step aside while a game is running, so the game gets the room (the phone and
+           tablet rules above add the extra spacing they need). They come back when the player leaves the game. */
+        .pl-wrap.in-game .pl-hero, .pl-wrap.in-game .pl-tabs, .pl-wrap.in-story .pl-hero, .pl-wrap.in-story .pl-tabs { display: none; }
         /* ---- game feel: sound button, score pop, answer flashes, combo banner, count-in ---- */
         .pl-sndbtn { position: absolute; top: 0; right: 0; z-index: 6; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; padding: 0; border-radius: 9999px; color: #94a3b8; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); transition: color .2s, background .2s, border-color .2s, transform .2s; }
         .pl-sndbtn svg { width: 1.1rem; height: 1.1rem; }

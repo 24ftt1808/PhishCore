@@ -18,3 +18,7 @@ test('the footer on public pages links to both pages', function () {
         ->assertSee('href="'.route('terms').'"', false)
         ->assertSee('href="'.route('privacy').'"', false);
 });
+
+test('the privacy page mentions the stored last login time', function () {
+    $this->get(route('privacy'))->assertOk()->assertSee('Last login time');
+});

@@ -96,6 +96,7 @@ test('every story can be followed from start to an ending, with a win and a loss
                 expect($node['end']['kind'])->toBeIn(['win', 'meh', 'lose'])
                     ->and($node['end']['title'])->not->toBe('')
                     ->and($node['end']['text'])->not->toBe('');
+
                 continue;
             }
 
@@ -207,4 +208,9 @@ test('what the player types in the stories is varied and does not start every li
 
     $ok = array_filter($lines, fn ($line) => str_starts_with($line, 'Ok,') || str_starts_with($line, 'Ok '));
     expect(count($ok))->toBeLessThanOrEqual(3);
+});
+test('the Phish Lab box and tabs step aside while a game runs, on every screen size', function () {
+    $this->actingAs(User::factory()->create())->get(route('play.index'))
+        ->assertOk()
+        ->assertSee('.pl-wrap.in-game .pl-hero, .pl-wrap.in-game .pl-tabs, .pl-wrap.in-story .pl-hero, .pl-wrap.in-story .pl-tabs { display: none; }', false);
 });

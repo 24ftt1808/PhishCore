@@ -125,3 +125,23 @@ test('profile page hides the devices list when sessions are not stored in the da
         ->assertViewHas('devices', null)
         ->assertDontSee('Where you are signed in');
 });
+
+test('the settings page has a preferences tab with the floating chat switch', function () {
+    $this->actingAs(User::factory()->create())
+        ->get('/profile')
+        ->assertOk()
+        ->assertSee('Preferences')
+        ->assertSee('About PhishCore')
+        ->assertSee('How it works')
+        ->assertSee('Privacy Policy')
+        ->assertSee('phishcorebn@gmail.com')
+        ->assertSee('Floating Cora chat');
+});
+
+test('the settings tabs share the full width on phones instead of overflowing', function () {
+    $this->actingAs(User::factory()->create())
+        ->get('/profile')
+        ->assertOk()
+        ->assertSee('.s-tabs { display: flex; width: 100%;', false)
+        ->assertSee('flex-direction: column', false);
+});

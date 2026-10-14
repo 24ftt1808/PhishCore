@@ -15,7 +15,7 @@
                     An AI-assisted phishing detection platform built to support cybersecurity awareness and safe browsing.
                 </p>
                 <span class="mt-5 inline-flex items-center gap-2 text-xs text-emerald-300 px-3 py-1.5 rounded-full border border-emerald-300/20 bg-emerald-400/[0.07]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Engine online
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ready to scan
                 </span>
             </div>
 

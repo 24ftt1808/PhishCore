@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\HiddenNumber;
 use App\Models\NumberReport;
 use App\Models\Report;
 use Carbon\Carbon;
@@ -2647,9 +2648,13 @@ class AnalysisEngine
             ];
         }
 
+        // A "nothing found" result that says nothing about safety (such as a number nobody has
+        // reported yet) is shown as information, not as a green pass.
+        $passStatus = ($result['neutral'] ?? false) ? 'INFO' : 'SAFE';
+
         return [
             'name' => $name,
-            'status' => $result['flagged'] ? $flaggedStatus : 'SAFE',
+            'status' => $result['flagged'] ? $flaggedStatus : $passStatus,
             'message' => ! empty($result['reasons'])
                 ? $this->joinReasons($result['reasons'])
                 : 'No issues detected for this check.',
@@ -3001,9 +3006,12 @@ class AnalysisEngine
     {
         $normalizedInput = preg_replace('/[\s()\-]/', '', $phone);
 
+        // Only scans by signed-in people count. A guest has no account to tell one
+        // person from another, so each guest scan would otherwise look like a new reporter.
         $query = Report::where('type', 'phone')
             ->where('status', 'completed')
-            ->whereNotNull('phone_number');
+            ->whereNotNull('phone_number')
+            ->whereNotNull('user_id');
 
         if ($excludeReportId) {
             $query->where('id', '!=', $excludeReportId);
@@ -3014,12 +3022,19 @@ class AnalysisEngine
                 return preg_replace('/[\s()\-]/', '', $report->phone_number) === $normalizedInput;
             });
 
-        // People who pressed "Report this number as a scam" (one per person per number).
-        $explicitReports = NumberReport::where('phone', $normalizedInput)->get();
+        // People who pressed "Report this number as a scam" (one per person per number). A number a
+        // team member has hidden because its listing was wrong counts as having no reports.
+        $isHidden = HiddenNumber::where('phone', $normalizedInput)->exists();
+        $explicitReports = $isHidden ? collect() : NumberReport::where('phone', $normalizedInput)->get();
+
+        if ($isHidden) {
+            $matchingReports = collect();
+        }
 
         if ($matchingReports->isEmpty() && $explicitReports->isEmpty()) {
             return [
                 'flagged' => false,
+                'neutral' => true,
                 'points' => 0,
                 'reasons' => [
                     'No prior reports found for this number on PhishCore — note that phone-scam detection relies on crowdsourced reports, so this does not guarantee the number is safe, only that it has not been reported here before.',
@@ -3033,7 +3048,7 @@ class AnalysisEngine
         // distinct reporter's most recent report of this number.
         $entries = [];
 
-        foreach ($matchingReports->groupBy(fn ($r) => $r->user_id ?? 'guest_'.$r->id) as $key => $reportsForReporter) {
+        foreach ($matchingReports->groupBy('user_id') as $key => $reportsForReporter) {
             $entries[$key] = ['when' => $reportsForReporter->max('created_at'), 'explicit' => false];
         }
 
@@ -3051,7 +3066,10 @@ class AnalysisEngine
         }
 
         $now = now();
-        $weightedScore = 0.0;
+        $explicitScore = 0.0;
+        $lookupScore = 0.0;
+        $reporterCount = 0;
+        $lookupCount = 0;
 
         foreach ($entries as $entry) {
             $ageDays = $entry['when']->diffInDays($now);
@@ -3062,19 +3080,39 @@ class AnalysisEngine
                 default => 0.2,
             };
 
-            $weightedScore += $entry['explicit'] ? $weight * 1.5 : $weight;
+            if ($entry['explicit']) {
+                $explicitScore += $weight * 1.5;
+                $reporterCount++;
+            } else {
+                $lookupScore += $weight * 0.25;
+                $lookupCount++;
+            }
         }
 
-        $reporterCount = count($entries);
-        $mostRecentReport = collect($entries)->max('when');
-        $recencyNote = 'Most recent report: '.$mostRecentReport->diffForHumans().'.';
+        // Looking a number up is not the same as saying it is a scam: people also check numbers that
+        // turn out to be fine. On their own, lookups add nothing. Next to real reports they add a
+        // little, up to a small cap, so a few extra accounts can never tip a number into "suspicious".
+        if ($reporterCount === 0) {
+            return [
+                'flagged' => false,
+                'neutral' => true,
+                'points' => 0,
+                'reasons' => [
+                    "No one has reported this number as a scam on PhishCore. It has been looked up by {$lookupCount} signed-in user(s) before, which does not count as a report — note that phone-scam detection relies on crowdsourced reports, so this does not guarantee the number is safe.",
+                ],
+            ];
+        }
+
+        $weightedScore = $explicitScore + min($lookupScore, 0.4);
+        $mostRecentReport = collect($entries)->where('explicit', true)->max('when');
+        $recencyNote = 'Most recent report: '.$mostRecentReport->format('j F Y').'.';
 
         if ($weightedScore < 1) {
             return [
                 'flagged' => true,
                 'points' => 8,
                 'reasons' => [
-                    "This number was reported {$reporterCount} time(s) on PhishCore, but the most recent report is over a year old — the number may since have been reassigned to a different subscriber by the telco.",
+                    "This number was reported {$reporterCount} time(s) on PhishCore, but the reports are not recent — the number may since have been reassigned to a different subscriber by the telco.",
                     $recencyNote,
                 ],
             ];

@@ -39,3 +39,39 @@ test('users can logout', function () {
     $this->assertGuest();
     $response->assertRedirect('/');
 });
+
+test('a successful login records the last login time', function () {
+    $user = User::factory()->create();
+
+    expect($user->last_login_at)->toBeNull();
+
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    expect($user->fresh()->last_login_at)->not->toBeNull();
+});
+
+test('a failed login does not record a login time', function () {
+    $user = User::factory()->create();
+
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'wrong-password',
+    ]);
+
+    expect($user->fresh()->last_login_at)->toBeNull();
+});
+
+test('a suspended user is turned away and no login time is recorded', function () {
+    $user = User::factory()->create(['suspended_at' => now()]);
+
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+    expect($user->fresh()->last_login_at)->toBeNull();
+});

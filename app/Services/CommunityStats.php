@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\HiddenNumber;
 use App\Models\NumberReport;
 use App\Models\Report;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 class CommunityStats
 {
     public const CACHE_KEY = 'community-stats';
+
     public const CACHE_MINUTES = 5;
 
     /** A link or number needs at least this many different people before it is listed. */
@@ -134,6 +136,7 @@ class CommunityStats
     {
         return NumberReport::query()
             ->where('created_at', '>=', now()->subDays(365))
+            ->whereNotIn('phone', HiddenNumber::keys())
             ->get()
             ->groupBy('phone')
             ->map(function ($rows, $phone) {

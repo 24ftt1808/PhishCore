@@ -220,6 +220,36 @@
         </div>
     </div>
 
+    {{-- COMMUNITY THIS WEEK: everyone's scans, not just yours --}}
+    <div class="d-in d-card p-4 sm:p-6 mb-6 md:max-xl:landscape:mb-4" style="--d:.38s">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div>
+                <h2 class="text-white font-semibold">Across PhishCore this week</h2>
+                <p class="text-sm text-slate-300">Everyone's scans over the last 7 days, not just yours</p>
+            </div>
+            <a href="{{ route('analytics') }}" class="shrink-0 text-xs font-medium text-sky-300 hover:text-white transition-colors">See more</a>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5">
+                <p class="text-[11px] tracking-wide text-slate-300 mb-1">SCANS BY EVERYONE</p>
+                <p class="text-2xl font-bold text-white tabular-nums">{{ $community['scans'] }}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5">
+                <p class="text-[11px] tracking-wide text-slate-300 mb-1">FLAGGED AS RISKY</p>
+                <p class="text-2xl font-bold text-orange-300 tabular-nums">{{ $community['flagged'] }}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 min-w-0">
+                <p class="text-[11px] tracking-wide text-slate-300 mb-1">MOST REPORTED NUMBER</p>
+                @if ($community['topNumber'])
+                    <p class="text-lg font-bold text-red-300 font-mono truncate">{{ $community['topNumber']['phone'] }}</p>
+                    <p class="text-xs text-slate-300">Reported by {{ $community['topNumber']['people'] }} people</p>
+                @else
+                    <p class="text-sm text-slate-300 pt-1">No number has been reported by 2 or more people this week.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+
     {{-- RECENT REPORTS --}}
     <div class="d-in d-card p-4 sm:p-6" style="--d:.4s">
         <div class="flex items-center justify-between gap-3 mb-5">

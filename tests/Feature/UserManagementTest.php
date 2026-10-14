@@ -39,3 +39,16 @@ test('role filter still works for users', function () {
         ->assertOk()
         ->assertViewHas('users', fn ($users) => $users->count() === 2 && $users->every(fn (User $user) => $user->role === 'user'));
 });
+
+test('the user list shows when each person last logged in', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    User::factory()->create(['name' => 'Recent Person', 'last_login_at' => now()->subHours(3)]);
+    User::factory()->create(['name' => 'Silent Person', 'last_login_at' => null]);
+
+    $this->actingAs($admin)
+        ->get(route('user-management.index'))
+        ->assertOk()
+        ->assertSee('LAST LOGIN')
+        ->assertSee('3 hours ago')
+        ->assertSee('Not recorded yet');
+});

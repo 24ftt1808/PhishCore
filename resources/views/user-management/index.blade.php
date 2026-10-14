@@ -203,6 +203,7 @@
                         <th class="px-3 xl:px-5 py-3 whitespace-nowrap md:max-xl:hidden">ROLE</th>
                         <th class="px-3 xl:px-5 py-3 whitespace-nowrap md:max-xl:hidden">TEAM MEMBER</th>
                         <th class="px-3 xl:px-5 py-3 whitespace-nowrap">ACCOUNT STATUS</th>
+                        <th class="px-3 xl:px-5 py-3 whitespace-nowrap md:max-xl:hidden">LAST LOGIN</th>
                         <th class="px-3 xl:px-5 py-3 whitespace-nowrap">ACTIONS</th>
                     </tr>
                 </thead>
@@ -228,6 +229,7 @@
                                             <span class="{{ $badge['text'] }}">{{ $badge['label'] }}</span>
                                             @if ($user->is_team_member)<span class="text-violet-300">&middot; TEAM</span>@endif
                                         </p>
+                                        <p class="hidden md:max-xl:block mt-0.5 text-[11px] text-slate-400">Last login: {{ $user->last_login_at?->diffForHumans() ?? 'not recorded yet' }}</p>
                                     </div>
                                 </div>
                             </td>
@@ -252,6 +254,14 @@
                                     <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> ACTIVE
                                     </span>
+                                @endif
+                            </td>
+                            <td class="w-full md:w-auto md:px-3 xl:px-5 md:py-3.5 md:max-xl:landscape:py-2.5 text-xs text-slate-300 md:whitespace-nowrap md:max-xl:hidden">
+                                <span class="md:hidden text-slate-400">Last login: </span>
+                                @if ($user->last_login_at)
+                                    <span title="{{ $user->last_login_at->format('j F Y \a\t g:i A') }}">{{ $user->last_login_at->diffForHumans() }}</span>
+                                @else
+                                    <span class="text-slate-400">Not recorded yet</span>
                                 @endif
                             </td>
                             <td class="w-full md:w-auto md:px-3 xl:px-5 md:py-3.5 md:max-xl:landscape:py-2.5 pt-3 md:pt-3.5 border-t border-slate-500/20 md:border-0">
@@ -299,7 +309,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-10 text-center text-slate-300">
+                            <td colspan="6" class="px-5 py-10 text-center text-slate-300">
                                 No users found. Try adjusting your filters.
                             </td>
                         </tr>

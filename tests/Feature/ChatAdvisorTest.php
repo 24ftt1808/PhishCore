@@ -259,6 +259,45 @@ test('the floating chat button shows for signed-in users only when the chat is o
     $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertSee('Chat with Cora');
 });
 
+test('the floating chat button is on by default and a person can switch it off in settings', function () {
+    chatOn();
+    $user = User::factory()->create();
+
+    expect($user->fresh()->floating_chat_enabled)->toBeTrue();
+
+    $this->actingAs($user)->patch(route('profile.preferences.update'), ['floating_chat_enabled' => 0])
+        ->assertRedirect(route('profile.edit'))
+        ->assertSessionHas('status', 'preferences-updated');
+
+    $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertDontSee('Chat with Cora');
+
+    // the AI Chat page still works with the floating button off
+    $this->actingAs($user)->get(route('chat.index'))->assertOk();
+
+    $this->actingAs($user)->patch(route('profile.preferences.update'), ['floating_chat_enabled' => 1]);
+
+    $this->actingAs($user)->get(route('scan.history'))->assertOk()->assertSee('Chat with Cora');
+});
+
+test('turning the floating chat off only affects that person', function () {
+    chatOn();
+    $mine = User::factory()->create();
+    $other = User::factory()->create();
+
+    $this->actingAs($mine)->patch(route('profile.preferences.update'), ['floating_chat_enabled' => 0]);
+
+    expect($other->fresh()->floating_chat_enabled)->toBeTrue();
+    $this->actingAs($other)->get(route('scan.history'))->assertSee('Chat with Cora');
+});
+
+test('the preferences setting needs a login and a real on or off value', function () {
+    $this->patch(route('profile.preferences.update'), ['floating_chat_enabled' => 0])->assertRedirect(route('login'));
+
+    $this->actingAs(User::factory()->create())
+        ->patch(route('profile.preferences.update'), ['floating_chat_enabled' => 'maybe'])
+        ->assertSessionHasErrors('floating_chat_enabled');
+});
+
 test('the AI Chat page needs a login and the chat to be on', function () {
     $this->get(route('chat.index'))->assertRedirect(route('login'));
 

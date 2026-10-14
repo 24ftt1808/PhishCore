@@ -16,6 +16,10 @@
             <p class="text-xs text-emerald-300 mb-3" role="status">{{ session('number_reported') }}</p>
         @endif
 
+        @if (session('number_report_limited'))
+            <p class="text-xs text-red-300 mb-3" role="alert">{{ session('number_report_limited') }}</p>
+        @endif
+
         @error('category')
             <p class="text-xs text-red-300 mb-3" role="alert">Please pick what kind of scam it was.</p>
         @enderror

@@ -12,6 +12,7 @@ use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\PublicReportsController;
+use App\Http\Controllers\ReportedNumbersController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ScamNewsController;
 use App\Http\Controllers\ScanController;
@@ -76,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile/preferences', [ProfileController::class, 'updatePreferences'])->name('profile.preferences.update');
     Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
     Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.destroy');
 
@@ -112,6 +114,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/scam-news/fetch', [ScamNewsController::class, 'fetch'])->middleware('throttle:6,1')->name('scam-news.fetch');
     Route::patch('/scam-news/{scamNews}', [ScamNewsController::class, 'toggle'])->name('scam-news.toggle');
     Route::delete('/scam-news/{scamNews}', [ScamNewsController::class, 'destroy'])->name('scam-news.destroy');
+
+    // Admin page for the public "Most reported phone numbers" list (team members and administrators only).
+    Route::get('/reported-numbers', [ReportedNumbersController::class, 'index'])->name('reported-numbers.index');
+    Route::post('/reported-numbers/hide', [ReportedNumbersController::class, 'hide'])->middleware('throttle:60,1')->name('reported-numbers.hide');
+    Route::post('/reported-numbers/show', [ReportedNumbersController::class, 'show'])->middleware('throttle:60,1')->name('reported-numbers.show');
 
     Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
     Route::patch('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');

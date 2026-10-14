@@ -36,6 +36,22 @@ class ProfileController extends Controller
     }
 
     /**
+     * Save the person's app preferences (Settings > Preferences). New options go here as they are added.
+     */
+    public function updatePreferences(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'floating_chat_enabled' => ['required', 'boolean'],
+        ]);
+
+        $request->user()->forceFill([
+            'floating_chat_enabled' => $validated['floating_chat_enabled'],
+        ])->save();
+
+        return Redirect::route('profile.edit')->with('status', 'preferences-updated');
+    }
+
+    /**
      * Devices with an active session for this user, newest first, or null when sessions are not stored in the database.
      *
      * @return list<array{label: string, ip: ?string, last_active: Carbon, current: bool, mobile: bool}>|null

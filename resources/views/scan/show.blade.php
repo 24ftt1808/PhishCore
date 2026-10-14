@@ -49,6 +49,12 @@
 @endphp
 
 @php
+    // The "Is this number a scam?" box sits straight under the verdict card, so it is rendered
+    // here and handed to the result content instead of being added after everything else.
+    $afterResultCard = (! $shared && auth()->check() && $hasAnalysis)
+        ? View::make('scan._number-report', ['report' => $report])->render()
+        : '';
+
     $content = $hasAnalysis
         ? View::make('scan._result-content', [
             'report' => $report,
@@ -61,6 +67,7 @@
             'arcLength' => $arcLength,
             'arcOffset' => $arcOffset,
             'shared' => $shared,
+            'afterResultCard' => $afterResultCard,
         ])->render()
         : View::make('scan._result-failed', [
             'report' => $report,
@@ -87,12 +94,12 @@
         </p>
 
         @include('scan._reuse-notice')
+        @include('scan._stale-notice')
 
         {!! $content !!}
 
         @if ($hasAnalysis)
             @include('scan._share-box', ['report' => $report])
-            @include('scan._number-report', ['report' => $report])
             @include('scan._investigation-panel', ['report' => $report])
         @endif
     </x-layouts.dashboard>
@@ -110,6 +117,7 @@
         @unless ($shared)
             @include('scan._reuse-notice')
         @endunless
+        @include('scan._stale-notice')
         {!! $content !!}
         @if ($hasAnalysis && ! $shared)
             @include('scan._share-box', ['report' => $report])

@@ -10,6 +10,7 @@
             <li><strong class="text-white">What you scan:</strong> the link, sender address, message text, phone number or screenshot you submit, and the results (verdict, risk score, checks and date). Screenshots you upload are stored on our server.</li>
             <li><strong class="text-white">Site information found during a scan:</strong> for example a site's IP address and hosting details. This is about the site you checked, not about you.</li>
             <li><strong class="text-white">Sign-in sessions:</strong> a record of your devices (browser and system type) so Settings can show where you are signed in.</li>
+            <li><strong class="text-white">Last login time:</strong> the date and time you last signed in or registered, which administrators can see on the user management page.</li>
             <li><strong class="text-white">Activity in the app:</strong> your Phish Lab progress, notifications and any investigation requests you make.</li>
             <li><strong class="text-white">AI chat messages:</strong> what you type to the chat adviser, only while you use it.</li>
         </ul>

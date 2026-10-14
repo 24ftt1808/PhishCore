@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HiddenNumber;
 use App\Models\NumberReport;
 use App\Models\Report;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -63,17 +65,19 @@ class PublicReportsController extends Controller
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to', 'rows']),
         ]);
     }
+
     /**
      * Phone numbers that two or more different people reported as scams in the last year, most
      * reported first. One person counts once per number, and only the number, the kind of scam
      * and the dates are exposed, never who reported it.
      *
-     * @return array<int, array{phone: string, count: int, category: string, last: \Carbon\Carbon}>
+     * @return array<int, array{phone: string, count: int, category: string, last: Carbon}>
      */
     private function topNumbers(): array
     {
         return NumberReport::query()
             ->where('created_at', '>=', now()->subDays(365))
+            ->whereNotIn('phone', HiddenNumber::keys())
             ->get()
             ->groupBy('phone')
             ->map(function ($rows, $phone) {
@@ -111,7 +115,7 @@ class PublicReportsController extends Controller
         $keys = array_keys($counts);
         $label = fn (string $key): string => NumberReport::CATEGORIES[$key] ?? NumberReport::CATEGORIES['other'];
 
-        if ($keys === [] || $counts[$keys[0]] * 2 > count($categories)) {
+        if ($keys === [] || count($categories) < $counts[$keys[0]] * 2) {
             return $label($keys[0] ?? 'other');
         }
 

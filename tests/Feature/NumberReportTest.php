@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\NumberReportController;
 use App\Models\Analysis;
 use App\Models\NumberReport;
 use App\Models\Report;
 use App\Models\User;
 use App\Services\AnalysisEngine;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 function phoneScan(User $owner, string $number = '+6738111346', string $type = 'phone'): Report
 {
@@ -39,6 +41,16 @@ test('a guest cannot report a number', function () {
     $this->post(route('number-report.store', $scan), ['category' => 'bank'])->assertRedirect(route('login'));
 
     expect(NumberReport::count())->toBe(0);
+});
+
+test('the scam report box sits right under the result card, before the checks', function () {
+    $user = User::factory()->create();
+    $scan = phoneScan($user);
+
+    $this->actingAs($user)->get(route('scan.show', $scan))
+        ->assertOk()
+        ->assertSeeInOrder(['Scan Another Number', 'Is this number a scam?', 'What we checked', 'Why this score?'])
+        ->assertSeeInOrder(['Is this number a scam?', 'Investigation']);
 });
 
 test('the owner of a phone scan can report the number and sees the box on the result page', function () {
@@ -163,4 +175,158 @@ test('people who reported a number make its next phone scan riskier', function (
     $after = $engine->analyze('phone', null, null, $number)['risk_score'];
 
     expect($after)->toBeGreaterThan($before);
+});
+
+test('guest scans of a number are not counted as separate reporters', function () {
+    $engine = app(AnalysisEngine::class);
+    $number = '+6738111346';
+
+    $before = $engine->analyze('phone', null, null, $number)['risk_score'];
+
+    foreach (range(1, 3) as $i) {
+        Report::factory()->create([
+            'user_id' => null,
+            'type' => 'phone',
+            'phone_number' => $number,
+            'status' => 'completed',
+        ]);
+    }
+
+    $after = $engine->analyze('phone', null, null, $number)['risk_score'];
+
+    expect($after)->toBe($before);
+});
+
+test('a number nobody has reported is shown as information, not as a green pass', function () {
+    $checks = app(AnalysisEngine::class)->analyze('phone', null, null, '+6738111346')['checks'];
+    $history = collect($checks)->firstWhere('name', 'Previous Reports');
+
+    expect($history['status'])->toBe('INFO')
+        ->and($history['points'])->toBe(0);
+});
+
+test('a number with real reports is still shown as a warning', function () {
+    $number = '+6738111346';
+
+    foreach (User::factory()->count(2)->create() as $user) {
+        NumberReport::create(['user_id' => $user->id, 'phone' => $number, 'category' => 'bank']);
+    }
+
+    $history = collect(app(AnalysisEngine::class)->analyze('phone', null, null, $number)['checks'])
+        ->firstWhere('name', 'Previous Reports');
+
+    expect($history['status'])->toBeIn(['SUSPICIOUS', 'HIGH RISK']);
+});
+
+test('a clean phone scan says no reports found instead of no threats detected', function () {
+    $user = User::factory()->create();
+    $scan = phoneScan($user);
+
+    $this->actingAs($user)->get(route('scan.show', $scan))
+        ->assertOk()
+        ->assertSee('No reports found')
+        ->assertSee('A new scam number can have no reports yet')
+        ->assertDontSee('No threats detected');
+});
+
+test('one person can only send a limited number of number reports per day', function () {
+    $this->withoutMiddleware(ThrottleRequests::class);
+
+    $user = User::factory()->create();
+    $scan = phoneScan($user);
+
+    foreach (range(1, NumberReportController::DAILY_LIMIT) as $i) {
+        $this->actingAs($user)->post(route('number-report.store', $scan), ['category' => 'bank']);
+    }
+
+    $this->actingAs($user)->post(route('number-report.store', $scan), ['category' => 'parcel'])
+        ->assertRedirect(route('scan.show', $scan))
+        ->assertSessionHas('number_report_limited');
+
+    expect(NumberReport::first()->category)->toBe('bank');
+});
+
+test('people who only looked a number up do not make it riskier', function () {
+    $engine = app(AnalysisEngine::class);
+    $number = '+6738111346';
+
+    $before = $engine->analyze('phone', null, null, $number)['risk_score'];
+
+    foreach (User::factory()->count(3)->create() as $user) {
+        Report::factory()->create([
+            'user_id' => $user->id,
+            'type' => 'phone',
+            'phone_number' => $number,
+            'status' => 'completed',
+        ]);
+    }
+
+    $result = $engine->analyze('phone', null, null, $number);
+    $history = collect($result['checks'])->firstWhere('name', 'Previous Reports');
+
+    expect($result['risk_score'])->toBe($before)
+        ->and($history['status'])->toBe('INFO')
+        ->and($history['message'])->toContain('looked up');
+});
+
+test('lookups next to a single recent report do not push it into a higher tier', function () {
+    $engine = app(AnalysisEngine::class);
+    $number = '+6738111346';
+
+    $unreported = $engine->analyze('phone', null, null, $number)['risk_score'];
+
+    NumberReport::create(['user_id' => User::factory()->create()->id, 'phone' => $number, 'category' => 'bank']);
+
+    $withReport = $engine->analyze('phone', null, null, $number)['risk_score'];
+
+    foreach (User::factory()->count(10)->create() as $user) {
+        Report::factory()->create([
+            'user_id' => $user->id,
+            'type' => 'phone',
+            'phone_number' => $number,
+            'status' => 'completed',
+        ]);
+    }
+
+    $withLookups = $engine->analyze('phone', null, null, $number)['risk_score'];
+
+    expect($withReport)->toBeGreaterThan($unreported)
+        ->and($withLookups)->toBe($withReport);
+});
+
+test('the public numbers list says how to get a wrong listing reviewed', function () {
+    $this->get(route('reports.public'))
+        ->assertOk()
+        ->assertSee('phishcorebn@gmail.com');
+});
+
+test('an old scan says it is a saved result and a fresh one does not', function () {
+    $user = User::factory()->create();
+    $oldScan = phoneScan($user);
+    $oldScan->forceFill(['created_at' => now()->subDays(7)])->saveQuietly();
+    $freshScan = phoneScan($user, '+6738111999');
+
+    $this->actingAs($user)->get(route('scan.show', $oldScan))
+        ->assertOk()
+        ->assertSee('Saved result from')
+        ->assertSee('Scan again');
+
+    $this->actingAs($user)->get(route('scan.show', $freshScan))
+        ->assertOk()
+        ->assertDontSee('Saved result from');
+});
+
+test('the most recent report is shown as a date so old scans do not say "hours ago"', function () {
+    $number = '+6738111346';
+
+    foreach (User::factory()->count(2)->create() as $user) {
+        NumberReport::create(['user_id' => $user->id, 'phone' => $number, 'category' => 'bank']);
+    }
+
+    $history = collect(app(AnalysisEngine::class)->analyze('phone', null, null, $number)['checks'])
+        ->firstWhere('name', 'Previous Reports');
+
+    expect($history['message'])
+        ->toContain('Most recent report: '.now()->format('j F Y'))
+        ->not->toContain('ago');
 });

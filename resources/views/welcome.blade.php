@@ -326,7 +326,7 @@
                 <span class="shrink-0 flex items-center gap-2 text-[11px] px-2.5 py-1 rounded-full border"
                       :class="scanning ? 'text-sky-300 border-sky-300/25 bg-sky-400/[0.07]' : 'text-emerald-300 border-emerald-300/20 bg-emerald-400/[0.06]'">
                     <span class="relative flex w-1.5 h-1.5"><span class="absolute inset-0 rounded-full animate-ping opacity-60" :class="scanning ? 'bg-sky-300' : 'bg-emerald-400'"></span><span class="relative w-1.5 h-1.5 rounded-full" :class="scanning ? 'bg-sky-300' : 'bg-emerald-400'"></span></span>
-                    <span x-text="scanning ? 'Scanning...' : 'Engine online'"></span>
+                    <span x-text="scanning ? 'Scanning...' : 'Ready to scan'"></span>
                 </span>
             </div>
             <div x-show="scanning" x-cloak class="scan-track h-0.5 bg-sky-300/10 relative overflow-hidden"><span class="scan-sweep absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-sky-300 to-transparent"></span></div>

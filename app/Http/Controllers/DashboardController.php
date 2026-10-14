@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Analysis;
+use App\Models\HiddenNumber;
+use App\Models\NumberReport;
 use App\Models\Report;
 use App\Models\ScamNews;
+use App\Services\CommunityStats;
 use App\Services\ScamNewsFetcher;
 use Illuminate\View\View;
 
@@ -69,6 +72,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard', [
+            'community' => $this->communityThisWeek(),
             'scamNews' => $scamNews,
             'scamNewsFetchedAt' => ScamNewsFetcher::lastRun()['at'] ?? null,
             'stats' => $stats,
@@ -81,5 +85,33 @@ class DashboardController extends Controller
             'recentScans' => $recentScans,
             'totalScansCount' => $totalScansCount,
         ]);
+    }
+
+    /**
+     * Platform-wide figures for the last 7 days, the same for every signed-in user: how many scans
+     * everyone ran, how many were risky, and the phone number that most different people reported.
+     * Only counts and a number two or more people reported are shown, never who scanned or reported.
+     *
+     * @return array{scans: int, flagged: int, topNumber: ?array{phone: string, people: int}}
+     */
+    private function communityThisWeek(): array
+    {
+        $days = collect(CommunityStats::get()['days']);
+
+        $top = NumberReport::query()
+            ->where('created_at', '>=', now()->subDays(7))
+            ->whereNotIn('phone', HiddenNumber::keys())
+            ->get()
+            ->groupBy('phone')
+            ->map(fn ($rows, $phone) => ['phone' => (string) $phone, 'people' => $rows->pluck('user_id')->unique()->count()])
+            ->filter(fn ($row) => $row['people'] >= CommunityStats::MIN_PEOPLE)
+            ->sortByDesc('people')
+            ->first();
+
+        return [
+            'scans' => (int) ($days->sum('clean') + $days->sum('suspicious') + $days->sum('phishing')),
+            'flagged' => (int) ($days->sum('suspicious') + $days->sum('phishing')),
+            'topNumber' => $top,
+        ];
     }
 }

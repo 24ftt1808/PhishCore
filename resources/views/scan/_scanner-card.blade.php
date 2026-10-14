@@ -1,5 +1,4 @@
 @php
-    $wide = $wide ?? false;
 
     $verdictBadge = [
         'clean' => ['bg' => 'bg-emerald-400/10', 'text' => 'text-emerald-300', 'border' => 'border-emerald-400/25', 'label' => 'SAFE'],
@@ -23,19 +22,18 @@
 
     /* which scan tabs each check runs for, so the side panel and cards can light up the active ones */
     $checks = [
-        ['URL structure', ['url', 'email']],
-        ['SSL certificate', ['url', 'screenshot']],
-        ['Domain age', ['url', 'email', 'screenshot']],
-        ['Blacklists', ['url', 'screenshot']],
-        ['Sender domain analysis', ['email']],
-        ['Phone number heuristics', ['phone']],
-        ['OCR text extraction', ['screenshot']],
+        ['URL structure', ['url', 'email'], 'Spots IP-based addresses, lookalike brand names and odd patterns in web links.'],
+        ['SSL certificate', ['url', 'screenshot'], 'Checks for a valid, trusted HTTPS certificate, and flags name mismatches or expiry.'],
+        ['Domain age', ['url', 'email', 'screenshot'], 'Domains registered in the last 30 days are a strong phishing signal.'],
+        ['Blacklists', ['url', 'screenshot'], 'Checks Google Safe Browsing and other threat databases for known phishing pages.'],
+        ['Sender domain analysis', ['email'], 'Checks whether the sender\'s email domain copies a known brand or looks unusual.'],
+        ['Phone number heuristics', ['phone'], 'Checks the number is valid and what kind of line it is, whether other PhishCore users have reported it, and a reputation lookup when available.'],
+        ['OCR text extraction', ['screenshot'], 'Reads the text in your screenshot to find links, phone numbers and scam wording, then checks them.'],
     ];
     $checkCounts = [];
     foreach (['url', 'email', 'phone', 'screenshot'] as $t) {
         $checkCounts[$t] = collect($checks)->filter(fn ($c) => in_array($t, $c[1]))->count();
     }
-    $tabLabels = ['url' => 'URL', 'email' => 'Email', 'phone' => 'Phone', 'screenshot' => 'Screenshot'];
 @endphp
 
 <style>
@@ -125,25 +123,28 @@
      }"
      x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) scanning = false; })">
 
-    <div class="grid {{ $wide ? 'xl:grid-cols-3' : '' }} gap-4">
+    <div class="grid gap-4">
 
         {{-- SCANNER --}}
-        <div class="relative {{ $wide ? 'xl:col-span-2' : '' }}">
+        <div class="relative">
             <div class="scanner-border-glow" :class="{ 'is-scanning': scanning }"></div>
 
             <div class="scanner-box sc-card sc-in relative z-10 overflow-hidden h-full flex flex-col">
                 <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/10">
                     <div class="flex items-center gap-3 min-w-0">
-                        <span class="sc-tile shrink-0"><img src="{{ asset('phishcore-logo-icon.png') }}" alt="" class="w-5 h-5 object-contain"></span>
                         <div class="min-w-0">
                             <p class="text-white font-semibold text-sm">PhishCore Scanner</p>
-                            <p class="hidden sm:block text-[11px] text-slate-300 tracking-wide mt-0.5">AI-POWERED &middot; 7 DETECTION CHECKS &middot; ~2S RESULTS</p>
+                            <p class="hidden sm:block text-xs text-slate-300 mt-0.5">Check a link, email, phone number or screenshot before you trust it.</p>
                         </div>
                     </div>
-                    <span class="shrink-0 flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border"
-                          :class="scanning ? 'text-sky-200 border-sky-300/30 bg-sky-400/10' : 'text-emerald-300 border-emerald-300/25 bg-emerald-400/10'">
-                        <span class="relative flex w-1.5 h-1.5"><span class="absolute inset-0 rounded-full animate-ping opacity-60" :class="scanning ? 'bg-sky-300' : 'bg-emerald-400'"></span><span class="relative w-1.5 h-1.5 rounded-full" :class="scanning ? 'bg-sky-300' : 'bg-emerald-400'"></span></span>
-                        <span x-text="scanning ? 'Scanning...' : 'Engine online'"></span>
+                    <span class="shrink-0 inline-flex items-center gap-2 text-xs font-medium pl-2.5 pr-3 py-1.5 rounded-full border transition-colors duration-300"
+                          :class="scanning ? 'text-sky-200 border-sky-300/30 bg-sky-400/10' : 'text-emerald-200 border-emerald-300/25 bg-emerald-400/10'"
+                          role="status" aria-live="polite">
+                        <span class="relative flex w-2 h-2">
+                            <span class="absolute inset-0 rounded-full animate-ping opacity-60" :class="scanning ? 'bg-sky-300' : 'bg-emerald-400'"></span>
+                            <span class="relative w-2 h-2 rounded-full" :class="scanning ? 'bg-sky-300' : 'bg-emerald-400'"></span>
+                        </span>
+                        <span x-text="scanning ? 'Scanning...' : 'Ready to scan'"></span>
                     </span>
                 </div>
                 <div x-show="scanning" x-cloak class="h-0.5 bg-sky-300/10 relative overflow-hidden"><span class="sc-sweep absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-sky-300 to-transparent"></span></div>
@@ -290,57 +291,33 @@
             </div>
         </div>
 
-        {{-- WHAT EACH SCAN CHECKS: the checks for the selected tab light up --}}
-        <div class="sc-card sc-card-sm sc-in p-5 sm:p-6 flex flex-col" style="--d:.08s">
+        {{-- WHAT EACH SCAN CHECKS: tiles for the selected tab light up --}}
+        <div class="sc-card sc-card-sm sc-in p-5 sm:p-6" style="--d:.08s">
             <div class="flex items-center justify-between gap-3 mb-1">
                 <p class="text-[11px] tracking-[0.14em] text-slate-300">WHAT THIS SCAN CHECKS</p>
                 <span class="text-[11px] font-medium text-sky-200 bg-sky-400/10 border border-sky-300/25 px-2 py-0.5 rounded-full tabular-nums" x-text="counts[tab] + (counts[tab] === 1 ? ' check' : ' checks')"></span>
             </div>
-            <p class="text-sm text-slate-300 mb-3">Highlighted checks run for the option you picked.</p>
+            <p class="text-sm text-slate-300 mb-4">Highlighted checks run for the option you picked.</p>
 
-            <ul class="grid grid-cols-2 gap-1.5 sm:block sm:space-y-1 md:max-xl:grid md:max-xl:grid-cols-2 md:max-xl:space-y-0">
-                @foreach ($checks as [$name, $for])
+            <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach ($checks as [$name, $for, $text])
                     @php $forJs = json_encode($for); @endphp
-                    <li class="flex items-center gap-2 sm:gap-3 rounded-xl px-2.5 sm:px-3 py-2 border transition-colors duration-300"
-                        :class="{{ $forJs }}.includes(tab) ? 'border-sky-300/30 bg-sky-400/10 text-white' : 'border-transparent text-slate-400'">
-                        <span class="w-[18px] h-[18px] sm:w-5 sm:h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
-                              :class="{{ $forJs }}.includes(tab) ? 'bg-emerald-400/20 text-emerald-300' : 'bg-white/5 text-slate-500'">
-                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                        </span>
-                        <span class="text-xs sm:text-sm leading-tight">{{ $name }}</span>
+                    <li class="rounded-xl px-3 py-3 border transition-colors duration-300"
+                        :class="{{ $forJs }}.includes(tab) ? 'border-sky-300/30 bg-sky-400/10 text-white' : 'border-white/5 text-slate-400'">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-5 h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
+                                  :class="{{ $forJs }}.includes(tab) ? 'bg-emerald-400/20 text-emerald-300' : 'bg-white/5 text-slate-500'">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            </span>
+                            <span class="text-sm font-medium leading-tight">{{ $name }}</span>
+                        </div>
+                        <p class="mt-1.5 pl-[30px] text-xs leading-relaxed transition-colors duration-300"
+                           :class="{{ $forJs }}.includes(tab) ? 'text-slate-300' : 'text-slate-500'">{{ $text }}</p>
                     </li>
                 @endforeach
             </ul>
-
-            <p class="text-xs text-slate-300 mt-auto pt-4 leading-relaxed">Fill in <span class="text-white font-medium">one</span> option, then run the scan. Results appear in a few seconds.</p>
         </div>
     </div>
-
-<h2 class="text-xl font-bold text-white mt-10 md:max-xl:landscape:mt-7 mb-1">How PhishCore Checks Reports</h2>
-<p class="text-sm text-slate-300 mb-5">Every scan runs through the detection layers relevant to what you submitted.</p>
-
-<div class="sc-card sc-card-sm sc-in divide-y divide-white/10 overflow-hidden" style="--d:.12s">
-    @foreach ([
-        ['SSL Certificate', 'Checks for a valid, trusted HTTPS certificate, and flags name mismatches or expiry.', ['url', 'screenshot']],
-        ['Domain Age', 'Domains registered in the last 30 days are a strong phishing signal.', ['url', 'email', 'screenshot']],
-        ['URL & Sender Analysis', 'Spots IP-based addresses, lookalike brand names and odd patterns in links and email domains.', ['url', 'email']],
-        ['Blacklist, Phone & OCR', 'Checks Google Safe Browsing, phone country codes, and text read from screenshots.', ['url', 'phone', 'screenshot']],
-    ] as $i => [$title, $text, $applies])
-        @php $appliesJs = json_encode($applies); @endphp
-        <div class="relative flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-6 md:max-xl:flex-row md:max-xl:flex-wrap md:max-xl:gap-x-4 md:max-xl:gap-y-1 pl-5 sm:pl-6 pr-5 sm:pr-6 py-4 md:max-xl:landscape:py-3 transition-opacity duration-300"
-             :class="{{ $appliesJs }}.includes(tab) ? '' : 'opacity-60'">
-            <span class="absolute left-0 inset-y-0 w-0.5 bg-sky-300 transition-opacity duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'opacity-100' : 'opacity-0'"></span>
-            <span class="hidden sm:block md:max-xl:!hidden w-6 shrink-0 font-mono text-xs tabular-nums transition-colors duration-300" :class="{{ $appliesJs }}.includes(tab) ? 'text-sky-300' : 'text-slate-500'">{{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}</span>
-            <h3 class="sm:w-52 md:max-xl:w-auto shrink-0 text-sm font-semibold text-white">{{ $title }}</h3>
-            <p class="flex-1 text-sm text-slate-300 leading-relaxed md:max-xl:flex-none md:max-xl:basis-full md:max-xl:order-last">{{ $text }}</p>
-            <p class="shrink-0 mt-1 sm:mt-0 sm:w-56 sm:text-right md:max-xl:w-auto md:max-xl:ml-auto md:max-xl:mt-0 text-[11px] tracking-[0.1em] text-slate-400">
-                @foreach ($applies as $t)
-                    <span class="transition-colors duration-300" :class="tab === '{{ $t }}' ? 'text-sky-300 font-semibold' : ''">{{ strtoupper($tabLabels[$t]) }}</span>@if (! $loop->last)<span class="mx-1.5 text-slate-600">&middot;</span>@endif
-                @endforeach
-            </p>
-        </div>
-    @endforeach
-</div>
 </div>
 
 @if (count($recentScans ?? []) > 0)

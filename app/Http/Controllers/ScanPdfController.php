@@ -71,8 +71,12 @@ class ScanPdfController extends Controller
         // A message scan only looks at wording, sender and numbers, so "nothing found" is
         // not the same as "safe". Links keep the original wording.
         if (($analysis->verdict === 'clean' || ! isset(self::VERDICTS[$analysis->verdict])) && $report->type !== 'url') {
-            $verdict['headline'] = 'No threats detected';
-            $verdict['caveat'] = 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.';
+            $isPhone = $report->type === 'phone';
+
+            $verdict['headline'] = $isPhone ? 'No reports found' : 'No threats detected';
+            $verdict['caveat'] = $isPhone
+                ? 'This is not a guarantee of safety. A new scam number can have no reports yet. Be careful with anything that asks for money, passwords or codes.'
+                : 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.';
         }
         $score = (int) $analysis->risk_score;
 

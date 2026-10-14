@@ -1,6 +1,6 @@
 @php
     $userInitials = collect(explode(' ', $user->name))->map(fn ($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('');
-    $startTab = ($errors->userDeletion->isNotEmpty() || $errors->updatePassword->isNotEmpty() || session('status') === 'password-updated') ? 'security' : 'profile';
+    $startTab = ($errors->userDeletion->isNotEmpty() || $errors->updatePassword->isNotEmpty() || session('status') === 'password-updated') ? 'security' : (session('status') === 'preferences-updated' ? 'preferences' : 'profile');
     $eyeOn = 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178zM15 12a3 3 0 11-6 0 3 3 0 016 0z';
     $eyeOff = 'M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88';
     $badgeId = 'PC-' . str_pad((string) $user->id, 4, '0', STR_PAD_LEFT);
@@ -39,6 +39,14 @@
         .s-tab:hover { color: #fff; }
         .s-tab:hover svg { transform: scale(1.1); }
         .s-tab-on { color: #fff; }
+        /* phones: the four tabs share the full width, each with its icon above the label (like a bottom navigation bar) so nothing is squeezed side by side */
+        @media (max-width: 639px) {
+            .s-tabs { display: flex; width: 100%; border-radius: 1.1rem; }
+            .s-pill { border-radius: .9rem; }
+            .s-tab { flex: 1 1 0; flex-direction: column; justify-content: center; min-width: 0; padding: .55rem .15rem .5rem; gap: .2rem; font-size: .72rem; line-height: 1.1; border-radius: .9rem; }
+            .s-tab svg { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
+        }
+        @media (pointer: coarse) { .s-tab { min-height: 2.5rem; } }
 
         .s-btn:disabled { opacity: .4; cursor: not-allowed; }
         .s-hint { margin-top: .45rem; font-size: .72rem; line-height: 1.4; color: #94a3b8; }
@@ -297,7 +305,7 @@
         };
     </script>
 
-    <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[this.tab === 'profile' ? 'tProfile' : 'tSecurity']; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
+    <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[{ profile: 'tProfile', security: 'tSecurity', preferences: 'tPreferences', about: 'tAbout' }[this.tab]]; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
 
         <div class="s-in relative mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1" style="z-index: 25">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
@@ -470,6 +478,180 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
                     Security
                 </button>
+                <button type="button" x-ref="tPreferences" @click="tab = 'preferences'" class="s-tab" :class="tab === 'preferences' ? 's-tab-on' : ''">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
+                    Preferences
+                </button>
+                <button type="button" x-ref="tAbout" @click="tab = 'about'" class="s-tab" :class="tab === 'about' ? 's-tab-on' : ''">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                    About
+                </button>
+            </div>
+
+            {{-- ABOUT TAB --}}
+            <div x-show="tab === 'about'" x-cloak class="space-y-5">
+                <style>
+                    .ab-hero { position: relative; overflow: hidden; background: radial-gradient(120% 140% at 0% 0%, rgba(56, 189, 248, .22), transparent 55%), radial-gradient(90% 120% at 100% 100%, rgba(99, 102, 241, .22), transparent 55%), linear-gradient(180deg, rgba(24, 40, 76, .72), rgba(14, 25, 50, .72)); }
+                    .ab-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .28rem .7rem; border-radius: 999px; font-size: .72rem; font-weight: 600; color: #cfe6fb; background: rgba(56, 189, 248, .1); border: 1px solid rgba(56, 189, 248, .3); }
+                    .ab-stat { padding: .85rem .75rem; border-radius: .9rem; text-align: center; background: rgba(255, 255, 255, .04); border: 1px solid rgba(148, 163, 184, .16); }
+                    .ab-tile { padding: 1rem; border-radius: .95rem; background: rgba(255, 255, 255, .03); border: 1px solid rgba(148, 163, 184, .14); transition: transform .2s ease-out, border-color .2s, background-color .2s; }
+                    .ab-tile:hover { transform: translateY(-2px); border-color: rgba(var(--c), .5); background: rgba(var(--c), .06); }
+                    .ab-step { position: relative; display: flex; align-items: flex-start; gap: .8rem; padding: 1rem; border-radius: .95rem; background: rgba(255, 255, 255, .03); border: 1px solid rgba(148, 163, 184, .14); }
+                    .ab-num { position: absolute; top: .55rem; right: .8rem; font-size: 1.6rem; font-weight: 800; line-height: 1; color: rgba(var(--c), .22); }
+                    @media (prefers-reduced-motion: reduce) { .ab-tile { transition: none; } .ab-tile:hover { transform: none; } }
+                </style>
+
+                <div class="s-card ab-hero p-6 sm:p-8 text-center">
+                    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="" class="w-14 h-14 object-contain mx-auto">
+                    <p class="text-[11px] font-semibold tracking-[.2em] text-sky-300 mt-4">WHO WE ARE</p>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1.5">About PhishCore</h2>
+                    <p class="text-sm sm:text-base text-slate-300 mt-3 leading-relaxed max-w-xl mx-auto">Built to help people in Brunei check links, emails, phone numbers and screenshots before they trust them.</p>
+                    <div class="flex flex-wrap justify-center gap-2 mt-4">
+                        <span class="ab-chip">Final year project</span>
+                        <span class="ab-chip">Politeknik Brunei</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                        <div class="ab-stat"><p class="text-xl sm:text-2xl font-bold text-white leading-none">7</p><p class="text-[11px] tracking-wider text-slate-400 mt-1.5">DETECTION CHECKS</p></div>
+                        <div class="ab-stat"><p class="text-xl sm:text-2xl font-bold text-white leading-none">4</p><p class="text-[11px] tracking-wider text-slate-400 mt-1.5">THINGS YOU CAN SCAN</p></div>
+                        <div class="ab-stat"><p class="text-xl sm:text-2xl font-bold text-white leading-none">Free</p><p class="text-[11px] tracking-wider text-slate-400 mt-1.5">TO USE</p></div>
+                        <div class="ab-stat"><p class="text-xl sm:text-2xl font-bold text-white leading-none">BN</p><p class="text-[11px] tracking-wider text-slate-400 mt-1.5">MADE IN BRUNEI</p></div>
+                    </div>
+                </div>
+
+                <div class="s-card p-5 sm:p-6">
+                    <h3 class="text-white font-semibold">How it works</h3>
+                    <div class="grid md:grid-cols-3 gap-3 mt-3">
+                    <div class="ab-step" style="--c:56,189,248">
+                        <span class="ab-num">1</span>
+                        <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 006.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0015 2.25h-1.5a2.25 2.25 0 00-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 00-9-9z" /></svg></span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-white">Paste or upload</p>
+                            <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">A link, an email, a phone number or a screenshot.</p>
+                        </div>
+                    </div>
+                    <div class="ab-step" style="--c:167,139,250">
+                        <span class="ab-num">2</span>
+                        <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28zM15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-white">We run the checks</p>
+                            <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">Automated checks plus what other people have reported.</p>
+                        </div>
+                    </div>
+                    <div class="ab-step" style="--c:52,211,153">
+                        <span class="ab-num">3</span>
+                        <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg></span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-white">You get a clear answer</p>
+                            <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">A risk level and the reasons behind it, so you know what to do next.</p>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-5">
+                    <div class="s-card p-5 sm:p-6">
+                        <div class="flex items-center gap-3">
+                            <span class="a-ic" style="--c:56,189,248"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg></span>
+                            <h3 class="text-white font-semibold">Our mission</h3>
+                        </div>
+                        <p class="text-sm text-slate-300 mt-3 leading-relaxed">Online scams are a growing problem in Brunei, from phishing links to scam calls and messages. PhishCore gives anyone a quick, free way to check if something looks like a scam before it is too late.</p>
+                        <p class="text-sm text-slate-300 mt-3 leading-relaxed">It combines automated checks with reports from the people who use it, so a scam one person spots can warn the next.</p>
+                    </div>
+                    <div class="s-card p-5 sm:p-6">
+                        <div class="flex items-center gap-3">
+                            <span class="a-ic" style="--c:244,114,182"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg></span>
+                            <h3 class="text-white font-semibold">Our story</h3>
+                        </div>
+                        <p class="text-sm text-slate-300 mt-3 leading-relaxed">PhishCore started as a final year project at Politeknik Brunei. Many people around us were falling for scams they could have avoided.</p>
+                        <p class="text-sm text-slate-300 mt-3 leading-relaxed">We wanted something anyone could use, simple enough for a first-time user and still thorough enough to catch convincing phishing attempts.</p>
+                    </div>
+                </div>
+
+                <div class="s-card p-5 sm:p-6">
+                    <h3 class="text-white font-semibold">What we stand for</h3>
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                        <div class="ab-tile" style="--c:56,189,248">
+                            <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg></span>
+                            <p class="text-sm font-semibold text-white mt-3">Protection first</p>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed">Every feature is built to keep people safe from scams.</p>
+                        </div>
+                        <div class="ab-tile" style="--c:52,211,153">
+                            <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178zM15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></span>
+                            <p class="text-sm font-semibold text-white mt-3">Honest results</p>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed">Each result lists what was checked and why, so you can judge it yourself.</p>
+                        </div>
+                        <div class="ab-tile" style="--c:251,191,36">
+                            <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg></span>
+                            <p class="text-sm font-semibold text-white mt-3">Built for Brunei</p>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed">Made for local users, with local numbers and scam patterns in mind.</p>
+                        </div>
+                        <div class="ab-tile" style="--c:167,139,250">
+                            <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg></span>
+                            <p class="text-sm font-semibold text-white mt-3">Always improving</p>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed">New scam patterns reported by the community help us tune the checks.</p>
+                        </div>
+                        <div class="ab-tile" style="--c:244,114,182">
+                            <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg></span>
+                            <p class="text-sm font-semibold text-white mt-3">Privacy respected</p>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed">Your account details stay yours. The Privacy Policy explains what we keep and why.</p>
+                        </div>
+                        <div class="ab-tile" style="--c:45,212,191">
+                            <span class="a-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg></span>
+                            <p class="text-sm font-semibold text-white mt-3">Community driven</p>
+                            <p class="text-xs text-slate-300 mt-1 leading-relaxed">Each report you make helps warn other people.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="s-card p-5 sm:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3.5 min-w-0">
+                            <span class="a-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg></span>
+                            <div class="min-w-0">
+                                <h3 class="text-white font-semibold leading-tight">Get in touch</h3>
+                                <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">Have a question, feedback, or want to collaborate? We would love to hear from you.</p>
+                                <p class="text-sm text-sky-300 mt-1 break-all">phishcorebn@gmail.com</p>
+                            </div>
+                        </div>
+                        <a href="mailto:phishcorebn@gmail.com" class="s-btn s-btn-main shrink-0">Send an email</a>
+                    </div>
+                    <div class="flex flex-wrap gap-x-5 gap-y-1 mt-4 pt-4 border-t border-white/10 text-sm">
+                        <a href="{{ route('privacy') }}" class="text-slate-300 hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
+                        <a href="{{ route('terms') }}" class="text-slate-300 hover:text-white underline-offset-2 hover:underline">Terms of Service</a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- PREFERENCES TAB: add new app options here as new cards --}}
+            <div x-show="tab === 'preferences'" x-cloak class="space-y-5">
+                <div class="s-card p-5 sm:p-6">
+                    <form method="POST" action="{{ route('profile.preferences.update') }}" x-data="{ on: {{ $user->wantsFloatingChat() ? 'true' : 'false' }} }">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="floating_chat_enabled" :value="on ? 1 : 0">
+
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-start gap-3.5 min-w-0">
+                                <span class="a-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM12 20.25c4.97 0 9-3.694 9-8.25S16.97 3.75 12 3.75 3 7.444 3 12c0 1.6.496 3.09 1.35 4.35L3.75 20.25l4.2-.9A9.8 9.8 0 0012 20.25z" /></svg></span>
+                                <div class="min-w-0">
+                                    <h2 class="text-white font-semibold leading-tight">Floating Cora chat</h2>
+                                    <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">Show the round Cora button in the corner of every page. Turn it off if it gets in the way. You can still talk to Cora from the AI Chat page.</p>
+                                </div>
+                            </div>
+                            <button type="button" role="switch" :aria-checked="on" aria-label="Floating Cora chat" @click="on = ! on; $nextTick(() => $el.form.requestSubmit())"
+                                    class="relative shrink-0 mt-1 w-11 h-6 rounded-full border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70"
+                                    :class="on ? 'bg-sky-500 border-sky-300/50' : 'bg-white/10 border-white/20'">
+                                <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200" :class="on ? 'translate-x-5' : ''"></span>
+                            </button>
+                        </div>
+
+                        <noscript><button type="submit" class="s-btn s-btn-main mt-4">Save</button></noscript>
+
+                        @if (session('status') === 'preferences-updated')
+                            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-4" role="status">Saved.</p>
+                        @endif
+                    </form>
+                </div>
             </div>
 
             {{-- PROFILE TAB --}}

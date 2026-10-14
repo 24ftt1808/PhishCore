@@ -48,7 +48,7 @@ return [
 
     // For feeds with "filter" => true: an article is kept when its title or summary has one of these.
     'keywords' => [
-        'phishing', 'smishing', 'vishing', 'quishing', 'scam', 'fraud', 'spoof', 'impersonat',
+        'phishing', 'smishing', 'vishing', 'quishing', 'scam', 'fraud', 'spoof',
         'social engineering', 'deepfake', 'fake website', 'fake site', 'lookalike', 'business email compromise',
         'fake call', 'fake parcel', 'fake job', 'bogus', 'swindl', 'ponzi', 'money mule', 'identity theft',
     ],

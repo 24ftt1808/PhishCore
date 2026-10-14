@@ -84,7 +84,7 @@
                         </div>
                         @if ($article->image_url)
                             <img src="{{ $article->image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-                                 class="absolute inset-0 w-full h-full object-cover"
+                                 class="absolute inset-0 w-full h-full object-contain"
                                  x-show="! broken[{{ $k }}]" x-on:error="broken[{{ $k }}] = true">
                         @endif
                     </div>

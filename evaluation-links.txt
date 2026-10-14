@@ -1,0 +1,38 @@
+# PhishCore evaluation link set (template). Format: label|group|url   (label = legit or scam)
+# Run:  php artisan scan:batch evaluation-links.txt --delay=15
+# Then: php artisan scan:batch evaluation-links.txt --delay=15 --heuristics-only   (your own checks only)
+#
+# ---- LEGIT: popular sites (open each in a browser first, to be sure it still works) ----
+legit|popular|https://www.google.com
+legit|popular|https://www.wikipedia.org
+legit|popular|https://www.microsoft.com
+legit|popular|https://www.github.com
+legit|popular|https://www.paypal.com
+legit|popular|https://www.roblox.com
+legit|popular|https://www.facebook.com
+legit|popular|https://www.apple.com
+legit|popular|https://www.amazon.com
+legit|popular|https://www.netflix.com
+#
+# ---- LEGIT: Brunei sites ----
+legit|brunei|https://www.bibd.com.bn
+legit|brunei|https://www.baiduri.com.bn
+legit|brunei|https://www.pb.edu.bn
+legit|brunei|https://www.gov.bn
+#
+# ---- SCAM (real, from a public feed) ----
+# Add about 40 here on the day you test, because phishing links die within hours or days.
+# Sources: OpenPhish free feed (openphish.com), PhishTank (phishtank.org), URLhaus (urlhaus.abuse.ch).
+# Use only links listed in the last 24 hours, one per line, like:
+# scam|real|https://example-phishing-link.invalid/login
+# Do not open them in a normal browser. PhishCore does not need you to.
+#
+# ---- SCAM: SIMULATED Brunei lookalikes (made-up addresses, say "simulated" in the report) ----
+scam|simulated-brunei|http://bibd-secure-login.com/verify
+scam|simulated-brunei|https://bibd-online-banking-update.net/login
+scam|simulated-brunei|http://baiduri-verify-account.com/signin
+scam|simulated-brunei|https://baiduri-bank-secure.top/login
+scam|simulated-brunei|http://gov-bn-refund.com/claim
+scam|simulated-brunei|https://polis-diraja-brunei-saman.com/bayar
+scam|simulated-brunei|http://jabatan-imigresen-bn.top/verify
+scam|simulated-brunei|https://bruneipost-parcel-redelivery.com/track

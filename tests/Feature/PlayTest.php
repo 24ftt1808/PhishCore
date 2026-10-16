@@ -214,3 +214,12 @@ test('the Phish Lab box and tabs step aside while a game runs, on every screen s
         ->assertOk()
         ->assertSee('.pl-wrap.in-game .pl-hero, .pl-wrap.in-game .pl-tabs, .pl-wrap.in-story .pl-hero, .pl-wrap.in-story .pl-tabs { display: none; }', false);
 });
+
+test('a running game is centred on the screen', function () {
+    $this->withoutVite();
+
+    $this->actingAs(User::factory()->create())->get(route('play.index'))
+        ->assertOk()
+        ->assertSee('.pl-wrap.in-game { display: flex; flex-direction: column; justify-content: center;', false)
+        ->assertSee('.pl-wrap.in-game { margin-left: auto; margin-right: auto; }', false);
+});

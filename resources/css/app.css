@@ -61,9 +61,18 @@ input {
     animation: aurora-drift-3 15s ease-in-out infinite alternate;
 }
 
+/* a fourth, cyan glow that wanders on its own path (public and sign-in pages only: it is the 4th span there) */
+.hero-aurora span:nth-child(4) {
+    width: 45vw; height: 45vw;
+    top: 45%; left: 8%;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.26) 0%, transparent 65%);
+    animation: aurora-drift-4 18s ease-in-out infinite alternate;
+}
+
 @keyframes aurora-drift-1 { to { transform: translate3d(40vw, 30vh, 0) scale(1.15); } }
 @keyframes aurora-drift-2 { to { transform: translate3d(-45vw, 35vh, 0) scale(0.9); } }
 @keyframes aurora-drift-3 { to { transform: translate3d(-35vw, -40vh, 0) scale(1.2); } }
+@keyframes aurora-drift-4 { 0% { transform: translate3d(0, 0, 0) scale(0.9); } 50% { transform: translate3d(35vw, -30vh, 0) scale(1.15); } 100% { transform: translate3d(55vw, 10vh, 0) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
     .hero-aurora span { animation: none; }
@@ -353,6 +362,8 @@ input {
     .hero-aurora span:nth-child(1) { width: 130vw; height: 130vw; top: -15%; left: -40%; }
     .hero-aurora span:nth-child(2) { width: 140vw; height: 140vw; top: 20%; right: -60%; }
     .hero-aurora span:nth-child(3) { width: 120vw; height: 120vw; bottom: -20%; left: -10%; }
+    .hero-aurora span:nth-child(4) { width: 105vw; height: 105vw; top: 40%; left: -30%; }
+    @keyframes aurora-drift-4 { 0% { transform: translate3d(0, 0, 0) scale(0.9); } 50% { transform: translate3d(30vw, -25vh, 0) scale(1.15); } 100% { transform: translate3d(50vw, 5vh, 0) scale(1); } }
 
     @keyframes aurora-drift-1 { to { transform: translate3d(50vw, 20vh, 0) scale(1.15); } }
     @keyframes aurora-drift-2 { to { transform: translate3d(-50vw, 25vh, 0) scale(0.9); } }

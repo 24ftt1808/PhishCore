@@ -100,7 +100,8 @@ test('the result page for a file scan shows the file name and says what was scan
         ->assertOk()
         ->assertSee('UPLOADED FILE')
         ->assertSee('bibd-update.apk')
-        ->assertSee('Scan Another File');
+        ->assertSee('Scan Another File')
+        ->assertSee('the verdict is the loudest thing', false);
 });
 
 test('the scanner offers a File tab', function () {

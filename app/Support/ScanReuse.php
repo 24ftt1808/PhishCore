@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Analysis;
 use App\Models\Report;
+use Illuminate\Support\Carbon;
 
 /**
  * Hands back a recent result for a link that was already scanned, instead of scanning it again.
@@ -41,7 +42,7 @@ class ScanReuse
             ->where('status', 'completed')
             // Only real scans count: a copy must not restart the clock on the result it was copied from.
             ->whereNull('reused_from_report_id')
-            ->where('created_at', '>=', now()->subHours($hours))
+            ->where('created_at', '>=', self::reusableSince($hours))
             ->whereHas('analyses')
             ->with(['analyses', 'ctiLookups'])
             ->latest()
@@ -59,6 +60,28 @@ class ScanReuse
                         && ! in_array($check['name'] ?? '', self::SITE_REACH_CHECKS, true)
                 );
         });
+    }
+
+    /**
+     * The oldest a saved result may be and still be handed back: the reuse window, or the moment the scan
+     * rules last changed if that is later. A result made under older rules could show a verdict that the
+     * current rules would no longer give.
+     */
+    private static function reusableSince(int $hours): Carbon
+    {
+        $since = now()->subHours($hours);
+
+        if (config('scan.reuse_rules_check')) {
+            $file = config('scan.rules_file') ?: app_path('Services/AnalysisEngine.php');
+            $changed = is_file($file) ? filemtime($file) : false;
+
+            if ($changed !== false && $changed > $since->getTimestamp()) {
+                // in the app's own time zone, because the database compares the times as written (not as UTC)
+                return Carbon::createFromTimestamp($changed, config('app.timezone'));
+            }
+        }
+
+        return $since;
     }
 
     /**

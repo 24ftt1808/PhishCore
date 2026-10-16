@@ -23,7 +23,7 @@
 <body class="bg-slate-950 text-slate-100 antialiased">
 
     {{-- Same animated background as the landing page --}}
-    <div class="hero-aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="hero-aurora" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 
     <div class="relative z-10 min-h-screen grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
 

@@ -28,17 +28,29 @@
         .s-btn-danger { color: #fca5a5; border: 1px solid rgba(248, 113, 113, .4); background: rgba(248, 113, 113, .08); }
         .s-btn-danger:hover { background: rgba(248, 113, 113, .18); border-color: rgba(248, 113, 113, .6); }
 
-        .s-tabs { position: relative; display: inline-flex; padding: .25rem; gap: .1rem; margin-bottom: 1.25rem; border-radius: 999px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(148, 163, 184, .18); }
+        /* the four tabs: a frosted-glass tray with a glossy droplet that slides to the chosen tab and squishes like jelly on the way */
+        .s-tabs { position: relative; display: inline-flex; padding: .25rem; gap: .1rem; margin-bottom: 1.25rem; border-radius: 999px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(148, 163, 184, .2);
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .fx-lite .s-tabs { background: rgba(12, 24, 52, .85); -webkit-backdrop-filter: none; backdrop-filter: none; }
         .s-pill { position: absolute; top: .25rem; bottom: .25rem; left: 0; width: 0; border-radius: 999px; pointer-events: none; will-change: transform, width;
-            background: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .06));
-            border: 1px solid rgba(255, 255, 255, .18);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 2px 8px -2px rgba(2, 8, 23, .5);
-            transition: transform .42s cubic-bezier(.3, 1.15, .6, 1), width .42s cubic-bezier(.3, 1.15, .6, 1); }
-        .s-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .5rem; padding: .45rem 1.15rem; border-radius: 999px; font-size: .85rem; font-weight: 600; color: #b9c5d6; transition: color .2s; }
+            transition: transform .55s cubic-bezier(.3, 1.35, .55, 1), width .55s cubic-bezier(.3, 1.35, .55, 1); }
+        .s-pill::before { content: ""; position: absolute; inset: 0; border-radius: inherit;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .07));
+            border: 1px solid rgba(255, 255, 255, .2);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 3px 8px -3px rgba(2, 8, 23, .5); }
+        .s-pill::after { content: ""; position: absolute; left: 12%; right: 12%; top: 3px; height: 38%; border-radius: 999px; display: none; }
+        .s-pill.s-jelly::before { animation: s-jelly .6s cubic-bezier(.3, 1, .5, 1); }
+        @keyframes s-jelly { 0% { transform: scale(1, 1); } 25% { transform: scale(1.07, .9); } 55% { transform: scale(.98, 1.05); } 80% { transform: scale(1.01, .99); } 100% { transform: scale(1, 1); } }
+        .s-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .5rem; padding: .45rem 1.15rem; border-radius: 999px; font-size: .85rem; font-weight: 600; color: #b9c5d6; transition: color .2s, transform .3s cubic-bezier(.3, 1.5, .5, 1); -webkit-tap-highlight-color: transparent; }
+        .s-tab:active { transform: scale(.93); }
         .s-tab svg { transition: transform .25s ease-out; }
         .s-tab:hover { color: #fff; }
         .s-tab:hover svg { transform: scale(1.1); }
         .s-tab-on { color: #fff; }
+        .fx-lite .s-pill::before, .fx-lite .s-pill.s-jelly::before { animation: none; }
+        @media (prefers-reduced-motion: reduce) { .s-pill, .s-tab { transition: none; } .s-pill.s-jelly::before { animation: none; } }
         /* phones: the four tabs share the full width, each with its icon above the label (like a bottom navigation bar) so nothing is squeezed side by side */
         @media (max-width: 639px) {
             .s-tabs { display: flex; width: 100%; border-radius: 1.1rem; }
@@ -65,12 +77,21 @@
         .s-rule-ok .s-rule-ic svg { transform: scale(1); }
 
         .s-note li { position: relative; padding-left: 1.1rem; }
+        /* Preferences: choice buttons that save as soon as one is pressed */
+        .pf-chip { text-align: left; border-radius: .85rem; border: 1px solid rgba(148, 163, 184, .22); background: rgba(8, 15, 32, .45); color: #cbd5e1; transition: border-color .2s, background-color .2s, color .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); -webkit-tap-highlight-color: transparent; }
+        .pf-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+        .pf-chip { padding: .5rem 1rem; font-size: .85rem; font-weight: 600; border-radius: 999px; }
+        .pf-chip:hover { border-color: rgba(148, 163, 184, .5); color: #fff; }
+        .pf-chip:active { transform: scale(.96); }
+        .pf-on { color: #fff; border-color: rgba(125, 211, 252, .6); background: rgba(56, 189, 248, .14); }
+        @media (prefers-reduced-motion: reduce) { .pf-chip { transition: none; } }
         .s-note li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: var(--dot, #38bdf8); }
 
         /* ---- ID badge on a V-lanyard ---- */
         /* phones: a fixed width (the tag is short now). Bigger screens: the badge grows with the screen height (lanyard + card is about 2.3x its width). svh is used because dvh changes while the browser bar hides on scroll, and the badge would widen by itself */
         .b-persp { --w: 17.5rem; perspective: 800px; width: 100%; max-width: var(--w); margin: 0 auto; }
-        @media (min-width: 640px) { .b-persp { --w: clamp(19rem, calc((100svh - 9.5rem) / 2.31), 24rem); } }
+        @media (min-width: 640px) and (max-width: 1279px) { .b-persp { --w: 20rem; } }
+        @media (min-width: 1280px) { .b-persp { --w: clamp(19rem, calc((100svh - 9.5rem) / 2.31), 24rem); } }
         .b-v-short { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%); mask-image: linear-gradient(to bottom, transparent, #000 40%); }
         @media (min-width: 1280px) { .b-persp { max-width: 21rem; } }
         .b-swing { display: flow-root; transform-origin: 50% 0; transform-style: preserve-3d; animation: b-swing 9s ease-in-out .9s infinite; will-change: transform; }
@@ -109,7 +130,7 @@
         .b-slot { position: absolute; top: 1rem; left: 50%; width: 3.2rem; height: .55rem; margin-left: -1.6rem; border-radius: 999px; background: #050b1e; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .8), 0 0 0 1px rgba(148, 163, 184, .25); }
 
         .b-photo { position: relative; display: block; width: 8.5rem; height: 8.5rem; border-radius: 1.2rem; overflow: hidden; box-shadow: 0 0 0 3px rgba(56, 189, 248, .45), 0 10px 24px -8px rgba(0, 0, 0, .6); }
-        @media (max-width: 639px) { .b-photo { width: 4.5rem; height: 4.5rem; border-radius: 1rem; box-shadow: 0 0 0 2px rgba(56, 189, 248, .45), 0 6px 14px -6px rgba(0, 0, 0, .6); } .s-initials { font-size: 1.6rem; } }
+        @media (max-width: 1279px) { .b-photo { width: 4.5rem; height: 4.5rem; border-radius: 1rem; box-shadow: 0 0 0 2px rgba(56, 189, 248, .45), 0 6px 14px -6px rgba(0, 0, 0, .6); } .s-initials { font-size: 1.6rem; } }
         .b-photo img, .b-photo .s-initials { width: 100%; height: 100%; object-fit: cover; }
         .s-initials { display: grid; place-items: center; background: linear-gradient(135deg, #38bdf8, #2563eb); color: #fff; font-size: 2.8rem; font-weight: 700; }
         .b-cam { position: absolute; inset: 0; background: rgba(2, 6, 23, .55); display: grid; place-items: center; opacity: 0; transition: opacity .2s; }
@@ -133,19 +154,16 @@
         @keyframes s-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
         .b-drop { animation: b-drop 1.1s cubic-bezier(.3, 1.25, .5, 1) both; }
         @keyframes b-drop { from { transform: translateY(-34rem); } to { transform: none; } }
-        /* short screens (tablet held sideways): a shorter, fainter lanyard so the whole badge and the photo buttons fit in one screen */
-        @media (min-width: 640px) and (max-width: 1279px) and (max-height: 860px) {
-            .b-persp { --w: 20rem; }
-            .b-v-short { margin-top: -4.6rem; opacity: .75; -webkit-mask-image: linear-gradient(to bottom, transparent 35%, #000 85%); mask-image: linear-gradient(to bottom, transparent 35%, #000 85%); }
-            .b-id { padding-top: 1.4rem; }
-            .b-who { margin-top: .75rem; }
-            .b-mail { padding-bottom: 1rem; }
-            .b-barwrap { padding-bottom: 1.4rem; }
-        }
         /* phones: the badge rests as a short tag (header + photo + name). Pull it down and the rest of the card unrolls from underneath, let go and it springs back */
+        /* tablets get the same short tag as phones: photo on the left, name on the right (the Tailwind max-sm classes only reach phones) */
+        @media (min-width: 640px) and (max-width: 1279px) {
+            .b-persp .b-id { flex-direction: row; text-align: left; gap: .875rem; padding-top: .875rem; padding-bottom: .75rem; }
+            .b-persp .b-who { margin-top: 0; }
+            .b-persp .b-mail p:first-child { margin-top: .25rem; }
+        }
         .b-ext, .b-ext-in { display: contents; }
         .b-hint, .b-close { display: none; }
-        @media (max-width: 639px) {
+        @media (max-width: 1279px) {
             .b-swing, .b-card, .b-hint, .b-close { touch-action: none; }
             .b-hint, .b-close { cursor: pointer; }
             .b-ext { display: block; position: absolute; z-index: 3; left: -1px; right: -1px; top: 100%; height: 0; overflow: hidden; visibility: hidden; border-radius: 0 0 1.4rem 1.4rem; background: #0a1430; box-shadow: 0 12px 20px -12px rgba(0, 0, 0, .7); }
@@ -159,6 +177,23 @@
             .b-close { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: .75rem 1rem .95rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(125, 211, 252, .85); }
             .b-persp { margin-top: -1.6rem; }
         }
+        /* About tab: the name tag swings up and away, the space under it closes; any other tab and it drops back in with a little bounce */
+        .b-wrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.3, 1.1, .4, 1); }
+        .b-wrap-in { min-height: 0; }
+        @media (min-width: 1280px) {
+            .b-wrap { align-self: stretch; }
+            .b-wrap-in { cursor: grab; touch-action: pan-y; }
+            .b-wrap-in button, .b-wrap-in label { cursor: pointer; }
+        }
+        .b-card-wrap { transition: transform .6s cubic-bezier(.3, 1.35, .5, 1), opacity .35s ease-out .05s; transform-origin: 50% 0; }
+        .b-wrap.b-away { grid-template-rows: 0fr; overflow: hidden; visibility: hidden; pointer-events: none; transition: grid-template-rows .5s cubic-bezier(.5, 0, .2, 1), visibility 0s linear .5s; }
+        .b-away .b-card-wrap { opacity: 0; transform: translateY(-120%) rotate(-5deg) scale(.9); transition: transform .45s cubic-bezier(.55, 0, .8, .4), opacity .3s ease-in; }
+        @media (min-width: 1280px) {
+            .b-wrap-in { width: 21rem; }
+            .s-grid { transition: grid-template-columns .55s cubic-bezier(.3, 1, .4, 1), column-gap .55s cubic-bezier(.3, 1, .4, 1); }
+            .s-grid.s-away { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) { .b-wrap, .b-card-wrap, .b-away .b-card-wrap, .s-grid { transition: none !important; } }
         @keyframes b-nudge { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }
         @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing, .b-hint svg { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
     </style>
@@ -178,7 +213,7 @@
 
                 len() { return (window.innerWidth >= 1280 ? 43 : 18) * rem(); },
 
-                compact() { return window.innerWidth < 640; },
+                compact() { return window.innerWidth < 1280; },
 
                 onHandle(e) {
                     if (e.target.closest('.b-hint, .b-close')) { return true; }
@@ -265,6 +300,9 @@
 
                 down(e) {
                     if (e.pointerType === 'mouse' && e.button !== 0) return;
+                    // the whole badge column can be grabbed on big screens (not the buttons under it); on phones and tablets only the tag itself, so the page still scrolls
+                    const onTag = !!e.target.closest('.b-swing');
+                    if (!onTag && (this.compact() || e.target.closest('button, a, input, label'))) return;
                     // phones: the whole tag can be pulled and stretched, but a tap only opens or closes it from the strip at the bottom (or the Close row)
                     this.handle = this.compact() && this.onHandle(e);
                     this.measure();
@@ -305,7 +343,7 @@
         };
     </script>
 
-    <div class="grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" x-data="{ tab: '{{ $startTab }}', placed: false, place() { const b = this.$refs[{ profile: 'tProfile', security: 'tSecurity', preferences: 'tPreferences', about: 'tAbout' }[this.tab]]; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place())" @resize.window="place()">
+    <div class="s-grid grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" :class="tab === 'about' ? 's-away' : ''" x-data="{ tab: '{{ $startTab }}', placed: false, place(jelly) { const b = this.$refs[{ profile: 'tProfile', security: 'tSecurity', preferences: 'tPreferences', about: 'tAbout' }[this.tab]]; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } else if (jelly) { p.classList.remove('s-jelly'); p.offsetWidth; p.classList.add('s-jelly'); } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place(true))" @resize.window="place()">
 
         <div class="s-in relative mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1" style="z-index: 25">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
@@ -313,11 +351,12 @@
         </div>
 
         {{-- ID BADGE --}}
-        <aside class="relative z-20 mx-auto w-full mb-6 xl:mb-0 xl:col-start-1 xl:row-start-1 xl:row-span-2" x-data="idBadge()">
+        <div class="b-wrap xl:col-start-1 xl:row-start-1 xl:row-span-2" :class="tab === 'about' ? 'b-away' : ''" :aria-hidden="tab === 'about' ? 'true' : 'false'"><div class="b-wrap-in" x-data="idBadge()" @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up($event)" @pointercancel="up($event)" @click.capture="if (moved) { $event.preventDefault(); $event.stopPropagation(); moved = false }">
+        <aside class="b-card-wrap relative z-20 mx-auto w-full mb-6 xl:mb-0">
             <div class="b-drop b-persp" :style="`margin-bottom: ${gap}px`" @mousemove="if (compact() || drag || raf) return; const r = $el.getBoundingClientRect(); ry = ((($event.clientX - r.left) / r.width) - .5) * 40; rx = -((($event.clientY - r.top) / r.height) - .5) * 26; hold = true"
                  @mouseleave="if (compact() || drag || raf) return; rx = 0; ry = 0; hold = false">
                 
-                <div class="b-swing" :class="hold ? 'b-hold' : ''" @pointerdown="down($event)" @pointermove="move($event)" @pointerup="up($event)" @pointercancel="up($event)" @click.capture="if (moved) { $event.preventDefault(); $event.stopPropagation(); moved = false }">
+                <div class="b-swing" :class="hold ? 'b-hold' : ''">
                     <div class="b-pull" :style="`transform: rotate(${th}deg)`">
                     <div class="b-tilt" :style="`transform: rotateX(${rx}deg) rotateY(${ry}deg)`">
                     <svg class="b-v b-v-long hidden xl:block" :style="`transform: scaleY(${sy})`" viewBox="0 -400 300 530" aria-hidden="true">
@@ -465,6 +504,7 @@
                 <p class="mt-3 text-center text-xs text-red-300">{{ $message }}</p>
             @enderror
         </aside>
+        </div></div>
 
         {{-- RIGHT SIDE --}}
         <div class="min-w-0 w-full max-w-3xl mx-auto xl:max-w-none xl:mx-0 xl:col-start-2 xl:row-start-2">
@@ -647,8 +687,62 @@
 
                         <noscript><button type="submit" class="s-btn s-btn-main mt-4">Save</button></noscript>
 
-                        @if (session('status') === 'preferences-updated')
+                        @if (session('status') === 'preferences-updated' && session('pref', 'floating_chat_enabled') === 'floating_chat_enabled')
                             <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-4" role="status">Saved.</p>
+                        @endif
+                    </form>
+                </div>
+
+                @php
+                    $prefSaved = fn (string $key) => session('status') === 'preferences-updated' && session('pref') === $key;
+                    $tabChoices = ['url' => 'URL', 'email' => 'Email', 'phone' => 'Phone', 'screenshot' => 'Screenshot', 'file' => 'File'];
+                    $keepChoices = ['forever' => 'Keep them', '90' => '90 days', '30' => '30 days'];
+                    $keepNow = $user->scanRetentionDays() === null ? 'forever' : (string) $user->scanRetentionDays();
+                @endphp
+
+                {{-- DEFAULT SCAN TYPE --}}
+                <div class="s-card p-5 sm:p-6">
+                    <form method="POST" action="{{ route('profile.preferences.update') }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex items-start gap-3.5 min-w-0">
+                            <span class="a-ic" style="--c:52,211,153; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span>
+                            <div class="min-w-0">
+                                <h2 class="text-white font-semibold leading-tight">Default scan type</h2>
+                                <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">The tab that is open when you go to the Scan page. You can still switch to any other tab there.</p>
+                            </div>
+                        </div>
+                        <div class="pf-chips mt-4" role="radiogroup" aria-label="Default scan type">
+                            @foreach ($tabChoices as $value => $label)
+                                <button type="submit" name="default_scan_tab" value="{{ $value }}" role="radio" aria-checked="{{ $user->defaultScanTab() === $value ? 'true' : 'false' }}" class="pf-chip {{ $user->defaultScanTab() === $value ? 'pf-on' : '' }}">{{ $label }}</button>
+                            @endforeach
+                        </div>
+                        @if ($prefSaved('default_scan_tab'))
+                            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-3" role="status">Saved.</p>
+                        @endif
+                    </form>
+                </div>
+
+                {{-- HOW LONG SCANS ARE KEPT --}}
+                <div class="s-card p-5 sm:p-6">
+                    <form method="POST" action="{{ route('profile.preferences.update') }}">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex items-start gap-3.5 min-w-0">
+                            <span class="a-ic" style="--c:251,146,60; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></span>
+                            <div class="min-w-0">
+                                <h2 class="text-white font-semibold leading-tight">Keep my scans</h2>
+                                <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">Scans older than this are deleted for good every night, together with their results and pictures. Your account stays. Deleted scans can no longer be opened or used when we compare reports.</p>
+                            </div>
+                        </div>
+                        <div class="pf-chips mt-4" role="radiogroup" aria-label="How long scans are kept">
+                            @foreach ($keepChoices as $value => $label)
+                                <button type="submit" name="scan_retention" value="{{ $value }}" role="radio" aria-checked="{{ $keepNow === $value ? 'true' : 'false' }}" class="pf-chip {{ $keepNow === $value ? 'pf-on' : '' }}"
+                                        @if ($value !== 'forever' && $keepNow !== $value) onclick="return confirm('Scans older than {{ $value }} days will be deleted for good tonight, and every night after. Continue?')" @endif>{{ $label }}</button>
+                            @endforeach
+                        </div>
+                        @if ($prefSaved('scan_retention'))
+                            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-3" role="status">Saved.</p>
                         @endif
                     </form>
                 </div>

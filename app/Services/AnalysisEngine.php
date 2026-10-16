@@ -159,7 +159,9 @@ class AnalysisEngine
         'discord' => ['discord.com', 'discord.gg', 'discord.gift', 'discordapp.com'],
         'epic games' => ['epicgames.com'],
         'riot games' => ['riotgames.com'],
-        'garena' => ['garena.com'],
+        // garena.sg is the main site named on Garena's Wikipedia page, and its Taiwan sites are on garena.tw;
+        // the other country sites (my, ph, vn, th, id) are not listed until each one is confirmed.
+        'garena' => ['garena.com', 'garena.sg', 'garena.tw'],
         'mobile legends' => ['mobilelegends.com', 'moonton.com'],
         'minecraft' => ['minecraft.net', 'mojang.com'],
         'playstation' => ['playstation.com'],
@@ -177,6 +179,9 @@ class AnalysisEngine
     {
         $reasons = [];
         $points = 0;
+        // Points that come only from "a well-known brand name sits in this address". Kept apart so a scan
+        // can calm that one rule down for an old, clean site (see softenBrandWordForEstablishedSite).
+        $brandRulePoints = 0;
 
         if (preg_match('/^https?:\/\/(\d{1,3}\.){3}\d{1,3}/', $url)) {
             $reasons[] = 'URL uses a raw IP address instead of a domain name';
@@ -221,6 +226,8 @@ class AnalysisEngine
                     ? "Contains brand name \"{$brand}\" in a suspicious position within the domain"
                     : "Domain appears to mimic \"{$brand}\" using character substitution (e.g. a digit in place of a letter)";
                 $points += 30;
+                // only a plain brand word can be calmed down; a digit-for-letter disguise ("paypa1") never is
+                $brandRulePoints = str_contains($host, $brand) ? 30 : 0;
                 break;
             }
         }
@@ -231,6 +238,7 @@ class AnalysisEngine
             && preg_match('/(^|[.\-])steam(-|community|powered|gift|wallet|trade|login|support|free|games?|keys?|offers?|rewards?|[.\-]|$)/', $host)) {
             $reasons[] = 'Contains brand name "steam" in a suspicious position within the domain';
             $points += 30;
+            $brandRulePoints = 30;
         }
 
         // Brunei-specific lookalikes. Official domains differ from the
@@ -318,6 +326,53 @@ class AnalysisEngine
             'flagged' => $points > 0,
             'points' => $points,
             'reasons' => $reasons,
+            'brand_rule_points' => $brandRulePoints,
+        ];
+    }
+
+    /** A site must be at least this old (in days) before a brand word in its address is treated as a plain name. */
+    private const ESTABLISHED_SITE_DAYS = 730;
+
+    /** And at least this many security companies must have looked at it, with none flagging it. */
+    private const ESTABLISHED_SITE_VENDORS = 30;
+
+    /**
+     * No list of official domains can be complete (a brand has many country sites). So when the ONLY thing
+     * wrong with a link is that a well-known brand name appears in it, the site is old (2 years or more),
+     * and a good number of security companies checked it and none flagged it, the brand rule is shown as
+     * information instead of adding points. A new, flagged or otherwise odd site keeps every point.
+     *
+     * @param  array  $syntax  result of checkUrlSyntax()
+     * @param  int  $otherPoints  points from every other check of the same scan (age, SSL, blacklists, ...)
+     * @param  array  $age  result of checkDomainAge()
+     * @param  array  $virusTotal  result of checkVirusTotal()
+     */
+    public function softenBrandWordForEstablishedSite(array $syntax, int $otherPoints, array $age, array $virusTotal): array
+    {
+        $brandPoints = (int) ($syntax['brand_rule_points'] ?? 0);
+
+        if ($brandPoints <= 0 || (int) $syntax['points'] !== $brandPoints || $otherPoints > 0) {
+            return $syntax;
+        }
+
+        $days = $age['domain_age_days'] ?? null;
+
+        if ($days === null || $days < self::ESTABLISHED_SITE_DAYS) {
+            return $syntax;
+        }
+
+        if (($virusTotal['unavailable'] ?? false) || ($virusTotal['malicious'] ?? 1) !== 0 || (int) ($virusTotal['total'] ?? 0) < self::ESTABLISHED_SITE_VENDORS) {
+            return $syntax;
+        }
+
+        $years = intdiv((int) $days, 365);
+
+        return [
+            'flagged' => false,
+            'points' => 0,
+            'neutral' => true,
+            'brand_rule_points' => 0,
+            'reasons' => ["A well-known brand name appears in this address, but the website is about {$years} years old and none of {$virusTotal['total']} security companies flag it, so it is treated as an established site and not a copy."],
         ];
     }
 
@@ -2837,6 +2892,15 @@ class AnalysisEngine
         $contentResult = $this->checkPageContent($url);
         $hostingResult = $this->checkFreeHostingPlatform($url);
         $availabilityResult = $this->checkSiteAvailability($url);
+
+        // An old site that no security company flags is not treated as a copy just because a brand name is in its address.
+        $syntaxResult = $this->softenBrandWordForEstablishedSite(
+            $syntaxResult,
+            $ageResult['points'] + $sslResult['points'] + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points']
+                + $redirectResult['points'] + $contentResult['points'] + $hostingResult['points'] + $domainHistoryResult['points'],
+            $ageResult,
+            $vtResult,
+        );
 
         $otherPoints = $syntaxResult['points'] + $ageResult['points'] + $sslResult['points']
             + $blacklistResult['points'] + $vtResult['points'] + $ipResult['points'] + $redirectResult['points']

@@ -140,3 +140,22 @@ test('a share link for a non-link scan never works', function () {
 
     $this->get(route('scan.shared', str_repeat('c', 40)))->assertNotFound();
 });
+test('a guest is told the share link can only be turned off from their browser', function () {
+    $guestScan = ownedScan(User::factory()->create(), ['user_id' => null]);
+
+    $this->withSession(['guest_report_ids' => [$guestScan->id]])
+        ->get(route('scan.show', $guestScan))
+        ->assertOk()
+        ->assertSee('Share this result')
+        ->assertSee('data-guest-share-note', false)
+        ->assertSee('turn the link off later');
+});
+
+test('a signed-in owner does not get the guest note about the share link', function () {
+    $owner = User::factory()->create();
+
+    $this->actingAs($owner)->get(route('scan.show', ownedScan($owner)))
+        ->assertOk()
+        ->assertSee('Share this result')
+        ->assertDontSee('data-guest-share-note', false);
+});

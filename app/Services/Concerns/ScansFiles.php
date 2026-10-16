@@ -2,6 +2,8 @@
 
 namespace App\Services\Concerns;
 
+use App\Models\Report;
+use App\Models\TrustedFile;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 use ZipArchive;
@@ -62,6 +64,14 @@ trait ScansFiles
     /** Only the start of a PDF is read, which is where links and actions normally are. */
     private const PDF_READ_BYTES = 8 * 1024 * 1024;
 
+    /** How much of a PDF's wording is checked, and the most one compressed part may expand to. */
+    private const PDF_TEXT_MAX_CHARS = 20000;
+
+    private const PDF_STREAM_MAX_BYTES = 2 * 1024 * 1024;
+
+    /** Earlier scans only count for this long, so a mistake fades out once the rules improve. */
+    private const FILE_HISTORY_DAYS = 90;
+
     private function analyzeFile(string $path, ?string $originalName = null, ?int $reportId = null): array
     {
         if (! is_file($path) || ! is_readable($path)) {
@@ -82,16 +92,23 @@ trait ScansFiles
         }
 
         $sha256 = (string) hash_file('sha256', $path);
+
+        if (TrustedFile::isTrusted($sha256)) {
+            return $this->trustedFileResult($sha256);
+        }
+
         $kind = $this->detectFileKind($path);
 
         $typeResult = $this->checkFileType($kind, $originalName);
         $hashResult = $this->checkFileHash($sha256);
+        $historyResult = $this->checkPreviousFileReports($sha256, $reportId);
 
         $checks = [
             $this->buildCheck('File Type', $typeResult, 'SUSPICIOUS'),
             $this->buildCheck('VirusTotal File Fingerprint', $hashResult, 'DETECTED'),
+            $this->buildCheck('Previous Reports (File)', $historyResult, 'HIGH RISK'),
         ];
-        $points = $typeResult['points'] + $hashResult['points'];
+        $points = $typeResult['points'] + $hashResult['points'] + $historyResult['points'];
         $extractedUrl = null;
 
         if ($kind === 'apk') {
@@ -103,6 +120,10 @@ trait ScansFiles
             $checks[] = $this->buildCheck('PDF Contents', $pdfResult, $pdfResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
             $points += $pdfResult['points'];
             $extractedUrl = $pdfResult['worst_link'] ?? null;
+
+            $textResult = $this->checkPdfText($path);
+            $checks[] = $this->buildCheck('PDF Text', $textResult, $textResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
+            $points += $textResult['points'];
         }
 
         $riskScore = min(100, $points);
@@ -114,6 +135,25 @@ trait ScansFiles
             'url_syntax_score' => null,
             'checks' => $checks,
             'extracted_url' => $extractedUrl,
+            'file_sha256' => $sha256,
+        ];
+    }
+
+    /** The result for a file an administrator has checked and marked as safe. No other check is needed. */
+    private function trustedFileResult(string $sha256): array
+    {
+        return [
+            'risk_score' => 0,
+            'verdict' => 'clean',
+            'domain_age_days' => null,
+            'url_syntax_score' => null,
+            'checks' => [[
+                'name' => 'Admin Review',
+                'status' => 'SAFE',
+                'message' => 'A PhishCore administrator checked this exact file and marked it as safe, so the other checks were skipped.',
+                'points' => 0,
+            ]],
+            'extracted_url' => null,
             'file_sha256' => $sha256,
         ];
     }
@@ -353,6 +393,16 @@ trait ScansFiles
             $reasons[] = 'The PDF contains a script. Forms can have these, but scam files use them to run hidden actions';
         }
 
+        if (preg_match('~/EmbeddedFile\b~', $content)) {
+            $points += 20;
+            $reasons[] = 'The PDF has another file hidden inside it. Real documents rarely carry a hidden file, and scam PDFs use this to hide an app or a script';
+        }
+
+        if (preg_match('~/SubmitForm\b~', $content)) {
+            $points += 20;
+            $reasons[] = 'The PDF has a form that sends what you type to a server. Scam PDFs use fake forms to collect passwords and card details';
+        }
+
         if ($reasons === []) {
             $reasons[] = 'No links or hidden actions were found in the start of the PDF. Content packed inside compressed parts of a PDF cannot be seen by this check';
         }
@@ -363,5 +413,182 @@ trait ScansFiles
             'reasons' => $reasons,
             'worst_link' => $worstLink,
         ];
+    }
+
+    /**
+     * Reads the words inside the PDF and looks for scam wording, the same way a pasted message is
+     * checked. Only rules are used here: the text of an uploaded file is never sent to an AI service.
+     */
+    private function checkPdfText(string $path): array
+    {
+        $content = (string) file_get_contents($path, false, null, 0, self::PDF_READ_BYTES);
+        $text = mb_substr($this->extractPdfText($content), 0, self::PDF_TEXT_MAX_CHARS);
+
+        if (mb_strlen(trim($text)) < 20) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'unavailable' => true,
+                'reasons' => ['No readable text was found, so the wording was not checked. Scanned pictures and some fonts cannot be read by this check'],
+            ];
+        }
+
+        $content = $this->checkContentPatterns($text);
+
+        // Real invoices, offer letters and notices mention deadlines, payments and bank details, so two
+        // kinds of wording are normal in a PDF. A scam stacks several (threat, deadline, code request).
+        if (($content['matched_categories'] ?? 0) < 3) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'reasons' => ['No scam wording was found in the text of the PDF'],
+            ];
+        }
+
+        return [
+            'flagged' => $content['points'] > 0,
+            'points' => $content['points'],
+            'reasons' => $content['reasons'],
+        ];
+    }
+
+    /** The plain text shown on a PDF's pages, or an empty string when it cannot be read. */
+    private function extractPdfText(string $content): string
+    {
+        $found = preg_match_all('~obj\b((?:(?!endobj).)*?)stream\r?\n(.*?)endstream~s', $content, $objects, PREG_SET_ORDER);
+        if (! $found) {
+            return '';
+        }
+
+        $text = '';
+        foreach (array_slice($objects, 0, 300) as [, $dictionary, $data]) {
+            if (stripos($dictionary, '/FlateDecode') !== false) {
+                $data = rtrim($data, "\r\n");
+                $decoded = @gzuncompress($data, self::PDF_STREAM_MAX_BYTES);
+                if ($decoded === false) {
+                    $decoded = @gzinflate(substr($data, 2), self::PDF_STREAM_MAX_BYTES);
+                }
+                if ($decoded === false) {
+                    continue;
+                }
+                $data = $decoded;
+            }
+
+            if (! str_contains($data, 'BT')) {
+                continue;
+            }
+
+            $text .= ' '.$this->readPdfTextOperators($data);
+
+            if (strlen($text) > self::PDF_TEXT_MAX_CHARS * 2) {
+                break;
+            }
+        }
+
+        return trim(mb_scrub((string) preg_replace('/\s+/', ' ', $text)));
+    }
+
+    /** Pulls the strings out of a page's drawing commands: (text) Tj and [(te) -20 (xt)] TJ. */
+    private function readPdfTextOperators(string $stream): string
+    {
+        preg_match_all('~\[((?:[^\]\\\\]|\\\\.)*)\]\s*TJ|(\((?:\\\\.|[^\\\\)])*\))\s*Tj~s', $stream, $matches, PREG_SET_ORDER);
+
+        $lines = [];
+        foreach ($matches as $match) {
+            if (($match[1] ?? '') !== '') {
+                $line = '';
+                preg_match_all('~\(((?:\\\\.|[^\\\\)])*)\)|(-?\d+(?:\.\d+)?)~s', $match[1], $parts, PREG_SET_ORDER);
+                foreach ($parts as $part) {
+                    if (($part[1] ?? '') !== '') {
+                        $line .= $this->unescapePdfString($part[1]);
+                    } elseif (isset($part[2]) && (float) $part[2] < -200) {
+                        $line .= ' ';
+                    }
+                }
+                $lines[] = $line;
+            } elseif (isset($match[2])) {
+                $lines[] = $this->unescapePdfString(substr($match[2], 1, -1));
+            }
+        }
+
+        return implode(' ', $lines);
+    }
+
+    private function unescapePdfString(string $value): string
+    {
+        $value = preg_replace_callback('~\\\\([0-7]{1,3})~', fn ($m) => chr(octdec($m[1]) & 0xFF), $value);
+
+        return strtr((string) $value, [
+            '\\n' => ' ', '\\r' => ' ', '\\t' => ' ',
+            '\\(' => '(', '\\)' => ')', '\\\\' => '\\',
+        ]);
+    }
+
+    /**
+     * Whether PhishCore has already judged this exact file (same fingerprint) to be phishing.
+     *
+     * Only earlier verdicts of "phishing" add points, and one person scanning a file again and again
+     * counts once. A "suspicious" earlier verdict is shown for information only, so a borderline
+     * file cannot build up a worse and worse reputation just by being scanned repeatedly.
+     */
+    private function checkPreviousFileReports(string $sha256, ?int $excludeReportId = null): array
+    {
+        $phishing = $this->previousFileReporters($sha256, $excludeReportId, ['phishing']);
+        $suspicious = $this->previousFileReporters($sha256, $excludeReportId, ['suspicious']);
+
+        $reporters = count(array_unique(array_filter($phishing))) + count(array_filter($phishing, fn ($id) => $id === null));
+
+        if ($reporters >= 2) {
+            return [
+                'flagged' => true,
+                'points' => 50,
+                'reasons' => ["This exact file was already found to be phishing in {$reporters} other scans on PhishCore"],
+            ];
+        }
+
+        if ($reporters === 1) {
+            return [
+                'flagged' => true,
+                'points' => 30,
+                'reasons' => ['This exact file was already found to be phishing in another scan on PhishCore'],
+            ];
+        }
+
+        if ($suspicious !== []) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'neutral' => true,
+                'reasons' => ['This exact file was scanned on PhishCore before and looked suspicious (informational only, this does not change the risk score)'],
+            ];
+        }
+
+        return [
+            'flagged' => false,
+            'points' => 0,
+            'neutral' => true,
+            'reasons' => ['This exact file has not been scanned on PhishCore before'],
+        ];
+    }
+
+    /**
+     * Who scanned this exact file earlier with one of these verdicts: a user id for each logged-in
+     * scan and null for each guest scan.
+     *
+     * @param  array<int, string>  $verdicts
+     * @return array<int, int|null>
+     */
+    private function previousFileReporters(string $sha256, ?int $excludeReportId, array $verdicts): array
+    {
+        $query = Report::where('status', 'completed')
+            ->where('file_sha256', $sha256)
+            ->where('created_at', '>=', now()->subDays(self::FILE_HISTORY_DAYS))
+            ->whereHas('analyses', fn ($q) => $q->whereIn('verdict', $verdicts));
+
+        if ($excludeReportId) {
+            $query->where('id', '!=', $excludeReportId);
+        }
+
+        return $query->pluck('user_id')->all();
     }
 }

@@ -15,3 +15,12 @@ test('the scan page explains each check in one box and no longer repeats it belo
         ->assertSee('whether other PhishCore users have reported it')
         ->assertDontSee('How PhishCore Checks Reports');
 });
+
+test('the checks box can be folded away on phones and only shows the checks for the chosen scan', function () {
+    $this->actingAs(User::factory()->create())->get('/scan')
+        ->assertOk()
+        ->assertSee('sc-checks-toggle', false)
+        ->assertSee('sc-checks-body', false)
+        ->assertSee('sc-check-off', false)
+        ->assertSee('checksOpen', false);
+});

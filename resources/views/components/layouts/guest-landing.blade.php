@@ -14,7 +14,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased">
     <div class="hero-aurora" aria-hidden="true">
-        <span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span>
     </div>
 
     @include('partials.navbar')

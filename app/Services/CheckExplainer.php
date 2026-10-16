@@ -24,6 +24,7 @@ class CheckExplainer
         'Hosting Platform' => 'Free website builder',
         'Site Availability' => 'Website status',
         'Previous Reports (Domain)' => 'Previous reports for this website',
+        'Previous Reports (File)' => 'Previous reports for this file',
         'Previous Reports (Phone)' => 'Previous reports for this number',
         'Previous Reports' => 'Previous reports for this number',
         'AI Page Review' => 'AI review of the page',
@@ -41,6 +42,8 @@ class CheckExplainer
         'VirusTotal File Fingerprint' => 'Known bad file lookup',
         'App Permissions' => 'What the app can do',
         'PDF Contents' => 'Links and actions in the PDF',
+        'PDF Text' => 'Wording inside the PDF',
+        'Admin Review' => 'Checked by an administrator',
     ];
 
     /** A short explanation of what each check looks at and why it matters. */
@@ -71,6 +74,8 @@ class CheckExplainer
         'VirusTotal File Fingerprint' => 'We make a fingerprint of the file and ask VirusTotal, a service run by dozens of security companies, whether it already knows that file. The file itself is never sent. A file it has never seen is not proof that the file is safe.',
         'App Permissions' => 'An Android app lists what it is allowed to do. Fake bank and parcel apps often ask to read your text messages, control your screen or draw over other apps so they can steal one-time codes. Some real apps need these too, so check where the app came from.',
         'PDF Contents' => 'We look in the PDF for links and for hidden actions, such as starting a program or running a script. Content packed inside compressed parts of a PDF cannot be seen by this check.',
+        'Admin Review' => 'A PhishCore administrator looked at this exact file (matched by its fingerprint) and marked it as safe, for example because a scan called a real app suspicious by mistake.',
+        'PDF Text' => 'We read the words written in the PDF and look for the same scam wording we look for in messages, such as urgent demands, requests for codes or bank details, and threats. Only our own rules are used, and the text is never sent to an AI service. Scanned pictures of text cannot be read.',
     ];
 
     private const STATUS_LABELS = [

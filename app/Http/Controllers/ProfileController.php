@@ -4,13 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Analysis;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -40,15 +43,22 @@ class ProfileController extends Controller
      */
     public function updatePreferences(Request $request): RedirectResponse
     {
+        // each card on the Preferences tab saves on its own, so a request carries only the option that changed
         $validated = $request->validate([
-            'floating_chat_enabled' => ['required', 'boolean'],
+            'floating_chat_enabled' => ['sometimes', 'required', 'boolean'],
+            'default_scan_tab' => ['sometimes', 'required', Rule::in(User::SCAN_TABS)],
+            'scan_retention' => ['sometimes', 'required', Rule::in(['forever', '30', '90'])],
         ]);
 
-        $request->user()->forceFill([
-            'floating_chat_enabled' => $validated['floating_chat_enabled'],
-        ])->save();
+        $changes = Arr::only($validated, ['floating_chat_enabled', 'default_scan_tab']);
 
-        return Redirect::route('profile.edit')->with('status', 'preferences-updated');
+        if (isset($validated['scan_retention'])) {
+            $changes['scan_retention_days'] = $validated['scan_retention'] === 'forever' ? null : (int) $validated['scan_retention'];
+        }
+
+        $request->user()->forceFill($changes)->save();
+
+        return Redirect::route('profile.edit')->with('status', 'preferences-updated')->with('pref', array_key_first($validated));
     }
 
     /**

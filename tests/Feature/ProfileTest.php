@@ -145,3 +145,39 @@ test('the settings tabs share the full width on phones instead of overflowing', 
         ->assertSee('.s-tabs { display: flex; width: 100%;', false)
         ->assertSee('flex-direction: column', false);
 });
+
+test('the name tag slides away on the about tab and comes back on the others', function () {
+    $this->withoutVite();
+
+    $this->actingAs(User::factory()->create())->get('/profile')
+        ->assertOk()
+        ->assertSee('b-wrap', false)
+        ->assertSee("tab === 'about' ? 'b-away'", false)
+        ->assertSee("tab === 'about' ? 's-away'", false);
+});
+
+test('the settings tabs use the glass tray and the jelly droplet', function () {
+    $this->withoutVite();
+
+    $this->actingAs(User::factory()->create())->get('/profile')
+        ->assertOk()
+        ->assertSee('s-jelly', false)
+        ->assertSee('backdrop-filter', false);
+});
+
+test('the short pull-down name tag is used on tablets as well as phones', function () {
+    $this->withoutVite();
+
+    $this->actingAs(User::factory()->create())->get('/profile')
+        ->assertOk()
+        ->assertSee('window.innerWidth < 1280', false)
+        ->assertSee('Tap for full ID');
+});
+
+test('the name tag can be grabbed from the whole badge column', function () {
+    $this->withoutVite();
+
+    $this->actingAs(User::factory()->create())->get('/profile')
+        ->assertOk()
+        ->assertSee('class="b-wrap-in" x-data="idBadge()"', false);
+});

@@ -42,6 +42,22 @@ class User extends Authenticatable
         return $this->floating_chat_enabled !== false;
     }
 
+    public const SCAN_TABS = ['url', 'email', 'phone', 'screenshot', 'file'];
+
+    public const RETENTION_CHOICES = [30, 90];
+
+    /** The scanner tab that opens first. */
+    public function defaultScanTab(): string
+    {
+        return in_array($this->default_scan_tab, self::SCAN_TABS, true) ? $this->default_scan_tab : 'url';
+    }
+
+    /** How many days this person's scans are kept, or null to keep them until they delete them. */
+    public function scanRetentionDays(): ?int
+    {
+        return in_array((int) $this->scan_retention_days, self::RETENTION_CHOICES, true) ? (int) $this->scan_retention_days : null;
+    }
+
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;

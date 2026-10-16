@@ -161,6 +161,30 @@
         @endguest
         @endif
     </div>
+
+    {{-- Administrators can mark the exact file as safe when a scan got it wrong --}}
+    @if (! $shared && $report->type === 'file' && $report->file_sha256 && auth()->user()?->role === 'admin')
+        @php $fileTrusted = \App\Models\TrustedFile::isTrusted($report->file_sha256); @endphp
+        <div class="flex flex-wrap items-center gap-3 px-6 sm:px-8 py-4 border-t border-white/10 bg-black/10">
+            @if ($fileTrusted)
+                <p class="text-sm text-emerald-300 flex-1 min-w-0">This exact file is marked as safe. New scans of it show as safe.</p>
+                <form method="POST" action="{{ route('scan.untrust-file', $report) }}">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="r-btn r-btn-ghost">Remove the safe mark</button>
+                </form>
+            @else
+                <p class="text-sm text-slate-300 flex-1 min-w-0">Administrator: if this scan got the file wrong, you can mark this exact file as safe.</p>
+                <form method="POST" action="{{ route('scan.trust-file', $report) }}" onsubmit="return confirm('Mark this exact file as safe? Anyone who scans it later will see it as safe.')">
+                    @csrf
+                    <button type="submit" class="r-btn r-btn-ghost">Mark this file as safe</button>
+                </form>
+            @endif
+            @if (session('trusted_file_status'))
+                <p class="basis-full text-xs text-sky-300">{{ session('trusted_file_status') }}</p>
+            @endif
+        </div>
+    @endif
 </section>
 
 {{-- CTI / VIRUSTOTAL --}}

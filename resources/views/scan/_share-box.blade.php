@@ -6,6 +6,11 @@
             <p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
                 Anyone with the link can see the verdict, score and checks. It never shows who scanned it, and you can turn the link off at any time.
             </p>
+            @guest
+                <p data-guest-share-note class="text-xs sm:text-sm text-amber-200/90 mt-2 max-w-2xl leading-relaxed">
+                    You are not signed in, so this scan is only remembered in this browser. If you close it for good or clear its data, you will not be able to turn the link off later. Sign in before you scan to keep your scans in your history.
+                </p>
+            @endguest
         </div>
 
         @if (session('shared'))

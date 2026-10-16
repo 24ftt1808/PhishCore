@@ -27,7 +27,7 @@ function finishedScan(string $url, array $report = [], array $analysis = []): Re
 }
 
 beforeEach(function () {
-    config(['scan.reuse_hours' => 6, 'scan.guest_per_hour' => 1, 'scan.guest_per_minute' => 100]);
+    config(['scan.reuse_hours' => 6, 'scan.reuse_rules_check' => false, 'scan.guest_per_hour' => 1, 'scan.guest_per_minute' => 100]);
 });
 
 test('a link scanned recently gets the earlier result instead of a new scan', function () {

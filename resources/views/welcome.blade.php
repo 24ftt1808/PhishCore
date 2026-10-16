@@ -270,12 +270,18 @@
 
 {{-- LIVE SCANNER --}}
 <style>
-    .scan-pill{transition:transform .38s cubic-bezier(.34,1.35,.64,1)}
+    /* tab slider, same as the signed-in scanner: the outer pill travels with a soft overshoot, the inner one stretches toward where it is going */
+    .scan-pill{transition:transform .5s cubic-bezier(.3,1.25,.5,1);will-change:transform}
+    .scan-pill-in{position:relative;width:100%;height:100%;border-radius:.8rem;will-change:transform;background:linear-gradient(180deg,rgba(125,211,252,.24),rgba(56,189,248,.09));border:1px solid rgba(125,211,252,.36);box-shadow:0 0 18px -4px rgba(56,189,248,.45),inset 0 1px 0 rgba(255,255,255,.2)}
+    .scan-pill-in::after{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent)}
     .scan-sweep{animation:scan-sweep 1.1s ease-in-out infinite}
     /* five tabs on a phone: tighter padding and a slightly smaller label so "Screenshot" always fits */
     .scan-tab-label{white-space:nowrap}
     @media (max-width:639px){.scan-tab{padding-left:0!important;padding-right:0!important}.scan-tab-label{font-size:10.5px;letter-spacing:-.01em}}
     @media (max-width:359px){.scan-tab-label{font-size:9.5px;letter-spacing:-.02em}}
+    /* phones: country list above the number, and a shorter footnote */
+    .scan-narrow{display:none}
+    @media (max-width:639px){.scan-phone-row{flex-direction:column}.scan-phone-row .scan-phone-country{width:100%!important}.scan-wide{display:none}.scan-narrow{display:inline}}
     @keyframes scan-sweep{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
     @media (prefers-reduced-motion:reduce){.scan-pill{transition:none}.scan-sweep{animation:none;width:100%}}
 </style>
@@ -303,10 +309,24 @@
                 { key: 'screenshot', label: 'Screenshot', icon: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5zM10.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' },
                 { key: 'file', label: 'File', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z' }
             ],
+            get idx() { return this.tabs.findIndex(t => t.key === this.tab); },
             pick(k) {
-                if (this.scanning) return;
+                if (this.scanning || k === this.tab) return;
+                const from = this.idx;
                 this.tab = k;
                 this.clearOthers(k);
+                this.stretch(from, this.idx);
+            },
+            stretch(from, to) {
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                const d = Math.abs(to - from), right = to > from;
+                const o = right ? 'left center' : 'right center';
+                this.$refs.blob?.animate([
+                    { transform: 'scale(1, 1)', transformOrigin: o },
+                    { transform: `scale(${1 + 0.2 * d}, .93)`, transformOrigin: o, offset: .35 },
+                    { transform: `scale(${1 - 0.03 * d}, 1.04)`, transformOrigin: o, offset: .7 },
+                    { transform: 'scale(1, 1)', transformOrigin: o }
+                ], { duration: 560, easing: 'cubic-bezier(.3, 1.2, .5, 1)' });
             },
             clearOthers(keep) {
                 if (keep !== 'url') this.url = '';
@@ -347,14 +367,16 @@
                 <x-scan-guard part="trap" />
 
                 {{-- Type selector --}}
-                <div class="relative grid grid-cols-5 p-1 rounded-2xl bg-black/25 border border-white/[0.07]" role="tablist">
-                    <span class="scan-pill absolute top-1 bottom-1 left-1 rounded-xl bg-white/10 border border-white/15 pointer-events-none"
-                          :style="`width:calc((100% - 0.5rem) / 5);transform:translateX(${tabs.findIndex(t => t.key === tab) * 100}%)`"></span>
+                <div class="relative grid grid-cols-5 p-1 rounded-2xl bg-[#07122b]/60 border border-sky-200/10" role="tablist">
+                    <span class="scan-pill absolute top-1 bottom-1 left-1 pointer-events-none"
+                          :style="`width:calc((100% - 0.5rem) / 5);transform:translateX(${idx * 100}%)`">
+                        <span x-ref="blob" class="scan-pill-in block"></span>
+                    </span>
                     <template x-for="t in tabs" :key="t.key">
                         <button type="button" role="tab" @click="pick(t.key)" :aria-selected="tab === t.key"
-                                :class="tab === t.key ? 'text-white' : 'text-slate-400 hover:text-slate-200'"
-                                class="scan-tab relative z-10 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-medium transition-colors duration-200 active:scale-95">
-                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" /></svg>
+                                :class="tab === t.key ? 'text-white' : 'text-slate-300 hover:text-white'"
+                                class="scan-tab relative z-10 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-1 rounded-xl text-[11px] sm:text-sm font-medium transition-colors duration-200 active:scale-95">
+                            <svg class="w-4 h-4 shrink-0 transition-colors duration-200" :class="tab === t.key ? 'text-sky-300' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" /></svg>
                             <span class="scan-tab-label" x-text="t.label"></span>
                         </button>
                     </template>
@@ -415,10 +437,10 @@
 
                     {{-- Phone --}}
                     <div x-show="tab === 'phone'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
-                        <div class="flex gap-3">
+                        <div class="scan-phone-row flex gap-3">
                             <select name="phone_country" x-model="phoneCountry" aria-label="Country of the phone number"
                                     :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                    class="field !py-3.5 !w-40 sm:!w-56 shrink-0 truncate" style="color-scheme: dark">
+                                    class="scan-phone-country field !py-3.5 !w-40 sm:!w-56 shrink-0 truncate" style="color-scheme: dark">
                                 @foreach (\App\Support\PhoneCountries::all() as $country)
                                     <option value="{{ $country['code'] }}">{{ $country['code'] }} {{ $country['name'] }} (+{{ $country['dial'] }})</option>
                                 @endforeach
@@ -428,7 +450,7 @@
                                    :class="{ 'opacity-50 pointer-events-none': scanning }"
                                    placeholder="Phone number" class="field !py-3.5 min-w-0 flex-1">
                         </div>
-                        <p class="mt-2 text-xs text-slate-500">Numbers typed with a leading + and country code keep that country, whatever is selected.</p>
+                        <p class="mt-2 text-xs text-slate-500"><span class="scan-wide">Numbers typed with a leading + and country code keep that country, whatever is selected.</span><span class="scan-narrow">A number starting with + and a country code keeps that country.</span></p>
                         @error('phone')
                             <p class="mt-2 text-xs text-red-400">{{ $message }}</p>
                         @enderror
@@ -498,11 +520,11 @@
                 </button>
 
                 <p class="text-center text-[11px] text-slate-500 mt-4 leading-relaxed">
-                    Checks URL structure, SSL, domain age, blacklists, sender domain, phone patterns, screenshot text and files.
+                    <span class="scan-wide">Checks URL structure, SSL, domain age, blacklists, sender domain, phone patterns, screenshot text and files.<br></span>
                     @guest
-                        <br><a href="{{ route('login') }}" class="text-sky-300 hover:text-sky-200">Sign in</a> to save your scans to a personal history.
+                        <a href="{{ route('login') }}" class="text-sky-300 hover:text-sky-200">Sign in</a> to save your scans to a personal history.
                     @else
-                        <br>Saved to your <a href="{{ route('dashboard') }}" class="text-sky-300 hover:text-sky-200">dashboard</a> history.
+                        Saved to your <a href="{{ route('dashboard') }}" class="text-sky-300 hover:text-sky-200">dashboard</a> history.
                     @endguest
                 </p>
             </form>

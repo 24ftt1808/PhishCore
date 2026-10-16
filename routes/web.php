@@ -20,6 +20,7 @@ use App\Http\Controllers\ScanHistoryController;
 use App\Http\Controllers\ScanPdfController;
 use App\Http\Controllers\ScanShareController;
 use App\Http\Controllers\SharedScanController;
+use App\Http\Controllers\TrustedFileController;
 use App\Http\Controllers\UserManagementController;
 use App\Models\Analysis;
 use App\Models\Report;
@@ -119,6 +120,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/reported-numbers', [ReportedNumbersController::class, 'index'])->name('reported-numbers.index');
     Route::post('/reported-numbers/hide', [ReportedNumbersController::class, 'hide'])->middleware('throttle:60,1')->name('reported-numbers.hide');
     Route::post('/reported-numbers/show', [ReportedNumbersController::class, 'show'])->middleware('throttle:60,1')->name('reported-numbers.show');
+
+    // Administrators can mark the file behind a scan as safe (or take the mark off again), and see every safe file.
+    Route::post('/scan/{report}/trust-file', [TrustedFileController::class, 'store'])->middleware('throttle:30,1')->name('scan.trust-file');
+    Route::delete('/scan/{report}/trust-file', [TrustedFileController::class, 'destroy'])->middleware('throttle:30,1')->name('scan.untrust-file');
+    Route::get('/safe-files', [TrustedFileController::class, 'index'])->name('safe-files.index');
+    Route::delete('/safe-files/{trustedFile}', [TrustedFileController::class, 'destroyFile'])->middleware('throttle:30,1')->name('safe-files.destroy');
 
     Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
     Route::patch('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');

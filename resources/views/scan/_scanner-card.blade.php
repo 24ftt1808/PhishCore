@@ -8,7 +8,7 @@
     ];
 
     /* open on the tab that matches the last submission or the field that has an error */
-    $startTab = 'url';
+    $startTab = auth()->user()?->defaultScanTab() ?? 'url';
     if (old('email') || old('subject') || old('body') || $errors->has('email') || $errors->has('subject') || $errors->has('body')) $startTab = 'email';
     elseif (old('phone') || $errors->has('phone') || $errors->has('phone_country')) $startTab = 'phone';
     elseif ($errors->has('screenshot')) $startTab = 'screenshot';
@@ -34,6 +34,8 @@
         ['File fingerprint', ['file'], 'Looks up the file\'s fingerprint, not the file itself, in VirusTotal\'s database of known bad files.'],
         ['App permissions', ['file'], 'For Android apps (APK), lists what the app asks to do, such as read your text messages or control your screen.'],
         ['PDF links and actions', ['file'], 'Finds links inside a PDF and checks them, and flags PDFs that try to start programs or run scripts.'],
+        ['PDF wording', ['file'], 'Reads the words in a PDF and looks for scam wording, such as urgent demands and requests for codes or bank details. Nothing is sent to an AI service.'],
+        ['Previous reports for this file', ['file'], 'Checks whether PhishCore has already found this exact file to be phishing in recent scans by other people.'],
         ['OCR text extraction', ['screenshot'], 'Reads the text in your screenshot to find links, phone numbers and scam wording, then checks them.'],
     ];
     $checkCounts = [];
@@ -56,6 +58,27 @@
     @media (max-width: 359px) {
         .sc-tab-label { font-size: 9.5px; letter-spacing: -0.02em; }
     }
+
+    /* phones: the country list sits above the number, so both have the full width */
+    @media (max-width: 639px) {
+        .sc-phone-row { flex-direction: column; }
+        .sc-phone-row .sc-phone-country { width: 100% !important; }
+    }
+
+    /* phones: shorter wording, and the list of checks is tucked away until it is wanted */
+    .sc-narrow, .sc-narrow-p { display: none; }
+    .sc-chev { display: none; }
+    @media (max-width: 639px) {
+        .sc-wide { display: none; }
+        .sc-narrow { display: inline; }
+        .sc-narrow-p { display: block; }
+        .sc-chev { display: block; }
+        .sc-checks-toggle { cursor: pointer; }
+        .sc-checks-body { display: none; }
+        .sc-checks-body.is-open { display: block; }
+        .sc-check-off { display: none; }
+    }
+    @media (min-width: 640px) { .sc-checks-toggle { cursor: default; pointer-events: none; } }
 
     /* the text inside the upload boxes wraps instead of pushing the card wider than the screen */
     .sc-dz-text { max-width: 100%; padding: 0 .5rem; text-align: center; overflow-wrap: anywhere; }
@@ -103,7 +126,7 @@
         phoneCountry: @js(old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION)),
         subject: @js(old('subject', '')),
         body: @js(old('body', '')),
-        fileName: '', docName: '', docDrag: false, drag: false, more: {{ old('subject') || old('body') ? 'true' : 'false' }}, scanning: false,
+        checksOpen: false, fileName: '', docName: '', docDrag: false, drag: false, more: {{ old('subject') || old('body') ? 'true' : 'false' }}, scanning: false,
         tabs: [
             { key: 'url', label: 'URL' },
             { key: 'email', label: 'Email' },
@@ -208,7 +231,7 @@
                                         @click="navigator.clipboard.readText().then(text => { url = text; clearOthers('url') })"
                                         class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white transition disabled:opacity-50">Paste</button>
                             </div>
-                            <p x-show="!needsProto" class="text-xs text-slate-300 mt-2">Include the complete URL starting with <code class="text-white">http://</code> or <code class="text-white">https://</code> for accurate results.</p>
+                            <p x-show="!needsProto" class="text-xs text-slate-300 mt-2"><span class="sc-wide">Include the complete URL starting with <code class="text-white">http://</code> or <code class="text-white">https://</code> for accurate results.</span><span class="sc-narrow">Start with <code class="text-white">https://</code> for accurate results.</span></p>
                             <p x-show="needsProto" x-cloak class="flex items-center gap-1.5 text-xs text-amber-300 mt-2">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 This link has no <code class="text-white">http://</code> or <code class="text-white">https://</code> at the start. Add it for more accurate results.
@@ -251,10 +274,10 @@
                         {{-- Phone --}}
                         <div x-show="tab === 'phone'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
                             <label class="block text-xs tracking-wide text-slate-300 mb-2">PHONE NUMBER</label>
-                            <div class="flex gap-3">
+                            <div class="sc-phone-row flex gap-3">
                                 <select name="phone_country" x-model="phoneCountry" aria-label="Country of the phone number"
                                         :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                        class="sc-input !py-4 !w-40 sm:!w-60 shrink-0 truncate" style="color-scheme: dark">
+                                        class="sc-phone-country sc-input !py-4 !w-40 sm:!w-60 shrink-0 truncate" style="color-scheme: dark">
                                     @foreach (\App\Support\PhoneCountries::all() as $country)
                                         <option value="{{ $country['code'] }}">{{ $country['code'] }} {{ $country['name'] }} (+{{ $country['dial'] }})</option>
                                     @endforeach
@@ -263,7 +286,7 @@
                                        :class="{ 'opacity-50 pointer-events-none': scanning }"
                                        placeholder="Phone number" class="sc-input !py-4 min-w-0 flex-1">
                             </div>
-                            <p class="mt-2 text-xs text-slate-400">Numbers typed with a leading + and country code keep that country, whatever is selected.</p>
+                            <p class="mt-2 text-xs text-slate-400"><span class="sc-wide">Numbers typed with a leading + and country code keep that country, whatever is selected.</span><span class="sc-narrow">A number starting with + and a country code keeps that country.</span></p>
                             @error('phone')
                                 <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
                             @enderror
@@ -332,8 +355,9 @@
                             <span x-text="scanning ? 'Scanning...' : scanLabel"></span>
                         </button>
                         @if (app(\App\Services\AiTextCheck::class)->enabled())
-                            <p data-ai-privacy class="mt-3 text-center text-[11px] leading-relaxed text-slate-400">
-                                For emails, messages and web pages, the text may be sent to Google's Gemini AI for a second opinion. Please don't paste anything private, like passwords or bank details.
+                            <p data-ai-privacy x-show="['url', 'email', 'screenshot'].includes(tab)" class="mt-3 text-center text-[11px] leading-relaxed text-slate-400">
+                                <span class="sc-wide">For emails, messages and web pages, the text may be sent to Google's Gemini AI for a second opinion. Please don't paste anything private, like passwords or bank details.</span>
+                                <span class="sc-narrow">The text may go to Google's Gemini AI for a second opinion. Don't paste passwords or bank details.</span>
                             </p>
                         @endif
                     </div>
@@ -343,17 +367,23 @@
 
         {{-- WHAT EACH SCAN CHECKS: tiles for the selected tab light up --}}
         <div class="sc-card sc-card-sm sc-in p-5 sm:p-6" style="--d:.08s">
-            <div class="flex items-center justify-between gap-3 mb-1">
+            <button type="button" class="sc-checks-toggle flex w-full items-center justify-between gap-3 text-left" @click="checksOpen = !checksOpen" :aria-expanded="checksOpen.toString()">
                 <p class="text-[11px] tracking-[0.14em] text-slate-300">WHAT THIS SCAN CHECKS</p>
-                <span class="text-[11px] font-medium text-sky-200 bg-sky-400/10 border border-sky-300/25 px-2 py-0.5 rounded-full tabular-nums" x-text="counts[tab] + (counts[tab] === 1 ? ' check' : ' checks')"></span>
-            </div>
-            <p class="text-sm text-slate-300 mb-4">Highlighted checks run for the option you picked.</p>
+                <span class="flex items-center gap-2">
+                    <span class="text-[11px] font-medium text-sky-200 bg-sky-400/10 border border-sky-300/25 px-2 py-0.5 rounded-full tabular-nums" x-text="counts[tab] + (counts[tab] === 1 ? ' check' : ' checks')"></span>
+                    <svg class="sc-chev w-4 h-4 text-slate-300 transition-transform duration-200" :class="checksOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                </span>
+            </button>
+
+            <div class="sc-checks-body" :class="checksOpen ? 'is-open' : ''">
+            <p class="sc-wide text-sm text-slate-300 mt-1 mb-4">Highlighted checks run for the option you picked.</p>
+            <p class="sc-narrow-p text-xs text-slate-400 mt-2 mb-3">Checks that run for the option you picked.</p>
 
             <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($checks as [$name, $for, $text])
                     @php $forJs = json_encode($for); @endphp
                     <li class="rounded-xl px-3 py-3 border transition-colors duration-300"
-                        :class="{{ $forJs }}.includes(tab) ? 'border-sky-300/30 bg-sky-400/10 text-white' : 'border-white/5 text-slate-400'">
+                        :class="{{ $forJs }}.includes(tab) ? 'border-sky-300/30 bg-sky-400/10 text-white' : 'sc-check-off border-white/5 text-slate-400'">
                         <div class="flex items-center gap-2.5">
                             <span class="w-5 h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
                                   :class="{{ $forJs }}.includes(tab) ? 'bg-emerald-400/20 text-emerald-300' : 'bg-white/5 text-slate-500'">
@@ -366,6 +396,7 @@
                     </li>
                 @endforeach
             </ul>
+            </div>
         </div>
     </div>
 </div>

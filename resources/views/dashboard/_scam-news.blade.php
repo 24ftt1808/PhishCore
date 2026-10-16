@@ -22,6 +22,12 @@
     .sn-nav { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .6rem; color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .25); transition: background-color .15s, color .15s; }
     .sn-nav:hover { background: rgba(255, 255, 255, .08); color: #fff; }
 
+    /* phones: a shorter picture strip and tighter text, so the box takes less of the screen */
+    .sn-artbox { height: 6rem; }
+    .sn-shield { width: 2.5rem; height: 2.5rem; }
+    .sn-sub { display: none; }
+    @media (min-width: 640px) { .sn-artbox { height: auto; } .sn-shield { width: 3.5rem; height: 3.5rem; } .sn-sub { display: block; } }
+
     @media (prefers-reduced-motion: reduce) { .sn-slide, .sn-off, .sn-dot { transition: none; } }
 </style>
 
@@ -52,7 +58,7 @@
             </span>
             <div class="min-w-0">
                 <p class="text-white font-semibold text-sm">Latest Scam News</p>
-                <p class="text-xs text-slate-300 mt-0.5 truncate">Stay one step ahead of the scams making headlines</p>
+                <p class="sn-sub text-xs text-slate-300 mt-0.5 truncate">Stay one step ahead of the scams making headlines</p>
             </div>
         </div>
 
@@ -78,9 +84,9 @@
             @foreach ($scamNews as $k => $article)
                 <article class="sn-slide {{ $k === 0 ? 'sn-on' : 'sn-off' }} col-start-1 row-start-1 flex flex-col sm:flex-row min-w-0"
                          :class="{ 'sn-on': i === {{ $k }}, 'sn-off': i !== {{ $k }} }">
-                    <div class="sn-art relative h-36 sm:h-auto sm:w-2/5 sm:min-h-[11rem] shrink-0 overflow-hidden">
+                    <div class="sn-art sn-artbox relative sm:w-2/5 sm:min-h-[11rem] shrink-0 overflow-hidden">
                         <div class="absolute inset-0 grid place-items-center text-sky-300/70" aria-hidden="true">
-                            <svg class="w-14 h-14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                            <svg class="sn-shield" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                         </div>
                         @if ($article->image_url)
                             <img src="{{ $article->image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
@@ -89,16 +95,16 @@
                         @endif
                     </div>
 
-                    <div class="flex-1 min-w-0 p-5 sm:p-6 flex flex-col justify-center">
+                    <div class="flex-1 min-w-0 p-4 sm:p-6 flex flex-col justify-center">
                         <p class="flex items-center gap-2 text-[11px] font-semibold tracking-wide uppercase text-sky-300">
                             <span class="truncate">{{ $article->source }}</span>
                             <span class="text-slate-500" aria-hidden="true">·</span>
                             <time datetime="{{ $article->published_at->toDateString() }}" class="text-slate-300 normal-case font-medium whitespace-nowrap">{{ $article->published_at->format('j M Y') }}</time>
                         </p>
-                        <h3 class="sn-title mt-2 text-lg sm:text-xl font-bold leading-snug text-white">
+                        <h3 class="sn-title mt-1.5 sm:mt-2 text-base sm:text-xl font-bold leading-snug text-white">
                             <a href="{{ $article->url }}" target="_blank" rel="noopener noreferrer" class="hover:text-sky-200 transition-colors">{{ $article->title }}</a>
                         </h3>
-                        <a href="{{ $article->url }}" target="_blank" rel="noopener noreferrer" class="d-link mt-4 inline-flex items-center gap-1 self-start text-sm font-medium text-sky-300 hover:text-sky-200">
+                        <a href="{{ $article->url }}" target="_blank" rel="noopener noreferrer" class="d-link mt-3 sm:mt-4 inline-flex items-center gap-1 self-start text-sm font-medium text-sky-300 hover:text-sky-200">
                             Read article <span class="d-arrow inline-block" aria-hidden="true">→</span><span class="sr-only">(opens in a new tab)</span>
                         </a>
                     </div>
@@ -107,7 +113,7 @@
         </div>
 
         @if ($newsCount > 1)
-            <div class="flex items-center justify-center gap-1.5 pt-1 pb-4" role="group" aria-label="Choose an article">
+            <div class="flex items-center justify-center gap-1.5 pt-0.5 pb-3 sm:pt-1 sm:pb-4" role="group" aria-label="Choose an article">
                 @foreach ($scamNews as $k => $article)
                     <button type="button" class="sn-dot {{ $k === 0 ? 'sn-dot-on' : '' }}" :class="{ 'sn-dot-on': i === {{ $k }} }"
                             @click="go({{ $k }})" aria-label="Show article {{ $k + 1 }} of {{ $newsCount }}"></button>

@@ -792,6 +792,13 @@
         /* On every screen size, the Phish Lab box and the tabs step aside while a game is running, so the game gets the room (the phone and
            tablet rules above add the extra spacing they need). They come back when the player leaves the game. */
         .pl-wrap.in-game .pl-hero, .pl-wrap.in-game .pl-tabs, .pl-wrap.in-story .pl-hero, .pl-wrap.in-story .pl-tabs { display: none; }
+        /* ...and the game sits in the middle of the screen instead of hanging at the top. The page keeps 2rem of padding above and below on a laptop,
+           and 5rem above (the floating bar) plus 1rem below on a phone or tablet. A game taller than the screen simply grows and scrolls as before. */
+        .pl-wrap.in-game { display: flex; flex-direction: column; justify-content: center; min-height: calc(100vh - 6rem); min-height: calc(100dvh - 6rem); }
+        @media (min-width: 1024px) { .pl-wrap.in-game { min-height: calc(100vh - 4rem); min-height: calc(100dvh - 4rem); } }
+        /* left to right as well: the game block sits in the middle of the page, not against the left edge */
+        .pl-wrap.in-game { margin-left: auto; margin-right: auto; }
+        .pl-wrap.in-game .pl-layout.solo .pl-col { margin-left: auto; margin-right: auto; }
         /* ---- game feel: sound button, score pop, answer flashes, combo banner, count-in ---- */
         .pl-sndbtn { position: absolute; top: 0; right: 0; z-index: 6; display: grid; place-items: center; width: 2.2rem; height: 2.2rem; padding: 0; border-radius: 9999px; color: #94a3b8; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); transition: color .2s, background .2s, border-color .2s, transform .2s; }
         .pl-sndbtn svg { width: 1.1rem; height: 1.1rem; }

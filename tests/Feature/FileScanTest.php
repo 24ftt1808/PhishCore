@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Analysis;
+use App\Models\Report;
+use App\Models\User;
 use App\Services\AnalysisEngine;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
@@ -158,3 +161,134 @@ test('a missing file is reviewed instead of crashing', function () {
 
     expect($result['verdict'])->toBe('review')->and($result['file_sha256'])->toBeNull();
 });
+
+function fileScanTextPdf(string $operators, bool $compressed = true): string
+{
+    $data = $compressed ? gzcompress($operators) : $operators;
+    $filter = $compressed ? ' /Filter /FlateDecode' : '';
+
+    return fileScanPdf('1 0 obj << /Length '.strlen($data)."{$filter} >>\nstream\n{$data}\nendstream\nendobj\n");
+}
+
+test('a PDF written like a scam message is flagged, even when its text is compressed', function () {
+    fileScanFake([]);
+    $text = 'BT (URGENT: your account has been suspended. Verify your account now and send your OTP and PIN to avoid permanent closure.) Tj ET';
+
+    foreach ([true, false] as $compressed) {
+        $result = fileScanRun(fileScanTextPdf($text, $compressed), 'notice.pdf');
+        $check = fileScanCheck($result, 'PDF Text');
+
+        expect($check['points'])->toBeGreaterThan(0)
+            ->and($result['verdict'])->not->toBe('clean');
+    }
+});
+
+test('an ordinary PDF has no wording flagged', function () {
+    fileScanFake([]);
+    $result = fileScanRun(fileScanTextPdf('BT (Invoice 2041 for web hosting. Thank you for your business. Payment is due within 30 days.) Tj ET'), 'invoice.pdf');
+
+    expect(fileScanCheck($result, 'PDF Text')['points'])->toBe(0)
+        ->and($result['verdict'])->toBe('clean');
+});
+
+test('normal letters that mention deadlines, payments and bank details are not flagged', function () {
+    fileScanFake([]);
+    $texts = [
+        'BT (Offer letter: we are pleased to offer you the position. Please sign and return within 7 days. Your bank details are required for payroll.) Tj ET',
+        'BT (Tax invoice. Amount due BND 250. Please pay by bank transfer within 14 days. Late payment may incur a fee. Thank you.) Tj ET',
+    ];
+
+    foreach ($texts as $text) {
+        $result = fileScanRun(fileScanTextPdf($text), 'letter.pdf');
+
+        expect(fileScanCheck($result, 'PDF Text')['points'])->toBe(0)
+            ->and($result['verdict'])->toBe('clean');
+    }
+});
+
+test('a PDF with no readable text says so and adds no points', function () {
+    fileScanFake([]);
+    $result = fileScanRun(fileScanPdf('1 0 obj << /Type /Page >> endobj'), 'scan.pdf');
+    $check = fileScanCheck($result, 'PDF Text');
+
+    expect($check['status'])->toBe('UNKNOWN')
+        ->and($check['points'])->toBe(0);
+});
+
+test('a PDF carrying a hidden file or a data-sending form is flagged', function () {
+    fileScanFake([]);
+
+    $hidden = fileScanRun(fileScanPdf('<< /Type /Filespec /EF << /F 5 0 R >> /Subtype /EmbeddedFile >>'), 'a.pdf');
+    $form = fileScanRun(fileScanPdf('<< /S /SubmitForm /F (http://example.test/post) >>'), 'b.pdf');
+
+    expect(fileScanCheck($hidden, 'PDF Contents')['points'])->toBe(20)
+        ->and(fileScanCheck($form, 'PDF Contents')['points'])->toBe(20);
+});
+
+function fileScanPastScan(string $path, string $verdict, ?int $userId = null): void
+{
+    $report = Report::factory()->create([
+        'type' => 'file',
+        'status' => 'completed',
+        'user_id' => $userId,
+        'file_sha256' => hash_file('sha256', $path),
+    ]);
+    Analysis::factory()->create(['report_id' => $report->id, 'verdict' => $verdict]);
+}
+
+test('a file already found to be phishing before is flagged again, even when nothing else is known', function () {
+    fileScanFake([]);
+    $path = fileScanPdf('hello, nothing suspicious in here');
+    fileScanPastScan($path, 'phishing');
+
+    $result = fileScanRun($path, 'letter.pdf');
+    $check = fileScanCheck($result, 'Previous Reports (File)');
+
+    expect($check['points'])->toBe(30)
+        ->and($result['verdict'])->toBe('suspicious');
+});
+
+test('the same person scanning a bad file again and again counts once, different people add up', function () {
+    fileScanFake([]);
+    $path = fileScanPdf('hello again');
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+
+    fileScanPastScan($path, 'phishing', $first->id);
+    fileScanPastScan($path, 'phishing', $first->id);
+    expect(fileScanCheck(fileScanRun(copyOf($path), 'a.pdf'), 'Previous Reports (File)')['points'])->toBe(30);
+
+    fileScanPastScan($path, 'phishing', $second->id);
+    expect(fileScanCheck(fileScanRun(copyOf($path), 'a.pdf'), 'Previous Reports (File)')['points'])->toBe(50);
+});
+
+test('an earlier verdict older than 90 days no longer counts', function () {
+    fileScanFake([]);
+    $path = fileScanPdf('an old story');
+    fileScanPastScan($path, 'phishing');
+    Report::query()->update(['created_at' => now()->subDays(91)]);
+
+    $check = fileScanCheck(fileScanRun($path, 'a.pdf'), 'Previous Reports (File)');
+
+    expect($check['points'])->toBe(0);
+});
+
+test('an earlier suspicious verdict is only information, and a new file is not flagged', function () {
+    fileScanFake([]);
+    $path = fileScanPdf('a borderline file');
+    fileScanPastScan($path, 'suspicious');
+
+    $seen = fileScanCheck(fileScanRun(copyOf($path), 'a.pdf'), 'Previous Reports (File)');
+    $new = fileScanCheck(fileScanRun(fileScanPdf('brand new content'), 'b.pdf'), 'Previous Reports (File)');
+
+    expect($seen['points'])->toBe(0)->and($seen['status'])->toBe('INFO')
+        ->and($new['points'])->toBe(0)->and($new['status'])->toBe('INFO');
+});
+
+function copyOf(string $path): string
+{
+    $copy = tempnam(sys_get_temp_dir(), 'fscopy');
+    copy($path, $copy);
+
+    return $copy;
+}

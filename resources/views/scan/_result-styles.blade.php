@@ -5,6 +5,12 @@
     /* result page panels: gradient + hairline border, no blur filters, transform/opacity animation only */
     .r-card { background: linear-gradient(180deg, rgba(24, 40, 76, .62), rgba(14, 25, 50, .62)); border: 1px solid rgba(148, 163, 184, .18); border-radius: 1.1rem; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
     .r-hero { background: linear-gradient(135deg, rgba(var(--c), .16), rgba(14, 25, 50, .66) 58%); border-color: rgba(var(--c), .32); }
+    /* the verdict is the loudest thing on this page: a stronger tint and glow in the verdict colour, a larger headline, calmer background behind it */
+    .r-hero { border-color: rgba(var(--c), .5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px rgba(var(--c), .1), 0 18px 50px -24px rgba(var(--c), .55); }
+    .r-hero .r-tile { width: 3.4rem !important; height: 3.4rem !important; box-shadow: 0 0 22px -4px rgba(var(--c), .6); }
+    .r-hero .r-headline { font-size: clamp(1.5rem, 1rem + 2.4vw, 2.5rem); line-height: 1.1; }
+    .r-hero .text-slate-400 { color: #b0bccf; }
+    .dash-aurora { opacity: .28 !important; }
     .r-tile { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .8rem; background: rgba(var(--c), .13); border: 1px solid rgba(var(--c), .32); flex-shrink: 0; }
     .r-well { background: rgba(8, 15, 32, .5); border: 1px solid rgba(148, 163, 184, .16); border-radius: .8rem; }
     .r-lift { transition: transform .28s cubic-bezier(.34, 1.4, .64, 1), border-color .25s; }

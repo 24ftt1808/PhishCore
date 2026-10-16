@@ -15,3 +15,7 @@ Schedule::command('previews:prune')->daily();
 // The dashboard's "Latest Scam News" box: fetch new articles from the RSS feeds every morning, Brunei time
 // (same cron entry as above).
 Schedule::command('news:fetch')->dailyAt('06:00')->timezone('Asia/Brunei')->withoutOverlapping();
+
+// People who chose to keep their scans for 30 or 90 days only: remove the older ones every night, Brunei time
+// (same cron entry as above).
+Schedule::command('scans:prune-old')->dailyAt('03:30')->timezone('Asia/Brunei')->withoutOverlapping();

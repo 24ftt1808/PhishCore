@@ -16,6 +16,7 @@
         'email' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75',
         'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
         'screenshot' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M18 22.5H6a2.25 2.25 0 01-2.25-2.25V3.75A2.25 2.25 0 016 1.5h12a2.25 2.25 0 012.25 2.25v16.5A2.25 2.25 0 0118 22.5zM10.5 8.25a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+        'file' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',
     ];
     $currentStatus = $filters['status'] ?? 'all';
 
@@ -244,6 +245,7 @@
                                 'email' => $report->sender_email,
                                 'phone' => $report->phone_number,
                                 'screenshot' => 'Uploaded screenshot',
+                                'file' => $report->file_name ?: 'Uploaded file',
                                 default => $report->url,
                             };
                             $isMono = in_array($report->type, ['url', 'email', 'phone'], true) || $report->type === null;
@@ -310,6 +312,7 @@
                     'email' => $report->sender_email,
                     'phone' => $report->phone_number,
                     'screenshot' => 'Uploaded screenshot',
+                    'file' => $report->file_name ?: 'Uploaded file',
                     default => $report->url,
                 };
                 $isMono = in_array($report->type, ['url', 'email', 'phone'], true) || $report->type === null;

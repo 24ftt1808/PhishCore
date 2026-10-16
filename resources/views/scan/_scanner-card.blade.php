@@ -12,12 +12,14 @@
     if (old('email') || old('subject') || old('body') || $errors->has('email') || $errors->has('subject') || $errors->has('body')) $startTab = 'email';
     elseif (old('phone') || $errors->has('phone') || $errors->has('phone_country')) $startTab = 'phone';
     elseif ($errors->has('screenshot')) $startTab = 'screenshot';
+    elseif ($errors->has('file')) $startTab = 'file';
 
     $tabIcons = [
         'url' => 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244',
         'email' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-9.75 6-9.75-6',
         'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
         'screenshot' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5zM10.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+        'file' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',
     ];
 
     /* which scan tabs each check runs for, so the side panel and cards can light up the active ones */
@@ -28,10 +30,14 @@
         ['Blacklists', ['url', 'screenshot'], 'Checks Google Safe Browsing and other threat databases for known phishing pages.'],
         ['Sender domain analysis', ['email'], 'Checks whether the sender\'s email domain copies a known brand or looks unusual.'],
         ['Phone number heuristics', ['phone'], 'Checks the number is valid and what kind of line it is, whether other PhishCore users have reported it, and a reputation lookup when available.'],
+        ['File type', ['file'], 'Checks that the file really is what its name says, because scam apps often pretend to be documents or pictures.'],
+        ['File fingerprint', ['file'], 'Looks up the file\'s fingerprint, not the file itself, in VirusTotal\'s database of known bad files.'],
+        ['App permissions', ['file'], 'For Android apps (APK), lists what the app asks to do, such as read your text messages or control your screen.'],
+        ['PDF links and actions', ['file'], 'Finds links inside a PDF and checks them, and flags PDFs that try to start programs or run scripts.'],
         ['OCR text extraction', ['screenshot'], 'Reads the text in your screenshot to find links, phone numbers and scam wording, then checks them.'],
     ];
     $checkCounts = [];
-    foreach (['url', 'email', 'phone', 'screenshot'] as $t) {
+    foreach (['url', 'email', 'phone', 'screenshot', 'file'] as $t) {
         $checkCounts[$t] = collect($checks)->filter(fn ($c) => in_array($t, $c[1]))->count();
     }
 @endphp
@@ -39,6 +45,21 @@
 <style>
     .sc-card { background: linear-gradient(180deg, rgba(24, 40, 76, .62), rgba(14, 25, 50, .62)); border: 1px solid rgba(148, 163, 184, .18); border-radius: 1.5rem; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
     .sc-card-sm { border-radius: 1.1rem; }
+    .sc-card, .sc-card * { min-width: 0; }
+
+    /* five tabs on a phone: tighter padding and a slightly smaller label so "Screenshot" always fits */
+    .sc-tab-label { white-space: nowrap; }
+    @media (max-width: 639px) {
+        .sc-tab { padding-left: 0 !important; padding-right: 0 !important; }
+        .sc-tab-label { font-size: 10.5px; letter-spacing: -0.01em; }
+    }
+    @media (max-width: 359px) {
+        .sc-tab-label { font-size: 9.5px; letter-spacing: -0.02em; }
+    }
+
+    /* the text inside the upload boxes wraps instead of pushing the card wider than the screen */
+    .sc-dz-text { max-width: 100%; padding: 0 .5rem; text-align: center; overflow-wrap: anywhere; }
+    @media (min-width: 640px) { .sc-dz-text { padding: 0 1.5rem; } }
     .sc-lift { transition: transform .3s cubic-bezier(.34, 1.4, .64, 1), border-color .25s, opacity .3s, box-shadow .3s; }
     .sc-lift:hover { transform: translateY(-2px); border-color: rgba(56, 189, 248, .4); }
 
@@ -82,18 +103,19 @@
         phoneCountry: @js(old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION)),
         subject: @js(old('subject', '')),
         body: @js(old('body', '')),
-        fileName: '', drag: false, more: {{ old('subject') || old('body') ? 'true' : 'false' }}, scanning: false,
+        fileName: '', docName: '', docDrag: false, drag: false, more: {{ old('subject') || old('body') ? 'true' : 'false' }}, scanning: false,
         tabs: [
             { key: 'url', label: 'URL' },
             { key: 'email', label: 'Email' },
             { key: 'phone', label: 'Phone' },
-            { key: 'screenshot', label: 'Screenshot' }
+            { key: 'screenshot', label: 'Screenshot' },
+            { key: 'file', label: 'File' }
         ],
         icons: @js($tabIcons),
         counts: @js($checkCounts),
-        get canScan() { return ({ url: this.url, email: this.email, phone: this.phone, screenshot: this.fileName }[this.tab] || '').trim() !== ''; },
+        get canScan() { return ({ url: this.url, email: this.email, phone: this.phone, screenshot: this.fileName, file: this.docName }[this.tab] || '').trim() !== ''; },
         get needsProto() { return this.tab === 'url' && this.url.trim() !== '' && !/^https?:\/\//i.test(this.url.trim()); },
-        get scanLabel() { return { url: 'Scan URL', email: 'Scan Email', phone: 'Scan Phone Number', screenshot: 'Scan Screenshot' }[this.tab]; },
+        get scanLabel() { return { url: 'Scan URL', email: 'Scan Email', phone: 'Scan Phone Number', screenshot: 'Scan Screenshot', file: 'Scan File' }[this.tab]; },
         get idx() { return this.tabs.findIndex(t => t.key === this.tab); },
         pick(k) {
             if (this.scanning || k === this.tab) return;
@@ -118,12 +140,15 @@
             if (keep !== 'email') { this.email = ''; this.subject = ''; this.body = ''; }
             if (keep !== 'phone') this.phone = '';
             if (keep !== 'screenshot') this.removeFile();
+            if (keep !== 'file') this.removeDoc();
         },
-        removeFile() { this.fileName = ''; if (this.$refs.file) this.$refs.file.value = ''; }
+        removeFile() { this.fileName = ''; if (this.$refs.file) this.$refs.file.value = ''; },
+        removeDoc() { this.docName = ''; if (this.$refs.doc) this.$refs.doc.value = ''; }
      }"
      x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) scanning = false; })">
 
-    <div class="grid gap-4">
+    {{-- one column that can never grow wider than the screen, whatever is inside it --}}
+    <div class="grid gap-4" style="grid-template-columns: minmax(0, 1fr)">
 
         {{-- SCANNER --}}
         <div class="relative">
@@ -134,7 +159,7 @@
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="min-w-0">
                             <p class="text-white font-semibold text-sm">PhishCore Scanner</p>
-                            <p class="hidden sm:block text-xs text-slate-300 mt-0.5">Check a link, email, phone number or screenshot before you trust it.</p>
+                            <p class="hidden sm:block text-xs text-slate-300 mt-0.5">Check a link, email, phone number, screenshot or file before you trust it.</p>
                         </div>
                     </div>
                     <span class="shrink-0 inline-flex items-center gap-2 text-xs font-medium pl-2.5 pr-3 py-1.5 rounded-full border transition-colors duration-300"
@@ -154,17 +179,17 @@
                     <x-scan-guard part="trap" />
 
                     {{-- type selector --}}
-                    <div class="relative grid grid-cols-4 p-1 rounded-2xl bg-[#07122b]/60 border border-sky-200/10" role="tablist">
+                    <div class="relative grid grid-cols-5 p-1 rounded-2xl bg-[#07122b]/60 border border-sky-200/10" role="tablist">
                         <span class="sc-pill absolute top-1 bottom-1 left-1 pointer-events-none"
-                              :style="`width:calc((100% - 0.5rem) / 4);transform:translateX(${idx * 100}%)`">
+                              :style="`width:calc((100% - 0.5rem) / 5);transform:translateX(${idx * 100}%)`">
                             <span x-ref="blob" class="sc-pill-in block"></span>
                         </span>
                         <template x-for="t in tabs" :key="t.key">
                             <button type="button" role="tab" @click="pick(t.key)" :aria-selected="tab === t.key"
                                     :class="tab === t.key ? 'text-white' : 'text-slate-300 hover:text-white'"
-                                    class="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-1 rounded-xl text-[11px] sm:text-sm font-medium transition-colors duration-200 active:scale-95">
+                                    class="sc-tab relative z-10 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-1 rounded-xl text-[11px] sm:text-sm font-medium transition-colors duration-200 active:scale-95">
                                 <svg class="w-4 h-4 shrink-0 transition-colors duration-200" :class="tab === t.key ? 'text-sky-300' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" :d="icons[t.key]" /></svg>
-                                <span x-text="t.label"></span>
+                                <span class="sc-tab-label" x-text="t.label"></span>
                             </button>
                         </template>
                     </div>
@@ -258,7 +283,7 @@
                                    @dragenter="drag = true" @dragleave="drag = false" @drop="drag = false">
                                 <svg x-show="!fileName" class="w-7 h-7 text-sky-300/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                                 <svg x-show="fileName" x-cloak class="w-7 h-7 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                <span class="max-w-full truncate px-6" x-text="drag ? 'Drop it here' : (fileName || 'Drop an image or click to upload')"></span>
+                                <span class="sc-dz-text" x-text="drag ? 'Drop it here' : (fileName || 'Drop an image or click to upload')"></span>
                                 <span x-show="!fileName" class="text-xs text-slate-400">PNG or JPG, max 5MB</span>
                                 <input type="file" name="screenshot" x-ref="file" accept="image/png, image/jpeg, image/jpg, .png, .jpg, .jpeg"
                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -267,6 +292,31 @@
                                         class="absolute right-3 top-3 z-10 text-xs px-2.5 py-1 rounded-lg border border-white/10 bg-black/30 text-slate-200 hover:text-white hover:bg-black/50 transition">Remove</button>
                             </label>
                             @error('screenshot')
+                                <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- File (APK or PDF) --}}
+                        <div x-show="tab === 'file'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
+                            <label class="block text-xs tracking-wide text-slate-300 mb-2">UPLOAD AN APP OR PDF</label>
+                            <label class="relative flex flex-col items-center justify-center gap-2 w-full rounded-2xl border border-dashed px-4 py-9 text-sm cursor-pointer transition"
+                                   :class="[
+                                       docDrag ? 'border-sky-300/70 bg-sky-400/[0.08] text-sky-100' : (docName ? 'border-emerald-300/40 bg-emerald-400/[0.05] text-slate-100' : 'border-white/20 bg-black/20 text-slate-300 hover:border-sky-300/50 hover:bg-black/30'),
+                                       scanning ? 'opacity-50 pointer-events-none' : ''
+                                   ]"
+                                   @dragenter="docDrag = true" @dragleave="docDrag = false" @drop="docDrag = false">
+                                <svg x-show="!docName" class="w-7 h-7 text-sky-300/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                                <svg x-show="docName" x-cloak class="w-7 h-7 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                <span class="sc-dz-text" x-text="docDrag ? 'Drop it here' : (docName || 'Drop an APK or PDF, or click to upload')"></span>
+                                <span x-show="!docName" class="text-xs text-slate-400">APK or PDF, max 20MB</span>
+                                <input type="file" name="file" x-ref="doc" accept=".apk,.pdf,application/pdf,application/vnd.android.package-archive"
+                                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                       @change="docName = $event.target.files[0]?.name ?? ''; if (docName) clearOthers('file')">
+                                <button type="button" x-show="docName" x-cloak @click.prevent.stop="removeDoc()"
+                                        class="absolute right-3 top-3 z-10 text-xs px-2.5 py-1 rounded-lg border border-white/10 bg-black/30 text-slate-200 hover:text-white hover:bg-black/50 transition">Remove</button>
+                            </label>
+                            <p class="mt-2 text-xs text-slate-400">The file is never opened or run. Only its fingerprint is checked with VirusTotal, and the file is deleted as soon as the scan finishes.</p>
+                            @error('file')
                                 <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
                             @enderror
                         </div>
@@ -348,6 +398,7 @@
                     'email' => $scan->sender_email,
                     'phone' => $scan->phone_number,
                     'screenshot' => 'Uploaded screenshot',
+                    'file' => $scan->file_name ?: 'Uploaded file',
                     default => $scan->url,
                 };
             @endphp

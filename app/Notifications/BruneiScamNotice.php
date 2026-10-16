@@ -10,9 +10,7 @@ class BruneiScamNotice extends Notification
 {
     public const KIND = 'brunei_alert';
 
-    public function __construct(private Report $report, private string $headline)
-    {
-    }
+    public function __construct(private Report $report, private string $headline) {}
 
     /** @return array<int, string> */
     public function via(object $notifiable): array
@@ -23,7 +21,7 @@ class BruneiScamNotice extends Notification
     /** @return array<string, mixed> */
     public function toArray(object $notifiable): array
     {
-        $subject = $this->report->url ?: $this->report->sender_email ?: $this->report->phone_number;
+        $subject = $this->report->url ?: $this->report->sender_email ?: $this->report->phone_number ?: $this->report->file_name;
         $subject = $subject ? mb_strimwidth((string) $subject, 0, 60, '…') : 'a screenshot scan';
 
         return [

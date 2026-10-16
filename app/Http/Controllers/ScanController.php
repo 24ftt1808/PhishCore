@@ -84,6 +84,17 @@ class ScanController extends Controller
             $screenshotPath = asset('storage/'.$storedPath);
         }
 
+        // A file is scanned straight from PHP's temporary upload and never stored: PHP deletes it when
+        // the request ends, and only the file's name and fingerprint are kept with the report.
+        $filePath = null;
+        $fileName = null;
+
+        if ($type === 'file') {
+            $uploadedFile = $request->file('file');
+            $filePath = $uploadedFile->getRealPath() ?: null;
+            $fileName = mb_substr((string) preg_replace('/[^\p{L}\p{N}._\- ()\[\]]/u', '_', basename($uploadedFile->getClientOriginalName())), 0, 200);
+        }
+
         // Create the report first so we have a report_id to attach CTI lookups to.
         $report = Report::create([
             'user_id' => auth()->id(), // null for guests
@@ -92,6 +103,7 @@ class ScanController extends Controller
             'sender_email' => $request->input('email'),
             'phone_number' => $phone,
             'screenshot_path' => $screenshotPath,
+            'file_name' => $fileName,
             'status' => 'processing',
         ]);
 
@@ -122,6 +134,8 @@ class ScanController extends Controller
                 reportId: $report->id,
                 emailSubject: $request->input('subject'),
                 emailBody: $request->input('body'),
+                filePath: $filePath,
+                fileName: $fileName,
             );
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
@@ -161,6 +175,15 @@ class ScanController extends Controller
                 ]));
             }
 
+            // An email or a PDF can contain a link. It is kept only so the result can offer a page preview.
+            if (in_array($type, ['email', 'file'], true) && ! empty($result['extracted_url'])) {
+                $report->update(['preview_url' => mb_substr((string) $result['extracted_url'], 0, 2000)]);
+            }
+
+            if ($type === 'file') {
+                $report->update(['file_sha256' => $result['file_sha256'] ?? null]);
+            }
+
             $report->update(['status' => 'completed']);
         } catch (\Throwable $e) {
             // Don't leave a "processing" report with no Analysis row behind —
@@ -198,6 +221,9 @@ class ScanController extends Controller
         if ($request->hasFile('screenshot')) {
             return 'screenshot';
         }
+        if ($request->hasFile('file')) {
+            return 'file';
+        }
         if ($request->filled('email') || $request->filled('subject') || $request->filled('body')) {
             return 'email';
         }
@@ -221,6 +247,8 @@ class ScanController extends Controller
                 'phone_country' => ['nullable', 'string', Rule::in(PhoneCountries::codes())],
             ],
             'screenshot' => ['screenshot' => ['required', 'image', 'max:5120']], // 5MB max
+            // The type of the file is judged by its contents during the scan; the name is only a first filter.
+            'file' => ['file' => ['required', 'file', 'max:20480', 'extensions:apk,pdf']], // 20MB max
             default => ['url' => ['required', 'url', 'max:2048']],
         };
     }

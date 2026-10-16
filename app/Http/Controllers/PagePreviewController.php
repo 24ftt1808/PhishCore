@@ -22,10 +22,10 @@ class PagePreviewController extends Controller
     {
         abort_unless($preview->enabled(), 404);
         abort_unless($report->canBeViewedBy($request->user()), 404);
-        abort_unless($report->type === 'url' && $report->status === 'completed', 404);
+        abort_unless($report->status === 'completed' && $report->previewLink() !== null, 404);
 
-        if ($preview->exists($report->screenshot_path)) {
-            return response()->json(['status' => 'ready', 'url' => $report->screenshot_path]);
+        if ($preview->exists($report->previewPicture())) {
+            return response()->json(['status' => 'ready', 'url' => $report->previewPicture()]);
         }
 
         $lock = Cache::lock('page-preview:report:'.$report->id, 40);
@@ -47,7 +47,7 @@ class PagePreviewController extends Controller
         $job = Cache::get($jobKey);
 
         if (! is_array($job) || ! isset($job['uuid'], $job['started'])) {
-            $started = $preview->start((string) $report->url);
+            $started = $preview->start((string) $report->previewLink());
 
             if ($started['status'] !== 'started') {
                 return $this->failure($started['status']);
@@ -63,7 +63,7 @@ class PagePreviewController extends Controller
         if ($checked['status'] === 'ready') {
             Cache::forget($jobKey);
             $address = $preview->publicUrl($checked['path']);
-            $report->forceFill(['screenshot_path' => $address])->save();
+            $report->forceFill([$report->previewColumn() => $address])->save();
 
             return response()->json(['status' => 'ready', 'url' => $address]);
         }

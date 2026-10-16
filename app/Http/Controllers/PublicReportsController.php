@@ -154,7 +154,7 @@ class PublicReportsController extends Controller
             $phishing[] = $rows->filter(fn ($r) => $r->analyses->first()?->verdict === 'phishing')->count();
         }
 
-        $typeLabels = ['url' => 'Links', 'email' => 'Emails', 'phone' => 'Phone numbers', 'screenshot' => 'Screenshots'];
+        $typeLabels = ['url' => 'Links', 'email' => 'Emails', 'phone' => 'Phone numbers', 'screenshot' => 'Screenshots', 'file' => 'Files'];
         $byType = [];
         foreach ($typeLabels as $key => $label) {
             $byType[] = ['label' => $label, 'count' => $flagged->where('type', $key)->count()];

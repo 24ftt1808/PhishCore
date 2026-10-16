@@ -1,0 +1,43 @@
+# label|group|sender|subject|body   (harder set: reworded scams, tricky normal messages)
+scam|gaming|support@valve-community-help.com|Your inventory is at risk|We detected a trade ban on your inventory. To keep your items verify your login on the community page http://valve-community-help.com within 12 hours.
+scam|gaming|reward@pubg-mobile-uc.top|UC gratis untuk anda|Pemain setia dapat UC percuma. Tekan pautan dan sambungkan akaun Facebook anda untuk terima ganjaran.
+scam|gaming|team@genshin-primogems.net|Primogems for you|Official event: claim 6400 Primogems. Sign in with your HoYoverse account on our event page to receive them instantly.
+scam|gaming|partner@twitch-streamer-sponsor.com|Sponsorship offer|We want to sponsor your channel. Download our game demo from this link and run it so we can verify your stream setup.
+scam|marketplace|pembeli.ahmad@gmail.com|Nak beli iPhone awak|Saya nak beli iPhone tu. Saya dah bayar, sila tengok resit di sini http://bn-bayar-resit.top dan masukkan bank anda untuk terima wang.
+scam|marketplace|escrow@safe-trade-service.com|Escrow payment held|Buyer has paid into escrow for your item. Log into our escrow page and pay the release fee to receive your money.
+scam|romance|lisa.wong.nurse@gmail.com|Can we talk|I found your profile and I feel we are meant to be together. I am stuck abroad and my card is blocked. Can you help me with a small amount for my ticket, I will repay you when I arrive.
+scam|rental|sewa.bilik@gmail.com|Bilik sewa Kiulap $150|Bilik sewa sangat murah. Saya sekarang di Dubai, jadi tak boleh jumpa. Hantar deposit dulu dan saya pos kunci.
+scam|mule|kerja.online@gmail.com|Peluang kerja dari rumah|Tidak perlukan pengalaman. Anda cuma perlu gunakan akaun bank anda untuk terima dan hantar pembayaran bagi pihak pelanggan kami dengan komisen setiap transaksi.
+scam|family|anak.baru@gmail.com|Ayah tolong|Ayah, ini nombor baru saya. Telefon saya rosak. Boleh ayah tolong bayarkan bil ini dulu $600 sekarang, saya ganti esok.
+scam|remote|it.support@company-helpdesk.top|Komputer anda perlu dikemas kini|Pasukan IT perlu mengawal komputer anda dari jauh. Pasang aplikasi dan beri kod 9 digit yang muncul pada skrin.
+scam|techsupport|popup@pc-cleaner-alert.com|3 viruses found|Your PC has 3 viruses and is at risk. Dial our toll free certified technician line immediately before your files are deleted.
+scam|wrongtransfer|aisyah.r@gmail.com|Tolong pulangkan|Assalamualaikum, saya tersalah masukkan duit $200 ke akaun awak tadi. Tolong pulangkan balik ya, saya betul-betul perlukan.
+scam|apk|ewallet@bn-ewallet-update.com|Kemas kini e-wallet|Kemas kini e-wallet anda dengan memasang fail apk dari pautan ini http://bn-ewallet-update.com/update.apk. Benarkan akses sms dan kebolehcapaian.
+scam|booking|stay@hotel-reservation-bn.top|Tempahan hotel belum disahkan|Tempahan anda akan dibatalkan jika bayaran tidak dibuat dalam 1 jam. Masukkan maklumat kad anda di pautan ini.
+scam|investment|admin@bn-profit-circle.com|Peluang pelaburan|Rakan saya untung $3000 dalam 3 hari. Platform ini ada jaminan pulangan. Boleh mula dengan $50 sahaja, hubungi pengurus kami di WhatsApp.
+scam|insurance|refund@policy-refund-center.com|Premium refund|You are eligible for an unclaimed premium refund of $850. Pay a small release fee and confirm your bank login to receive it.
+scam|boss|director.office@outlook.com|Quick favour|Are you at your desk? I have a confidential task for you. Reply right away, I will explain. I cannot take calls now.
+scam|bm|hasil@jabatan-cukai-refund.top|Bayaran balik cukai|Anda layak mendapat bayaran balik cukai $640. Sila isi butiran bank dan kad anda di pautan ini dalam masa 48 jam.
+scam|bm|kastam@kastam-bn-pakej.top|Pakej ditahan kastam|Pakej luar negara anda ditahan oleh kastam. Bayar cukai $25 sekarang supaya pakej boleh dilepaskan.
+scam|bm|admin@bn-telco-prize.com|Hadiah pelanggan|Nombor telefon anda dipilih untuk hadiah $2000. Balas dengan nombor IC dan nombor kad anda untuk menuntut.
+legit|giveaway|events@mobilelegends.com|Event ulang tahun|Sempena ulang tahun permainan, log masuk setiap hari dalam permainan untuk dapat diamond percuma. Tiada pautan luar diperlukan.
+legit|giveaway|news@steampowered.com|Free weekend|Play this game free all weekend and keep it for 50 percent off. Open your Steam client to play.
+legit|giveaway|news@riotgames.com|Free skin event|Log in to the game client this week to claim a free skin as part of the anniversary event. Rewards appear in your inbox in game.
+legit|warning|info@bibd.com.bn|Amaran penipuan terkini|Berhati-hati dengan mesej yang mendakwa anda menang hadiah atau perlu pasang apk. BIBD tidak akan meminta kata laluan atau OTP anda melalui mesej.
+legit|warning|news@ctf-club.edu.bn|Scam awareness talk|Join our scam awareness talk. Learn how to spot fake giveaways, wrong transfer messages and remote access scams. Free for all students.
+legit|rental-ad|agent@propertybn.com|Viewing this Saturday|The apartment is available from next month at $700. Viewing is this Saturday 10am, please bring your IC. Deposit is paid when signing the tenancy agreement.
+legit|marketplace|sarah@gmail.com|Hi, is the laptop still available?|Hi, I would like to see the laptop. Can we meet at Gadong on Sunday? I will pay cash after I check it works.
+legit|family|abang@gmail.com|Pinjam duit sekejap|Dik, abang lupa bawa dompet di kedai. Boleh pinjam $20 dulu? Abang bayar balik petang ni bila sampai rumah.
+legit|family|kakak@gmail.com|Nombor baru|Kak dah tukar nombor telefon. Ini nombor baru kakak, simpan ya. Jumpa di rumah nenek hujung minggu.
+legit|remote|it@school.edu.bn|IT maintenance|The IT team will update lab computers on Friday evening. Please save your work and log off before 5pm. No action is needed from you.
+legit|techsupport-real|noreply@microsoft.com|Windows update|Your device has installed the latest security updates. You do not need to do anything.
+legit|work|hr@company.com.bn|Slip gaji bulan ini|Slip gaji bulan ini sudah tersedia di portal syarikat. Sila log masuk dengan akaun biasa anda untuk melihatnya.
+legit|work|boss@company.com.bn|Tolong urus pembelian|Tolong beli kertas A4 dan pen untuk pejabat. Simpan resit dan hantar kepada saya untuk tuntutan.
+legit|bank|alert@bibd.com.bn|Transaction alert|A transfer of $200 was made from your account. If you did not make this transfer please call the number on the back of your card.
+legit|parcel|noreply@posbrunei.com|Parcel notice|Your parcel is held at the branch. Customs duty of $5 can be paid at the counter when you collect with your IC.
+legit|investment|info@bibd.com.bn|Takaful and savings|Learn about our savings plans at the branch near you. Returns vary and are not guaranteed. Speak to our officer for details.
+legit|insurance|service@takaful.com.bn|Tuntutan anda diluluskan|Tuntutan anda telah diluluskan dan wang akan dimasukkan ke akaun yang didaftarkan dalam 5 hari bekerja. Tiada tindakan diperlukan.
+legit|booking|noreply@agoda.com|Booking confirmed|Your booking is confirmed. Payment is made at the hotel on arrival. View your booking in the Agoda app.
+legit|friend|buddy@gmail.com|Top up game|Bro aku dah top up diamond kau sebab kau tolong aku semalam. Check dalam game, jangan lupa login.
+legit|friend|buddy3@gmail.com|Giveaway di channel|Channel aku buat giveaway Steam gift card $10 minggu depan. Join Discord server kami kalau berminat, nanti aku umum pemenang di live.
+legit|app|noreply@grab.com|Update app|A new version of the Grab app is available. Update from the App Store or Google Play.

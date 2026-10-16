@@ -226,6 +226,7 @@
                                 'email' => $report->sender_email,
                                 'phone' => $report->phone_number,
                                 'screenshot' => 'Uploaded screenshot',
+                                'file' => $report->file_name ?: 'Uploaded file',
                                 default => $report->url,
                             };
                             $isMono = in_array($report->type, ['url', 'email', 'phone'], true);
@@ -333,6 +334,7 @@
                     'email' => $report->sender_email,
                     'phone' => $report->phone_number,
                     'screenshot' => 'Uploaded screenshot',
+                    'file' => $report->file_name ?: 'Uploaded file',
                     default => $report->url,
                 };
                 $isMono = in_array($report->type, ['url', 'email', 'phone'], true);

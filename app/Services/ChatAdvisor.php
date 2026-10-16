@@ -25,7 +25,7 @@ class ChatAdvisor
 
     /** What PhishCore offers, so Cora can answer "how do I use this site?" without making features up. */
     public const SITE_GUIDE = "About the PhishCore website (only describe what is listed here; if asked about anything else on the site, say you are not sure):\n"
-        ."- Scan: check a website URL, a sender email, a phone number or a screenshot. Each scan gives a verdict (clean, suspicious or phishing), a risk score out of 100 and a list of the checks behind it.\n"
+        ."- Scan: check a website URL, a sender email, a phone number, a screenshot, or an app (APK) or PDF file. Each scan gives a verdict (clean, suspicious or phishing), a risk score out of 100 and a list of the checks behind it.\n"
         ."- Scan result page: shows the verdict and checks. The owner can export it as a PDF and make a private share link, and can ask the team to investigate it.\n"
         ."- Dashboard: an overview of detections, this week's activity and recent reports.\n"
         ."- Scan History: every scan the user made before, to review again.\n"
@@ -40,7 +40,7 @@ class ChatAdvisor
     /** Where the person is in the app, as a one-line hint. The browser only sends a short key; unknown keys are ignored. */
     public const PAGES = [
         'dashboard' => 'the Dashboard',
-        'scan' => 'the Scan page, where they can check a URL, email, phone number or screenshot',
+        'scan' => 'the Scan page, where they can check a URL, email, phone number, screenshot or file',
         'history' => 'the Scan History page',
         'analytics' => 'the Analytics page',
         'play' => 'the Phish Lab, the scam practice games',
@@ -188,6 +188,10 @@ class ChatAdvisor
         if ($report->type === 'url' && filled($report->url)) {
             $host = parse_url((string) $report->url, PHP_URL_HOST);
             $lines[] = 'Website: '.Str::limit((string) ($host ?: $report->url), 120, '');
+        }
+
+        if ($report->type === 'file' && filled($report->file_name)) {
+            $lines[] = 'File name: '.Str::limit((string) $report->file_name, 120, '');
         }
 
         foreach (collect($analysis->flags ?? [])->filter(fn ($c) => is_array($c))->sortByDesc('points')->take(8) as $check) {

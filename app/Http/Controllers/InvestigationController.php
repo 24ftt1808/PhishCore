@@ -37,7 +37,8 @@ class InvestigationController extends Controller
             $query->whereHas('report', function ($q) use ($search) {
                 $q->where('url', 'like', "%{$search}%")
                     ->orWhere('sender_email', 'like', "%{$search}%")
-                    ->orWhere('phone_number', 'like', "%{$search}%");
+                    ->orWhere('phone_number', 'like', "%{$search}%")
+                    ->orWhere('file_name', 'like', "%{$search}%");
             });
         }
 
@@ -75,7 +76,7 @@ class InvestigationController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-               $investigation = Investigation::create([
+        $investigation = Investigation::create([
             'report_id' => $report->id,
             'assigned_to' => $validated['assigned_to'] ?? null,
             'status' => 'active',
@@ -99,7 +100,7 @@ class InvestigationController extends Controller
             ->with('success', 'Investigation opened for this report.');
     }
 
-        /**
+    /**
      * Allow a regular (non-team) user to request an investigation on their
      * own report. Creates the investigation immediately so it surfaces on
      * the team's /investigations queue, but the requester gets no
@@ -116,7 +117,7 @@ class InvestigationController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-              $investigation = Investigation::create([
+        $investigation = Investigation::create([
             'report_id' => $report->id,
             'requested_by' => auth()->id(),
             'status' => 'active',
@@ -150,7 +151,7 @@ class InvestigationController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-              $resolvedAt = in_array($validated['status'], ['completed', 'takedown_confirmed'], true)
+        $resolvedAt = in_array($validated['status'], ['completed', 'takedown_confirmed'], true)
             ? ($investigation->resolved_at ?? now())
             : null;
 

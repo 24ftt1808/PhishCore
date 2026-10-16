@@ -59,6 +59,12 @@ class ScanAdvice
                 'If it claims to be from a bank, courier or government office, contact them using the number on their official website.',
                 'If you already tapped the link or entered details, change your passwords and tell your bank.',
             ],
+            'file' => [
+                'Do not open the file or install it. If it is an app, do not allow it to read your messages or control your screen.',
+                'Delete the file, and delete the message that sent it. Do not forward it.',
+                'Only install apps from the Play Store or App Store, and ask the sender through a number you already trust if you are not sure.',
+                'If you already installed it, turn on flight mode, uninstall the app, change your banking passwords from another device and tell your bank.',
+            ],
             default => [
                 'Do not enter usernames, passwords or payment details on this site, and do not download anything from it.',
                 'Close the page. If you were sent the link, do not forward it.',

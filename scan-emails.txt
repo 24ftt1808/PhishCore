@@ -1,0 +1,61 @@
+# label|group|sender|subject|body   (label: scam or legit)
+scam|gaming|support@steam-gift-rewards.com|Free Steam wallet|Congratulations! You won a free Steam wallet gift card $50. Login with your Steam account to claim now at http://steam-gift-rewards.com/claim before it expires.
+scam|gaming|admin@mlbb-diamond-free.top|Diamond Mobile Legends percuma|Tahniah! Anda menang 5000 diamond Mobile Legends percuma. Masukkan ID dan kata laluan akaun anda di http://mlbb-diamond-free.top untuk tuntut sekarang.
+scam|gaming|noreply@roblox-robux-gen.net|Free Robux|Get 10000 free Robux now. Just enter your Roblox username and password at http://roblox-robux-gen.net to receive your Robux generator reward.
+scam|gaming|team@garena-freefire-bonus.com|Free Fire akaun anda akan digantung|Akaun Free Fire anda akan digantung dalam 24 jam. Sahkan akaun dengan login di http://garena-freefire-bonus.com untuk elak ban.
+scam|gaming|trade@discord-nitro-gift.com|Discord Nitro gift|Someone sent you a free Discord Nitro gift. Log in to accept your Nitro before it expires: http://discord-nitro-gift.com
+scam|gaming|offer@csgo-skin-trade.xyz|Trade offer for your skins|You have a new trade offer. Confirm your Steam login to receive 3 free CS2 skins. Offer expires in 1 hour.
+scam|marketplace|buyer.zahrin@gmail.com|Barang masih ada?|Saya berminat beli barang awak. Saya akan bayar deposit dulu, tapi sila klik link ini untuk terima bayaran melalui kurier http://bn-pay-courier.top dan masukkan kad bank awak.
+scam|marketplace|seller.deal@outlook.com|Selling PS5 cheap|PS5 only $150 because I am moving abroad. Pay first by bank transfer and my courier will deliver tomorrow. No meet up possible.
+scam|romance|sarah.lee.army@gmail.com|Hello my dear|I am a US army officer deployed overseas. I feel a deep connection with you. I need your help to send my gift card funds home, please buy iTunes gift cards and send me the codes.
+scam|romance|dr.henry.miller@yahoo.com|Please trust me|I am a widower engineer on an oil rig. I love you and want to marry you. I have a parcel of gold to ship to you but I need money for customs fees first.
+scam|rental|owner.rumah@gmail.com|Rumah sewa murah Kiulap|Rumah sewa Kiulap hanya $300 sebulan. Pemilik di luar negara jadi kunci akan dihantar melalui kurier. Sila bayar deposit dan sewa bulan pertama dahulu.
+scam|rental|landlord.jason@gmail.com|Apartment for rent|Beautiful apartment only $400 per month. I am abroad so the keys will come by courier. Transfer the deposit first to secure the unit, viewing is not possible.
+scam|mule|recruit@easyjobs-bn.com|Kerja part time senang|Kerja dari rumah, dapat komisen $200 setiap hari. Anda hanya perlu terima duit ke akaun bank anda dan pindahkan semula kepada kami, ambil 10% sebagai upah.
+scam|mule|hr@quickpay-agent.net|Payment agent needed|We need a payment processing agent. Receive funds into your bank account and forward them to our client, keep 10 percent commission. No experience needed.
+scam|family|unknown.number@gmail.com|Mak, saya kemalangan|Mak ini saya, nombor baru. Saya kemalangan dan dalam kesusahan, polis tangkap saya. Tolong pindah wang $800 sekarang, jangan beritahu ayah.
+scam|family|newphone.son@gmail.com|Hi mum new number|Hi mum, this is my new number, my phone broke. I am in trouble and need you to transfer $500 urgently. Please do not tell dad.
+scam|remote|helpdesk@bank-support-center.top|Pasang aplikasi sokongan|Untuk selesaikan masalah akaun anda, sila pasang AnyDesk dan beri kami kod akses supaya pegawai kami boleh kawal komputer anda.
+scam|remote|support@refund-desk.com|Your refund is ready|To process your refund please install TeamViewer and share the ID and password with our officer so we can access your computer.
+scam|techsupport|alert@windows-security-alert.com|Virus detected|Warning! Your computer is infected with a virus. Call Microsoft Support immediately at +1-800-555-0199. Do not shut down your computer or your data will be lost.
+scam|techsupport|alert@apple-device-locked.com|Your Mac is locked|Your device has been locked due to suspicious activity. Call Apple technical support now to unlock and avoid data loss.
+scam|wrongtransfer|maria.tan@gmail.com|Salah transfer|Maaf, saya tersalah transfer $300 ke akaun awak. Tolong pulangkan balik wang tersebut segera ke akaun saya ya.
+scam|wrongtransfer|john.doe@gmail.com|Money sent by mistake|I accidentally transferred $450 to your account by mistake. Please return the money to my account as soon as possible, I am in urgent need.
+scam|apk|promo@bn-parcel-track.com|Pakej anda tertangguh|Pakej anda tertangguh. Muat turun aplikasi pengesan pakej (fail APK) di http://bn-parcel-track.com/app.apk dan benarkan semua kebenaran untuk teruskan penghantaran.
+scam|apk|offer@bank-security-app.net|Install our security app|Install the new security app from http://bank-security-app.net/secure.apk. Enable install from unknown sources and allow all permissions to protect your account.
+scam|booking|reserve@booking-hotel-confirm.top|Confirm your hotel booking|Your hotel booking is not confirmed. Pay the deposit by bank transfer within 2 hours or your reservation will be cancelled. Enter your card details at http://booking-hotel-confirm.top
+scam|investment|vip@crypto-profit-group.com|Jana keuntungan 300 peratus|Sertai kumpulan pelaburan kripto kami. Untung 300 peratus dalam seminggu, dijamin tanpa risiko. Daftar sekarang dan masukkan modal minimum $100.
+scam|investment|signals@forex-guaranteed-profit.com|Guaranteed daily profit|Join our trading platform and earn guaranteed 5 percent daily returns with zero risk. Deposit a minimum of $200 to start now.
+scam|insurance|claim@insurance-claim-refund.top|Tuntutan insurans anda|Anda layak mendapat bayaran balik insurans $1200. Untuk tuntut sila bayar yuran pemprosesan $50 dan masukkan butiran bank anda.
+scam|boss|ceo.office@gmail.com|Urgent task|I am in a meeting and cannot talk. I need you to buy gift cards urgently for a client and send me the codes. Keep this confidential, I will reimburse you later.
+scam|boss|pengarah.syarikat@gmail.com|Tugas segera|Saya sedang mesyuarat. Tolong buat pindahan wang $2000 segera kepada akaun ini dan jangan beritahu sesiapa. Saya akan ganti kemudian.
+scam|bm|polis@jabatan-polis-saman.top|Saman trafik tertunggak|Anda ada saman trafik tertunggak. Bayar dalam 24 jam di http://jabatan-polis-saman.top atau lesen anda akan digantung dan tindakan mahkamah diambil.
+scam|bm|promo@brunei-lucky-draw.com|Anda menang cabutan bertuah|Tahniah anda menang cabutan bertuah $5000! Hubungi kami dan bayar yuran penghantaran untuk menuntut hadiah anda.
+scam|bm|admin@bruneipost-redeliver.top|Pos Brunei pakej tertahan|Pakej anda ditahan di kastam. Bayar yuran $3.50 di http://bruneipost-redeliver.top untuk penghantaran semula.
+legit|giveaway|news@steampowered.com|Steam Summer Sale|The Steam Summer Sale is live with discounts up to 90 percent. Browse deals in the Steam store. You can unsubscribe at any time in your account preferences.
+legit|giveaway|noreply@epicgames.com|Free games this week|This week's free games on the Epic Games Store are available to claim. Open the Epic Games Launcher to add them to your library. No payment needed.
+legit|giveaway|news@roblox.com|New Roblox event|A new Roblox event has started. Play and earn the free event item in the game. Never share your password with anyone, Roblox staff will never ask for it.
+legit|giveaway|noreply@garena.com|Free Fire update|The latest Free Fire update is ready with new characters and a free login reward when you open the game this week.
+legit|giveaway|hello@mobilelegends.com|Event Mobile Legends|Sertai acara Mobile Legends minggu ini dan dapat hadiah percuma dalam permainan apabila anda log masuk seperti biasa.
+legit|giveaway|news@discord.com|Discord Nitro offer|Discord Nitro is available at a discount this month. Check the Nitro page in your user settings to see the offer.
+legit|warning|security@steampowered.com|Protect your account|Beware of scams. Steam will never ask for your password by email. Turn on Steam Guard to protect your account.
+legit|warning|info@brunei.gov.bn|Amaran penipuan|Berhati-hati dengan penipuan. Jabatan tidak akan meminta kata laluan atau butiran kad anda melalui mesej. Cara mengenali penipuan boleh dibaca di laman rasmi kami.
+legit|rental-ad|agent.bn@gmail.com|Rumah sewa Gadong|Rumah sewa di Gadong, $800 sebulan. Boleh datang tengok rumah hujung minggu ini. Deposit dibayar semasa tandatangan kontrak.
+legit|rental-ad|landlord@gmail.com|Room for rent|Room for rent near Politeknik Brunei, $250 per month. Come and view it any evening this week. Deposit is paid when we sign the agreement.
+legit|marketplace|friend.ali@gmail.com|Beli basikal awak|Hi, basikal awak masih ada? Boleh jumpa di Mall Gadong petang ini, saya bayar tunai bila ambil barang.
+legit|techsupport-real|noreply@microsoft.com|Microsoft account security info|We noticed a new sign-in to your Microsoft account from a new device. If this was you, no action is needed.
+legit|techsupport-real|support@apple.com|Your support case|Your Apple Support case has been updated. You can view the status in your Apple account. We never ask for passwords by email.
+legit|bank|alert@bibd.com.bn|Penyata e-mel anda|Penyata bulanan anda sudah tersedia. Log masuk ke BIBD Internet Banking seperti biasa untuk melihatnya. Kami tidak akan meminta kata laluan melalui e-mel.
+legit|bank|noreply@baiduri.com.bn|Your e-statement|Your monthly e-statement is ready. Please log in to Baiduri Online Banking through our official website to view it.
+legit|family|mak@gmail.com|Balik rumah|Mak, hujung minggu ni saya balik rumah. Nak makan apa? Saya singgah beli dulu di pasar.
+legit|family|friend@gmail.com|Hi mum|Hi mum, my phone is charging at the library so I am on my friend's laptop. I will be home at 6 for dinner.
+legit|work|boss@company.com.bn|Mesyuarat esok|Mesyuarat esok pukul 9 pagi di bilik mesyuarat. Sila bawa laporan mingguan. Terima kasih.
+legit|work|manager@school.edu.bn|Project meeting|Please remember our project meeting at 2pm in the lab. Bring your progress report and a laptop.
+legit|parcel|noreply@posbrunei.com|Your parcel|Your parcel has arrived at the Pos Brunei branch in Gadong. Please collect it with your IC during opening hours.
+legit|investment|newsletter@bibd.com.bn|Investment seminar|Join our free investment seminar next Saturday to learn about saving plans. Returns are not guaranteed and capital may be at risk. Seats are limited.
+legit|insurance|service@takaful.com.bn|Renewal notice|Your insurance policy is due for renewal next month. Log in to the official portal to review your cover. No action is needed before the due date.
+legit|booking|noreply@booking.com|Your stay is confirmed|Your booking is confirmed. Payment will be taken at the property. You can manage your reservation in the Booking.com app.
+legit|app|noreply@google.com|Security update|A new version of the Google Play app is available. Update from the Play Store to get the latest features.
+legit|newsletter|news@grab.com|Promo hujung minggu|Dapatkan diskaun 20 peratus untuk pesanan makanan hujung minggu ini dalam aplikasi Grab. Syarat dan terma terpakai.
+legit|friend|buddy@gmail.com|Main game malam ni?|Malam ni main Mobile Legends dengan kami? Saya dah top up diamond sendiri semalam hehe. Jumpa pukul 9.
+legit|friend|buddy2@gmail.com|Steam sale|Bro the Steam sale started, I bought that co-op game for you to play together tonight. Add me as a friend again.

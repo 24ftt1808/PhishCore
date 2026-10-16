@@ -4,7 +4,7 @@
 
 Live site: **https://phishcore.tech**
 
-PhishCore helps anyone check suspicious links, emails, phone numbers and screenshots, and gives a clear verdict with the reasons behind it. It is built with Brunei in mind, with detection for local brands, Malay scam wording and local scam patterns.
+PhishCore helps anyone check suspicious links, emails, phone numbers, screenshots and files, and gives a clear verdict with the reasons behind it. It is built with Brunei in mind, with detection for local brands, Malay scam wording and local scam patterns.
 
 ## Features
 

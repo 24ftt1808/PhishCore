@@ -7,7 +7,7 @@
         <h2>1. What we collect</h2>
         <ul>
             <li><strong class="text-white">Account details:</strong> your name, email address and a hashed password, plus an optional profile photo.</li>
-            <li><strong class="text-white">What you scan:</strong> the link, sender address, message text, phone number or screenshot you submit, and the results (verdict, risk score, checks and date). Screenshots you upload are stored on our server.</li>
+            <li><strong class="text-white">What you scan:</strong> the link, sender address, message text, phone number, screenshot or file you submit, and the results (verdict, risk score, checks and date). Screenshots you upload are stored on our server. A file you upload (an APK or PDF) is checked and then deleted straight away: we keep only its name and a fingerprint (a SHA-256 hash), never the file itself.</li>
             <li><strong class="text-white">Site information found during a scan:</strong> for example a site's IP address and hosting details. This is about the site you checked, not about you.</li>
             <li><strong class="text-white">Sign-in sessions:</strong> a record of your devices (browser and system type) so Settings can show where you are signed in.</li>
             <li><strong class="text-white">Last login time:</strong> the date and time you last signed in or registered, which administrators can see on the user management page.</li>
@@ -32,7 +32,7 @@
         <h2>3. Who else receives data</h2>
         <p>To do their job, some outside services receive part of what you submit:</p>
         <ul>
-            <li><strong class="text-white">Google Safe Browsing and VirusTotal</strong> receive the links you scan.</li>
+            <li><strong class="text-white">Google Safe Browsing and VirusTotal</strong> receive the links you scan. VirusTotal also receives the fingerprint of a file you upload, but never the file itself.</li>
             <li><strong class="text-white">urlscan.io</strong> receives a link only when the optional page preview is switched on and you click "Show page preview", so that a picture of the page can be taken. The scan is unlisted, which keeps it out of urlscan's public search. Our copy of the picture is kept for a few days and then deleted.</li>
             <li><strong class="text-white">An OCR service</strong> receives screenshots so the text in them can be read.</li>
             <li><strong class="text-white">AI providers</strong> (Google Gemini for the optional AI text check, and Groq for the chat adviser) receive the message text or chat messages when those features are switched on.</li>

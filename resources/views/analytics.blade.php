@@ -585,7 +585,7 @@
 
         <div class="a-card a-in p-4 sm:p-6" style="--d:.16s">
             <h2 class="text-white font-semibold mb-1">Most Common Phishing Indicators</h2>
-            <p class="text-sm text-slate-300 mb-5">Top triggers across your flagged reports, across all detection types (URL, email, phone, screenshot)</p>
+            <p class="text-sm text-slate-300 mb-5">Top triggers across your flagged reports, across all detection types (URL, email, phone, screenshot, file)</p>
             @if (count($indicatorCounts) > 0)
                 <div class="space-y-4" data-indicators>
                     @foreach (array_slice($indicatorCounts, 0, $indicatorLimit, true) as $name => $count)
@@ -744,7 +744,7 @@
     {{-- TOP PHISHING SOURCES --}}
     <div class="a-card a-in p-4 sm:p-6 mb-4" style="--d:.14s">
         <h2 class="text-white font-semibold mb-1">Top Phishing Sources</h2>
-        <p class="text-sm text-slate-300 mb-5">Your most frequently detected phishing sources in this period — URLs, sender domains, phone numbers, or screenshots</p>
+        <p class="text-sm text-slate-300 mb-5">Your most frequently detected phishing sources in this period — URLs, sender domains, phone numbers, screenshots, or files</p>
 
         @if ($topDomains->count() > 0)
             <div class="md:overflow-x-auto md:-mx-2">

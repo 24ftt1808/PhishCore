@@ -16,6 +16,7 @@
         'email' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-9.75 6-9.75-6',
         'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
         'screenshot' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5zM10.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z',
+        'file' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',
     ];
 
     $total = max((int) $stats['total'], 0);
@@ -23,14 +24,14 @@
     $weekSum = (int) $weekTotals['safe'] + (int) $weekTotals['suspicious'] + (int) $weekTotals['phishing'];
 
     $cards = [
-        ['key' => 'total',      'title' => 'TOTAL REPORTS',      'tag' => 'SUBMITTED',        'sub' => 'URLs, emails, phone numbers & screenshots', 'rgb' => '56,189,248',  'num' => 'text-white',        'tile' => 'text-sky-300',     'bar' => null,             'icon' => 'M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18'],
+        ['key' => 'total',      'title' => 'TOTAL REPORTS',      'tag' => 'SUBMITTED',        'sub' => 'URLs, emails, phone numbers, screenshots & files', 'rgb' => '56,189,248',  'num' => 'text-white',        'tile' => 'text-sky-300',     'bar' => null,             'icon' => 'M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18'],
         ['key' => 'safe',       'title' => 'SAFE REPORTS',       'tag' => 'VERIFIED',         'sub' => 'No threats detected',                       'rgb' => '52,211,153',  'num' => 'text-emerald-300',  'tile' => 'text-emerald-300', 'bar' => 'bg-emerald-400', 'icon' => 'M4.5 12.75l6 6 9-13.5'],
         ['key' => 'suspicious', 'title' => 'SUSPICIOUS REPORTS', 'tag' => 'NEEDS REVIEW',     'sub' => 'Potential threats',                         'rgb' => '251,146,60',  'num' => 'text-orange-300',   'tile' => 'text-orange-300',  'bar' => 'bg-orange-400',  'icon' => 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z'],
         ['key' => 'phishing',   'title' => 'PHISHING REPORTS',   'tag' => 'THREATS DETECTED', 'sub' => 'Confirmed malicious',                      'rgb' => '248,113,113', 'num' => 'text-red-300',      'tile' => 'text-red-300',     'bar' => 'bg-red-400',     'icon' => 'M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
     ];
 
     $actions = [
-        ['href' => route('scan.index'),   'title' => 'Run New Scan', 'sub' => 'URL, email, phone, or screenshot', 'icon' => 'M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z'],
+        ['href' => route('scan.index'),   'title' => 'Run New Scan', 'sub' => 'URL, email, phone, screenshot, or file', 'icon' => 'M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z'],
         ['href' => route('scan.history'), 'title' => 'Scan History', 'sub' => $totalScansCount . ' recent records',  'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
         ['href' => route('analytics'),    'title' => 'Analytics',    'sub' => 'Charts & insights',                   'icon' => 'M3 13.5l3.75-3.75 3 3 4.5-4.5M3 19.5h18'],
         auth()->user()->is_team_member
@@ -285,6 +286,7 @@
                                     'email' => $scan->sender_email,
                                     'phone' => $scan->phone_number,
                                     'screenshot' => 'Uploaded screenshot',
+                                    'file' => $scan->file_name ?: 'Uploaded file',
                                     default => $scan->url,
                                 };
                                 $isMono = $scan->type !== 'screenshot';

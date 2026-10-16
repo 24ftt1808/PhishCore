@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\HiddenNumber;
 use App\Models\NumberReport;
 use App\Models\Report;
+use App\Services\Concerns\ScansFiles;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -20,6 +22,8 @@ use Zxing\QrReader;
 
 class AnalysisEngine
 {
+    use ScansFiles;
+
     /**
      * Brunei-specific brands and their OFFICIAL domains. Every domain here was
      * confirmed against the organisation's own site/Wikipedia before adding —
@@ -147,7 +151,20 @@ class AnalysisEngine
         'spotify' => ['spotify.com', 'spotify.github.io'],
         'adobe' => ['adobe.com'],
         'dropbox' => ['dropbox.com'],
-        'steam' => ['steampowered.com'],
+        'steam' => ['steampowered.com', 'steamcommunity.com'],
+        // Gaming platforms and publishers. Their own domains are brand + ".com" in most cases, but
+        // each was named on the company's own site or store pages; open each once to confirm before
+        // relying on it, because a wrong entry would flag the real site (and a lookalike of it).
+        'roblox' => ['roblox.com'],
+        'discord' => ['discord.com', 'discord.gg', 'discord.gift', 'discordapp.com'],
+        'epic games' => ['epicgames.com'],
+        'riot games' => ['riotgames.com'],
+        'garena' => ['garena.com'],
+        'mobile legends' => ['mobilelegends.com', 'moonton.com'],
+        'minecraft' => ['minecraft.net', 'mojang.com'],
+        'playstation' => ['playstation.com'],
+        'xbox' => ['xbox.com'],
+        'nintendo' => ['nintendo.com'],
         'zoom' => ['zoom.us'],
         'twitter' => ['twitter.com', 'x.com'],
         // Shipping
@@ -182,7 +199,9 @@ class AnalysisEngine
             $points += 10;
         }
 
-        $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank'];
+        $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank',
+            // gaming platforms: only names that are not everyday words ("steam" is handled below)
+            'roblox', 'discord', 'epicgames', 'riotgames', 'garena', 'minecraft', 'playstation', 'xbox', 'nintendo', 'steampowered', 'steamcommunity'];
         $host = strtolower(parse_url($url, PHP_URL_HOST) ?? '');
         $normalizedHost = $this->normalizeForBrandMatch($host);
         // A brand's own site can contain a brand word without imitating
@@ -204,6 +223,14 @@ class AnalysisEngine
                 $points += 30;
                 break;
             }
+        }
+
+        // "steam" is also an ordinary word (steamer, steamboat), so it only counts as the brand when it
+        // stands alone in the address or is joined to a word scams use ("steam-gift", "steamwallet").
+        if (! $isOfficialBrandSite && ! preg_grep('/brand name|mimic/', $reasons)
+            && preg_match('/(^|[.\-])steam(-|community|powered|gift|wallet|trade|login|support|free|games?|keys?|offers?|rewards?|[.\-]|$)/', $host)) {
+            $reasons[] = 'Contains brand name "steam" in a suspicious position within the domain';
+            $points += 30;
         }
 
         // Brunei-specific lookalikes. Official domains differ from the
@@ -1539,6 +1566,8 @@ class AnalysisEngine
             // Tech/social (common credential-phishing targets)
             'instagram', 'whatsapp', 'linkedin', 'tiktok', 'spotify',
             'adobe', 'dropbox', 'steam', 'zoom', 'twitter',
+            // Gaming platforms (credential and gift-card phishing targets)
+            'roblox', 'discord', 'epic games', 'riot games', 'garena', 'mobile legends', 'minecraft', 'playstation', 'xbox', 'nintendo',
             // Shipping (beyond the original 3)
             'usps', 'royal mail', 'singpost',
         ];
@@ -1710,7 +1739,8 @@ class AnalysisEngine
         $reasons = [];
         $points = 0;
 
-        $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank', 'dhl', 'fedex', 'ups', 'maybank', 'bibd', 'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp'];
+        $brands = ['paypal', 'google', 'facebook', 'apple', 'microsoft', 'amazon', 'bank', 'dhl', 'fedex', 'ups', 'maybank', 'bibd', 'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp',
+            'roblox', 'discord', 'epicgames', 'riotgames', 'garena', 'minecraft', 'playstation', 'xbox', 'nintendo', 'steampowered', 'steamcommunity'];
         $normalizedDomain = $this->normalizeForBrandMatch($domain);
         // A sender on a verified official domain (bibd.com.bn, maybank2u.com.my,
         // blog.google and so on) is not mimicking anything.
@@ -1962,6 +1992,108 @@ class AnalysisEngine
                 'label' => 'Prize/reward language detected (e.g. "you have won", "claim your reward", "tahniah anda menang", "cabutan bertuah")',
                 'lure' => true,
             ],
+            // Free in-game items, top-up bonuses and fake ban warnings. Real publishers do run
+            // giveaways, so this is a weak lure: on its own it stays below the "suspicious" line,
+            // and it only counts for more next to a link to a site that is not the publisher's own
+            // (see checkLinkInPressureMessage) or a request for a login, code or payment.
+            'gaming_lure' => [
+                'regex' => '/((robux|v-?bucks|vbucks|diamonds?|uc|primogems?|gems|coins|skins?(?!\s?care)|nitro|steam (wallet|gift)( cards?)?) (generator|hack|cheat|glitch|exploit)|(generator|hack tool|cheat tool) for (roblox|fortnite|free fire|pubg|mobile legends|mlbb|genshin|minecraft|steam)|(claim|get) (your )?free(?! fire\b) (robux|v-?bucks|vbucks|diamonds?|nitro|steam (wallet|gift)))/',
+                'message_regex' => '/(\bfree(?! fire\b)\s+(\S+\s+){0,2}?(diamonds?|skins?(?!\s?care)|uc|robux|v-?bucks|vbucks|primogems?|genesis crystals?|gems?|coins?|nitro|battle ?pass|elite pass|redeem codes?|steam (wallet|gift|codes?)|gift ?cards?)\b|\b(diamonds?|skins?(?!\s?care)|uc|robux|v-?bucks|vbucks|primogems?|gems?|coins?|nitro|battle ?pass|elite pass|redeem codes?)\s+(\S+\s+){0,2}?(percuma|gratis|free)\b|\b(percuma|gratis)\s+(\S+\s+){0,2}?(diamonds?|skins?(?!\s?care)|uc|robux|v-?bucks|vbucks|primogems?|gems?|coins?|nitro|battle ?pass|elite pass|redeem codes?|gift ?cards?)\b|(robux|v-?bucks|vbucks|diamonds?|uc|primogems?|gems|coins|skins?(?!\s?care)|nitro|steam (wallet|gift)( cards?)?) (generator|hack|cheat|glitch|exploit)|(generator|hack tool|cheat tool) for (roblox|fortnite|free fire|pubg|mobile legends|mlbb|genshin|minecraft|steam)|(top ?up|topup) (murah|cheap|diskaun|discount|promo)|(murah|cheap|diskaun) (top ?up|topup)|(bonus|extra) (diamonds?|uc|robux|v-?bucks) (when|bila|jika|if)|gift ?cards? (generator|giveaway)|(account|akaun)(\s(game|anda|kamu|awak)){0,2} (will be|has been|is|akan|telah|sudah|kena|kana|dah) (permanently )?(banned|di-?ban|diban|dibanned)|(game|roblox|steam|discord|mlbb|free fire|pubg|valorant|genshin|minecraft) (account|akaun)(\s(anda|kamu|awak))? (will be|has been|is|akan|telah|sudah|kena|kana|dah) (permanently )?(suspended|terminated|digantung|disekat)|(account|akaun) game(\s(anda|kamu|awak))? (will be|has been|is|akan|telah|sudah|kena|kana|dah) (permanently )?(suspended|terminated|digantung|disekat)|(kena|kana) (ban|banned)\b|(trade offer|tawaran (tukar|pertukaran))|(log ?in|login|masuk) (with|using|via|guna|dengan) (steam|discord|roblox|facebook|google).{0,60}(claim|reward|free|percuma|dapat|tuntut)|(connect|link|sambung|pautkan) (your |akaun )?(steam|discord|roblox|mlbb|free fire)( account| akaun)?.{0,40}(claim|reward|free|percuma|dapat|tuntut|verify|sahkan)|(dapat|dapatkan|bagi|bagi-bagi) (free|percuma|diamond|skin|robux|uc)\b)/u',
+                'points' => 15,
+                'label' => 'Game giveaway, top-up or ban-warning lure detected (e.g. "free Robux", "diamond percuma", "your account will be banned")',
+                'lure' => true,
+                'skip_on_warning_page' => true,
+            ],
+            // More scam types. Each is a weak lure (15 to 25 points) on purpose: real people do ask for
+            // deposits, send money by mistake, install remote-support tools and talk about investing, so
+            // on its own none of these is more than a warning sign. They count for more together with a
+            // request for money or a code, or with a link to a site that is not the sender's own.
+            'marketplace_scam' => [
+                'regex' => '/((seller|penjual)\s+(\S+\s+){0,6}?(insurance|insurans)\s+(fee|yuran)\s+(\S+\s+){0,10}?(receive|release|terima|keluarkan))/u',
+                'message_regex' => '/((deposit|booking fee|down ?payment|bayar (deposit|booking|cagaran)|tempahan)\s+(\S+\s+){0,4}?(to |untuk )?(hold|reserve|secure|simpan|tahan|book)\b|\b(hold|reserve|simpan|tahan)\s+(\S+\s+){0,3}?(the |this |item|barang|unit)\s*(\S+\s+){0,4}?(deposit|transfer|bayar)|(seller|penjual|buyer|pembeli)\s+(\S+\s+){0,6}?(insurance|insurans|protection|escrow|verification|pengesahan)\s+(fee|yuran|charge|caj)|(my|our) (courier|agent|driver)\s+(\S+\s+){0,4}?(collect|pick ?up|ambil)\s+(\S+\s+){0,10}?(pay|bayar|fee|yuran|transfer)|\bcod\s+(\S+\s+){0,4}?(fee|yuran|deposit))/u',
+                'points' => 15,
+                'label' => 'Buying-and-selling scam wording detected (a deposit to "hold" an item, a fee the seller must pay first, or a courier you must pay)',
+                'lure' => true,
+                'skip_on_warning_page' => true,
+            ],
+            'romance_scam' => [
+                'message_regex' => '/((i|im|i.?m)\s+(a |an )?(us |uk |american |british )?(army|soldier|marine|navy|peacekeeper|widow|widower|oil rig (engineer|worker))\b.{0,80}(overseas|deployed|abroad|syria|afghanistan|offshore|mission)|(i love you|i miss you|my love|my darling|sweetheart|sayang)\b.{0,200}(gift ?cards?|western union|moneygram|customs|airport|stranded|ticket to (see|visit|meet)|bitcoin|crypto|pelaburan|invest))/u',
+                'points' => 15,
+                'label' => 'Romance-scam wording detected (an affectionate stranger who brings up gift cards, money, customs or an "investment")',
+                'lure' => true,
+            ],
+            'rental_scam' => [
+                'regex' => '/((owner|landlord|tuan rumah|pemilik)\s+(\S+\s+){0,6}?(abroad|overseas|luar negara|out of (the )?country)\b.{0,160}(key|kunci)\s+(\S+\s+){0,6}?(courier|pos|hantar|post|mail)|(deposit|bayar deposit)\s+(\S+\s+){0,6}?(before|sebelum)\s+(\S+\s+){0,4}?(view|viewing|tengok|lihat)\b.{0,200}(whatsapp|telegram))/u',
+                'message_regex' => '/((deposit|booking|bayar deposit|bayar booking)\s+(\S+\s+){0,6}?(before|sebelum|dulu|first)\s+(\S+\s+){0,4}?(view|viewing|tengok|lihat|visit|key|kunci|pemeriksaan)|(owner|landlord|tuan rumah|pemilik)\s+(\S+\s+){0,6}?(abroad|overseas|luar negara|outside (the )?country|out of (the )?country)\b.{0,160}(key|kunci|deposit|transfer|courier)|(key|kunci)\s+(\S+\s+){0,6}?(courier|pos|hantar|post|mail)\b.{0,100}(deposit|transfer|bayar))/u',
+                'points' => 15,
+                'label' => 'Rental-scam wording detected (a deposit before viewing, or an owner who is "abroad" and sends the key by courier)',
+                'lure' => true,
+                'skip_on_warning_page' => true,
+            ],
+            'money_mule' => [
+                'message_regex' => '/((rent|lend|sewa|pinjam|pinjamkan)\s+(\S+\s+){0,3}?(your |akaun |kad )?(bank )?(account|akaun|atm card|kad atm|debit card)\b.{0,120}(commission|komisen|fee|upah|per (day|month|transaction)|sehari|sebulan)|(commission|komisen|upah|fee)\b.{0,80}(rent|lend|sewa|pinjam|pinjamkan)\s+(\S+\s+){0,3}?(your |akaun )?(bank )?(account|akaun|atm card|kad atm)\b|\bpinjam akaun\b|money mule|(receive|terima)\s+(\S+\s+){0,3}?(money|payments?|transfers?|duit|wang)\s+(\S+\s+){0,6}?(forward|transfer|hantar|pindah|pass|serahkan)\s+(\S+\s+){0,8}?(commission|komisen|keep \d+%|\d+% ))/u',
+                'points' => 25,
+                'label' => 'Asks you to rent out or lend your bank account for a fee (money-mule recruitment: you could be charged for the crime)',
+                'lure' => true,
+            ],
+            'family_emergency' => [
+                'message_regex' => '/((accident|kemalangan|arrested|ditangkap|kena tangkap|kidnap|diculik|lockup|balai polis|police station|in custody)\b.{0,200}(send|transfer|pay|bayar|hantar|pindah)\s+(\S+\s+){0,4}?(money|duit|wang|bnd|rm ?\d|\$|bail|ikat jamin)|(your\s+(\S+\s+){0,2}?(son|daughter|child|husband|wife|mum|mom|dad)|anak awak|mak awak|ayah awak|suami awak|isteri awak)\s+(\S+\s+){0,3}?(had|got|was in|is in|kena|terlibat|ditahan|ditangkap|tangkap|diculik|arrested)\b.{0,200}(send|transfer|pay|bayar|hantar|pindah))/u',
+                'points' => 20,
+                'label' => 'Family-emergency wording detected (an accident, arrest or kidnap together with a request to send money now)',
+                'lure' => true,
+            ],
+            'remote_access' => [
+                'message_regex' => '/((install|download|muat turun|pasang|open|buka|launch|run|give|beri|bagi|share|kongsi|send|hantar)\s+(\S+\s+){0,4}?(anydesk|any desk|teamviewer|team viewer|ultraviewer|rustdesk|quick ?support|supremo|aweray|remote (access|support|desktop|control) (app|software|tool))|(anydesk|teamviewer|ultraviewer|rustdesk)\s+(\S+\s+){0,5}?(code|id|kod|digit))/u',
+                'points' => 20,
+                'label' => 'Asks you to install a remote-control app (AnyDesk, TeamViewer and similar), which gives a stranger full control of your device',
+                'lure' => true,
+            ],
+            'tech_support' => [
+                'regex' => '/(your (pc|computer|laptop|device|windows|system|phone) (is|has been|was|may be|might be) (infected|hacked|compromised|at risk|blocked|locked)|(virus|malware|trojan|spyware)s? (has been |have been |was |were )?(detected|found|alert)|(call|contact) (microsoft|apple|windows|google) (support|technician|helpline|security)|(microsoft|windows|apple) (security|support) (alert|warning|team)|do not (shut ?down|restart|close) (this|your)( computer| pc| device| browser| window)?)/',
+                'message_regex' => '/(your (pc|computer|laptop|device|windows|system|phone) (is|has been|was|may be|might be) (infected|hacked|compromised|at risk|blocked|locked)|(virus|malware|trojan|spyware)s? (has been |have been |was |were )?(detected|found|alert)|(call|contact) (microsoft|apple|windows|google) (support|technician|helpline|security)|(microsoft|windows|apple) (security|support) (alert|warning|team)|do not (shut ?down|restart|close) (this|your)( computer| pc| device| browser| window)?)/',
+                'points' => 15,
+                'label' => 'Fake security-alert wording detected (a "virus found" or "your computer is infected" warning that tells you to call a number)',
+                'lure' => true,
+                'skip_on_warning_page' => true,
+            ],
+            'wrong_transfer' => [
+                'message_regex' => '/((by mistake|mistakenly|accidentally|tersalah|salah transfer|silap transfer|salah hantar)\b.{0,120}(your account|ur account|akaun (awak|anda|kamu)|to you|kepada (awak|anda)).{0,160}(return|refund|send (it )?back|transfer (it )?back|pulangkan|kembalikan|bagi balik|hantar balik|transfer balik)|(sent|transferred|hantar|transfer)\s+(\S+\s+){0,8}?(to (your|ur) account|ke akaun (awak|anda|kamu))\s+(\S+\s+){0,3}?(by mistake|mistakenly|accidentally|tersalah|silap)\b.{0,120}(return|send (it )?back|transfer (it )?back|refund|pulang|kembali|balik)|(return|refund|send back|transfer back|pulangkan|kembalikan|bagi balik|hantar balik|transfer balik)\b.{0,100}(by mistake|mistakenly|accidentally|tersalah|salah transfer|silap))/u',
+                'points' => 15,
+                'label' => 'Wrong-transfer wording detected ("I sent money to you by mistake, please send it back"). This can be real, so check with your own bank before sending anything',
+                'lure' => true,
+            ],
+            'malicious_app' => [
+                'message_regex' => '/(\.apk\b|\bapk\b|unknown sources|sumber tidak diketahui|allow (the )?install(ation)? from|benarkan (pemasangan|pasang)|install (it )?from outside (the )?(google )?play ?store)/',
+                'points' => 25,
+                'label' => 'Mentions an APK file or installing from "unknown sources" (a common way to install a banking or spying app outside the app store)',
+                'lure' => true,
+            ],
+            'booking_scam' => [
+                'message_regex' => '/((hotel|booking|reservation|tempahan|airbnb|flight|tiket|ticket|homestay|resort)\b.{0,160}(pay|bayar|transfer|deposit)\s+(\S+\s+){0,6}?(outside|luar|whatsapp|another account|akaun lain|gift ?card|crypto|bitcoin|western union)|(pay|bayar|transfer)\s+(\S+\s+){0,6}?(outside|luar) (the )?(platform|app|aplikasi|airbnb|booking\.com|booking)\b)/u',
+                'points' => 15,
+                'label' => 'Booking-scam wording detected (asks you to pay for a hotel, flight or stay outside the booking platform, by gift card or crypto)',
+                'lure' => true,
+            ],
+            'investment_con' => [
+                'regex' => '/((pay|bayar)\s+(\S+\s+){0,3}?(tax|cukai|fee|yuran|deposit)\s+(\S+\s+){0,4}?(to|untuk)\s+(withdraw|unlock|keluarkan)|\b\d{1,3}(\.\d+)?%\s+(daily|per day|sehari|setiap hari)\b)/u',
+                'message_regex' => '/((forex|crypto|trading|saham|stock|binary options?)\s+(\S+\s+){0,3}?(mentor|signals?|vip (group|room|channel)|analyst|robot|\bbot\b|copy ?trad)|\b\d{1,3}(\.\d+)?%\s+(daily|weekly|monthly|per day|per week|per month|sehari|seminggu|sebulan|setiap hari)|(daily|weekly|monthly|sehari|seminggu|sebulan|harian|mingguan)\s+(profit|returns?|income|pulangan|untung|keuntungan)\s+(of\s+)?\d{1,3}(\.\d+)?%|(trading|investment|pelaburan)\s+(platform|app|aplikasi|website|laman)\W+(\S+\s+){0,10}?(withdraw|pengeluaran|tax|cukai|unlock|vip level|upgrade))/u',
+                'points' => 15,
+                'label' => 'Investment-scam wording detected (a trading "mentor" or signals group, fixed daily returns, or a platform that charges tax or fees to withdraw)',
+                'lure' => true,
+                'skip_on_warning_page' => true,
+            ],
+            'insurance_scam' => [
+                'message_regex' => '/((insurance|insurans|takaful|polisi|policy)\s+(\S+\s+){0,4}?(has lapsed|have lapsed|will lapse|will be (cancelled|terminated)|akan (dibatalkan|ditamatkan)|telah dibatalkan|has been cancelled)\b.{0,160}(click|klik|pay|bayar|renew|perbaharui|link|pautan|http))/u',
+                'points' => 15,
+                'label' => 'Insurance-cancellation wording detected (a policy "has lapsed" or "will be cancelled" with a link to pay or renew)',
+                'lure' => true,
+            ],
+            'boss_fraud' => [
+                'message_regex' => '/((boss|bos|ceo|director|pengarah|manager|pengurus|supervisor|ketua|chairman|md)\b.{0,100}(gift ?cards?|vouchers?|itunes|google play card|steam card|transfer|pay|bayar|hantar)\s+(\S+\s+){0,6}?(urgent|segera|now|quickly|cepat|today|hari ini|confidential|rahsia)|(are you (available|free|at your desk)|awak ada|kamu ada)\s*(\S+\s+){0,3}?(i need|saya perlu|aku nak|need a favou?r|nak minta tolong)\s+(\S+\s+){0,8}?(gift ?cards?|vouchers?|transfer|pay|bayar))/u',
+                'points' => 20,
+                'label' => 'Boss or manager impersonation wording detected (a "quick favour" asking for gift cards or an urgent transfer)',
+                'lure' => true,
+            ],
             'crypto_scam' => [
                 'regex' => '/(airdrop|token allocation|free mint|erc-?20|ethereum 2\.0|claim your (xrp|usdt|eth|btc|nft)|usdt|nft cashback|bitcoin (payment|accounts?)|crypto(currency)? (giveaway|reward))/',
                 'points' => 25,
@@ -2029,7 +2161,14 @@ class AnalysisEngine
             'identity_claim' => '/(director of|head of (the )?(foreign|remittance|operations)|on behalf of (mr|mrs|ms|dr)\b|(security|support|billing|account) (team|department|center|centre)|customer (support|service) (team|department))/u',
         ];
         $found = [];
+        // A page that is about scams (a news article, a bank's warning, a "how to spot a scam" guide)
+        // quotes the scam wording, and unlike a message it is not cleaned of warnings. Rules marked
+        // 'skip_on_warning_page' are therefore skipped on a page that reads like a warning.
+        $isWarningPage = $forPage && (bool) preg_match('/(beware of|be careful (of|with)|scam alert|scam warning|scam news|how to (spot|avoid|protect|recognise|recognize|identify)|tips to (avoid|spot)|protect yourself from|awareness|waspada|berhati-hati|amaran penipuan|cara (mengenali|mengelak))/u', $text);
         foreach ($patterns as $key => $pattern) {
+            if ($isWarningPage && ($pattern['skip_on_warning_page'] ?? false)) {
+                continue;
+            }
             $regex = $forPage ? ($pattern['regex'] ?? null) : ($pattern['message_regex'] ?? $pattern['regex']);
             if (($regex !== null && preg_match($regex, $text)) || (! $forPage && isset($extra[$key]) && preg_match($extra[$key], $text))) {
                 $found[$key] = $pattern;
@@ -2133,7 +2272,8 @@ class AnalysisEngine
     {
         $knownBrands = ['dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
             'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd',
-            'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp'];
+            'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp',
+            'roblox', 'discord', 'steam', 'epic games', 'riot games', 'garena', 'mobile legends', 'minecraft', 'playstation', 'xbox', 'nintendo'];
         $knownBrands = array_merge($knownBrands, ['standard chartered'], array_keys(self::BRUNEI_BRANDS));
 
         $lowerText = strtolower($text);
@@ -2213,7 +2353,17 @@ class AnalysisEngine
         $opening = mb_strtolower(mb_substr(trim($text), 0, 200));
         $surface = mb_strtolower((string) ($brandDetection['surface'] ?: $brandDetection['brand']));
 
-        return str_contains($opening, $surface) && ($contentResult['matched_categories'] ?? 0) >= 1;
+        if (! str_contains($opening, $surface) || ($contentResult['matched_categories'] ?? 0) < 1) {
+            return false;
+        }
+
+        // "Join our Discord server" or "follow me on Steam" names a place, not a sender. Unless the
+        // message also talks as the brand ("Discord team", "from Discord"), it only mentions it.
+        $quoted = preg_quote($surface, '/');
+        $namesAPlace = (bool) preg_match('/\b(join|follow|sertai|ikut)\s+(\S+\s+){0,3}'.$quoted.'\b|\b'.$quoted.'\s+(server|channel|group|community)\b/u', $opening);
+        $talksAsBrand = (bool) preg_match('/\b'.$quoted.'\s+(team|support|security|staff|admin|account|akaun|official|customer|service|login)\b|\b(from|dari)\s+'.$quoted.'\b/u', $opening);
+
+        return ! ($namesAPlace && ! $talksAsBrand);
     }
 
     private function brandOnlyMentioned(?string $brand): array
@@ -2662,12 +2812,13 @@ class AnalysisEngine
         ];
     }
 
-    public function analyze(string $type, ?string $url = null, ?string $email = null, ?string $phone = null, ?string $screenshotPath = null, ?int $reportId = null, ?string $emailSubject = null, ?string $emailBody = null): array
+    public function analyze(string $type, ?string $url = null, ?string $email = null, ?string $phone = null, ?string $screenshotPath = null, ?int $reportId = null, ?string $emailSubject = null, ?string $emailBody = null, ?string $filePath = null, ?string $fileName = null): array
     {
         return match ($type) {
             'email' => $this->analyzeEmail($email ?? '', $reportId, $emailSubject, $emailBody),
             'phone' => $this->analyzePhone($phone ?? '', $reportId),
             'screenshot' => $this->analyzeScreenshot($screenshotPath ?? '', $reportId),
+            'file' => $this->analyzeFile($filePath ?? '', $fileName, $reportId),
             default => $this->analyzeUrl($url ?? '', $reportId),
         };
     }
@@ -2808,7 +2959,26 @@ class AnalysisEngine
             'domain_age_days' => $ageResult['domain_age_days'] ?? null,
             'url_syntax_score' => null,
             'checks' => $checks,
+            // Only used to offer a page preview of the link in the message. It does not change the score.
+            'extracted_url' => $hasContentText ? $this->pickLinkForPreview($combinedText) : null,
         ];
+    }
+
+    /** The most suspicious-looking full link in a message, or null when there is none. */
+    private function pickLinkForPreview(string $text): ?string
+    {
+        $links = array_values(array_unique(array_filter(
+            $this->extractAllUrlsFromText($text),
+            fn ($link) => filter_var($link, FILTER_VALIDATE_URL)
+        )));
+
+        if ($links === []) {
+            return null;
+        }
+
+        usort($links, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
+
+        return $links[0];
     }
 
     private function analyzePhone(string $phone, ?int $reportId = null): array
@@ -3189,6 +3359,13 @@ class AnalysisEngine
 
         $normalized = preg_replace('/[^\d+]/', '', $phone);
 
+        // the free plan allows few lookups, so a number looked up recently reuses the saved answer instead of spending another one
+        $cacheKey = 'phone-reputation:'.md5($normalized);
+        $saved = Cache::get($cacheKey);
+        if (is_array($saved)) {
+            return $saved;
+        }
+
         try {
             $response = Http::timeout(10)->get('https://phoneintelligence.abstractapi.com/v1/', [
                 'api_key' => $apiKey,
@@ -3246,11 +3423,16 @@ class AnalysisEngine
                 $reasons[] = 'AbstractAPI: no significant risk flags for this number';
             }
 
-            return [
+            $result = [
                 'flagged' => $points > 0,
                 'points' => min(60, $points),
                 'reasons' => $reasons,
             ];
+
+            // only real answers are saved, so an error such as a used-up quota is never remembered
+            Cache::put($cacheKey, $result, now()->addDays(7));
+
+            return $result;
         } catch (\Throwable $e) {
             $empty['reasons'][] = 'Could not reach AbstractAPI';
 

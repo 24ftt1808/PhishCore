@@ -25,6 +25,10 @@ class Report extends Model
         'type',
         'url',
         'screenshot_path',
+        'preview_url',
+        'preview_path',
+        'file_name',
+        'file_sha256',
         'sender_email',
         'phone_number',
         'description',
@@ -38,6 +42,35 @@ class Report extends Model
      * their own; a guest can open scans made in their current browser session.
      * Everyone else gets a 404, so scan IDs cannot be enumerated.
      */
+    /**
+     * The link a page preview can be taken of: the scanned link, the link read from a screenshot,
+     * or the link found in an email. Null when the scan has no link, so no preview is offered.
+     */
+    public function previewLink(): ?string
+    {
+        $link = match ($this->type) {
+            'url', 'screenshot' => $this->url,
+            'email', 'file' => $this->preview_url,
+            default => null,
+        };
+
+        return filled($link) ? (string) $link : null;
+    }
+
+    /**
+     * Where the saved preview picture is remembered. Link scans use screenshot_path, but for a
+     * screenshot scan that column already holds the uploaded image, so the others use preview_path.
+     */
+    public function previewColumn(): string
+    {
+        return $this->type === 'url' ? 'screenshot_path' : 'preview_path';
+    }
+
+    public function previewPicture(): ?string
+    {
+        return $this->{$this->previewColumn()};
+    }
+
     public function canBeViewedBy(?User $user): bool
     {
         if ($user && ($user->role === 'admin' || $user->is_team_member)) {

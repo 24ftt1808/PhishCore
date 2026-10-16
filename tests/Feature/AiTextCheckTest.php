@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Analysis;
+use App\Models\Report;
+use App\Models\User;
 use App\Services\AiTextCheck;
 use App\Services\AnalysisEngine;
 use Illuminate\Support\Facades\Cache;
@@ -191,11 +194,11 @@ test('the scan page tells people about the outside AI service only when it is sw
 
 test('a result says it used the built-in rules only when the AI review could not run', function () {
     $this->withoutVite();
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
 
     $make = function (array $flags) use ($user) {
-        $scan = \App\Models\Report::factory()->create(['user_id' => $user->id, 'type' => 'email', 'sender_email' => 'a@b.test', 'status' => 'completed']);
-        \App\Models\Analysis::factory()->create(['report_id' => $scan->id, 'verdict' => 'clean', 'risk_score' => 5, 'flags' => $flags]);
+        $scan = Report::factory()->create(['user_id' => $user->id, 'type' => 'email', 'sender_email' => 'a@b.test', 'status' => 'completed']);
+        Analysis::factory()->create(['report_id' => $scan->id, 'verdict' => 'clean', 'risk_score' => 5, 'flags' => $flags]);
 
         return $scan;
     };
@@ -205,4 +208,34 @@ test('a result says it used the built-in rules only when the AI review could not
 
     $this->actingAs($user)->get(route('scan.show', $skipped))->assertOk()->assertSee('built-in rules only');
     $this->actingAs($user)->get(route('scan.show', $ran))->assertOk()->assertDontSee('built-in rules only');
+});
+
+test('the message instructions teach the AI about game scams and about real giveaways', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(aiReply('legitimate', 80))]);
+
+    app(AiTextCheck::class)->assess('Free Robux for everyone, claim now');
+
+    Http::assertSent(fn ($request) => str_contains($request->body(), 'diamond percuma')
+        && str_contains($request->body(), 'really does run giveaways'));
+});
+
+test('the page instructions teach the AI that a game giveaway alone is not a scam', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(aiReply('legitimate', 80))]);
+
+    app(AiTextCheck::class)->assess('Domain: example.com\nVisible text: Free Robux generator', 'page');
+
+    Http::assertSent(fn ($request) => str_contains($request->body(), 'Game scam pages are common')
+        && str_contains($request->body(), 'a giveaway alone is not a scam'));
+});
+
+test('the message instructions list the other scam types and warn that many have real versions', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(aiReply('legitimate', 80))]);
+
+    app(AiTextCheck::class)->assess('Please install AnyDesk');
+
+    Http::assertSent(fn ($request) => str_contains($request->body(), 'money-mule requests')
+        && str_contains($request->body(), 'Many of these have real versions'));
 });

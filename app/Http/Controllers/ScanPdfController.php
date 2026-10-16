@@ -95,12 +95,14 @@ class ScanPdfController extends Controller
             'email' => 'Reported sender email',
             'phone' => 'Reported phone number',
             'screenshot' => 'Uploaded screenshot',
+            'file' => 'Uploaded file',
             default => 'Scanned URL',
         };
         $target = match ($report->type) {
             'email' => $report->sender_email,
             'phone' => $report->phone_number,
             'screenshot' => 'Image submitted for OCR analysis',
+            'file' => $report->file_name ?: 'Uploaded file',
             default => $report->url,
         };
 

@@ -240,7 +240,8 @@ class PagePreview
             }
 
             $disk->delete($file);
-            Report::where('screenshot_path', 'like', '%/storage/'.$file)->update(['screenshot_path' => null]);
+            Report::where('type', 'url')->where('screenshot_path', 'like', '%/storage/'.$file)->update(['screenshot_path' => null]);
+            Report::where('preview_path', 'like', '%/storage/'.$file)->update(['preview_path' => null]);
             $deleted++;
         }
 

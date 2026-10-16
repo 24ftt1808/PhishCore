@@ -16,18 +16,21 @@
         'email' => 'REPORTED SENDER EMAIL',
         'phone' => 'REPORTED PHONE NUMBER',
         'screenshot' => 'UPLOADED SCREENSHOT',
+        'file' => 'UPLOADED FILE',
         default => 'SCANNED URL',
     };
     $typeValue = match ($report->type) {
         'email' => $report->sender_email,
         'phone' => $report->phone_number,
         'screenshot' => 'Image submitted for OCR analysis (see below)',
+        'file' => $report->file_name ?: 'Uploaded file',
         default => $report->url,
     };
     $scanAnotherLabel = match ($report->type) {
         'email' => 'Scan Another Email',
         'phone' => 'Scan Another Number',
         'screenshot' => 'Scan Another Screenshot',
+        'file' => 'Scan Another File',
         default => 'Scan Another URL',
     };
     if ($shared) {
@@ -45,13 +48,16 @@
         default => match ($report->type) {
             'url' => 'This appears safe',
             'phone' => 'No reports found',
+            'file' => 'No known threats found',
             default => 'No threats detected',
         },
     };
     $cleanCaveat = ($analysis->verdict === 'clean' || ! in_array($analysis->verdict, ['phishing', 'suspicious', 'review'], true)) && $report->type !== 'url'
         ? ($report->type === 'phone'
             ? 'This is not a guarantee of safety. A new scam number can have no reports yet. Be careful with anything that asks for money, passwords or codes.'
-            : 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.')
+            : ($report->type === 'file'
+                ? 'This is not a guarantee of safety. A brand-new scam file may not be known yet. Only install apps from the Play Store or App Store, and do not open files from people you do not know.'
+                : 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.'))
         : null;
     $verdictIcon = match ($analysis->verdict) {
         'clean' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',
@@ -282,11 +288,11 @@
 @endif
 
 {{-- PAGE PREVIEW (optional, display only; never changes the score and never shown on public share links) --}}
-@if (! $shared && $report->type === 'url' && $report->status === 'completed' && app(\App\Services\PagePreview::class)->enabled())
+@if (! $shared && $report->previewLink() && $report->status === 'completed' && app(\App\Services\PagePreview::class)->enabled())
     <section class="r-card r-in p-5 sm:p-6 mb-6" style="--d:.3s"
              x-data="{
-                src: @js($report->screenshot_path && app(\App\Services\PagePreview::class)->exists($report->screenshot_path) ? $report->screenshot_path : null),
-                state: @js($report->screenshot_path && app(\App\Services\PagePreview::class)->exists($report->screenshot_path) ? 'ready' : 'idle'),
+                src: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? $report->previewPicture() : null),
+                state: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? 'ready' : 'idle'),
                 message: '',
                 shown: false,
                 viewer: false,
@@ -347,7 +353,21 @@
                 },
              }">
         <h2 class="text-lg font-bold text-white mb-1">Page preview</h2>
-        <p class="text-sm text-slate-300 mb-4">A picture of how the page looks. It is only for you to look at and does not change the result.</p>
+        <p class="text-sm text-slate-300 mb-4">
+            @if ($report->type === 'screenshot')
+                A picture of how the link in your screenshot looks.
+            @elseif ($report->type === 'email')
+                A picture of how the link in your email looks.
+            @elseif ($report->type === 'file')
+                A picture of how the link in your file looks.
+            @else
+                A picture of how the page looks.
+            @endif
+            It is only for you to look at and does not change the result.
+        </p>
+        @if ($report->type !== 'url')
+            <p class="text-xs text-slate-400 mb-4 break-all">Link found: {{ parse_url($report->previewLink(), PHP_URL_HOST) ?: 'unknown address' }}</p>
+        @endif
 
         <div x-show="state === 'idle' || state === 'failed'" style="display: none;">
             <button type="button" x-on:click="load()"

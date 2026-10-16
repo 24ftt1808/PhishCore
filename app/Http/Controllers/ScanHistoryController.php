@@ -67,6 +67,7 @@ class ScanHistoryController extends Controller
                     'email' => $report->sender_email,
                     'phone' => $report->phone_number,
                     'screenshot' => 'Uploaded screenshot',
+                    'file' => $report->file_name ?: 'Uploaded file',
                     default => $report->url,
                 };
 
@@ -98,7 +99,7 @@ class ScanHistoryController extends Controller
         $query = Report::where('user_id', auth()->id());
 
         if ($search = $request->input('search')) {
-            $query->where('url', 'like', "%{$search}%");
+            $query->where(fn ($q) => $q->where('url', 'like', "%{$search}%")->orWhere('file_name', 'like', "%{$search}%"));
         }
 
         $status = $request->input('status', 'all');

@@ -3,6 +3,7 @@
 use App\Models\Analysis;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\AnalysisEngine;
 use App\Services\PagePreview;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -419,4 +420,84 @@ test('pruning deletes old pictures, keeps recent ones and clears the links to th
     Storage::disk('public')->assertExists($recent);
     expect($oldScan->fresh()->screenshot_path)->toBeNull()
         ->and($recentScan->fresh()->screenshot_path)->toContain($recent);
+});
+
+// --- screenshot and email scans ---
+
+test('a screenshot scan with a link in it offers the preview, and the box is hidden when there is no link', function () {
+    previewOn();
+    Http::fake();
+    $owner = User::factory()->create();
+    $withLink = previewScan($owner, ['type' => 'screenshot', 'url' => 'https://steam-gift-rewards.com/claim', 'screenshot_path' => '/storage/screenshots/up.png']);
+    $withoutLink = previewScan($owner, ['type' => 'screenshot', 'url' => null, 'screenshot_path' => '/storage/screenshots/up2.png']);
+
+    $this->actingAs($owner)->get(route('scan.show', $withLink))->assertOk()
+        ->assertSee('Show page preview')
+        ->assertSee('the link in your screenshot')
+        ->assertSee('steam-gift-rewards.com');
+    $this->actingAs($owner)->get(route('scan.show', $withoutLink))->assertOk()->assertDontSee('Show page preview');
+    $this->actingAs($owner)->postJson(route('scan.preview', $withoutLink))->assertNotFound();
+});
+
+test('a screenshot preview is saved separately and never replaces the uploaded image', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner, ['type' => 'screenshot', 'url' => 'https://steam-gift-rewards.com/claim', 'screenshot_path' => '/storage/screenshots/up.png']);
+
+    $this->actingAs($owner)->postJson(route('scan.preview', $scan))->assertOk()->assertJson(['status' => 'pending']);
+    $this->actingAs($owner)->postJson(route('scan.preview', $scan))->assertOk()->assertJson(['status' => 'ready']);
+
+    $scan->refresh();
+    expect($scan->screenshot_path)->toBe('/storage/screenshots/up.png')
+        ->and($scan->preview_path)->toStartWith('/storage/previews/');
+    Storage::disk('public')->assertExists(app(PagePreview::class)->storedPath($scan->preview_path));
+});
+
+test('an email scan only offers the preview when a link was found in it', function () {
+    previewOn();
+    Http::fake();
+    $owner = User::factory()->create();
+    $withLink = previewScan($owner, ['type' => 'email', 'url' => null, 'preview_url' => 'http://bn-parcel-track.com/app']);
+    $withoutLink = previewScan($owner, ['type' => 'email', 'url' => 'http://not-used-for-email.example', 'preview_url' => null]);
+
+    $this->actingAs($owner)->get(route('scan.show', $withLink))->assertOk()
+        ->assertSee('Show page preview')
+        ->assertSee('the link in your email');
+    $this->actingAs($owner)->get(route('scan.show', $withoutLink))->assertOk()->assertDontSee('Show page preview');
+    $this->actingAs($owner)->postJson(route('scan.preview', $withoutLink))->assertNotFound();
+});
+
+test('an email preview sends the link that was found in the email', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner, ['type' => 'email', 'url' => null, 'preview_url' => 'http://bn-parcel-track.com/app']);
+
+    $this->actingAs($owner)->postJson(route('scan.preview', $scan))->assertOk()->assertJson(['status' => 'pending']);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'urlscan.io/api/v1/scan') && $request['url'] === 'http://bn-parcel-track.com/app');
+});
+
+test('pruning also clears the saved picture of screenshot and email scans', function () {
+    previewOn();
+    $owner = User::factory()->create();
+    $old = 'previews/'.Str::random(40).'.png';
+    Storage::disk('public')->put($old, previewPng());
+    touch(Storage::disk('public')->path($old), now()->subDays(10)->getTimestamp());
+    $scan = previewScan($owner, ['type' => 'screenshot', 'url' => 'https://x-example.com', 'screenshot_path' => '/storage/screenshots/up.png', 'preview_path' => '/storage/'.$old]);
+
+    $this->artisan('previews:prune')->assertSuccessful();
+
+    expect($scan->fresh()->preview_path)->toBeNull()
+        ->and($scan->fresh()->screenshot_path)->toBe('/storage/screenshots/up.png');
+});
+
+test('the engine picks the most suspicious full link in an email and ignores messages without one', function () {
+    $method = new ReflectionMethod(AnalysisEngine::class, 'pickLinkForPreview');
+    $method->setAccessible(true);
+    $engine = new AnalysisEngine;
+
+    expect($method->invoke($engine, 'Hello, no link here at all.'))->toBeNull()
+        ->and($method->invoke($engine, 'Visit https://www.google.com or http://bibd-secure-login.com/verify now'))->toBe('http://bibd-secure-login.com/verify');
 });

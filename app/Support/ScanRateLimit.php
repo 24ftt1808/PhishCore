@@ -64,7 +64,7 @@ class ScanRateLimit
     /** Send the person back to the form with a message under the field of the scan they sent. */
     public static function back(Request $request, string $message): RedirectResponse
     {
-        return redirect()->back()->withInput($request->except(['screenshot']))->withErrors([self::field($request) => $message]);
+        return redirect()->back()->withInput($request->except(['screenshot', 'file']))->withErrors([self::field($request) => $message]);
     }
 
     /** The form field that should show the message, so the right tab opens. */
@@ -72,6 +72,7 @@ class ScanRateLimit
     {
         return match (true) {
             $request->hasFile('screenshot') => 'screenshot',
+            $request->hasFile('file') => 'file',
             $request->filled('email') || $request->filled('subject') || $request->filled('body') => 'email',
             $request->filled('phone') => 'phone',
             default => 'url',

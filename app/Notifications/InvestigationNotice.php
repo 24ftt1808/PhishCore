@@ -26,9 +26,7 @@ class InvestigationNotice extends Notification
         'takedown_confirmed' => 'Takedown confirmed',
     ];
 
-    public function __construct(private Investigation $investigation, private string $kind)
-    {
-    }
+    public function __construct(private Investigation $investigation, private string $kind) {}
 
     /** @return array<int, string> */
     public function via(object $notifiable): array
@@ -40,7 +38,7 @@ class InvestigationNotice extends Notification
     public function toArray(object $notifiable): array
     {
         $report = $this->investigation->report;
-        $subject = $report?->url ?: $report?->sender_email ?: $report?->phone_number;
+        $subject = $report?->url ?: $report?->sender_email ?: $report?->phone_number ?: $report?->file_name;
         $subject = $subject
             ? mb_strimwidth((string) $subject, 0, 60, '…')
             : 'a screenshot scan'.($report ? ' ('.self::reference($report).')' : '');

@@ -496,6 +496,7 @@ class AnalyticsController extends Controller
                 : 'Unknown sender',
             'phone' => $report->phone_number ?? 'Unknown number',
             'screenshot' => 'Uploaded screenshot',
+            'file' => $report->file_name ?: 'Uploaded file',
             default => parse_url($report->url ?? '', PHP_URL_HOST) ?: ($report->url ?: 'Unknown URL'),
         };
     }

@@ -34,7 +34,8 @@ class ReportsController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('url', 'like', "%{$search}%")
                     ->orWhere('sender_email', 'like', "%{$search}%")
-                    ->orWhere('phone_number', 'like', "%{$search}%");
+                    ->orWhere('phone_number', 'like', "%{$search}%")
+                    ->orWhere('file_name', 'like', "%{$search}%");
             });
         }
 

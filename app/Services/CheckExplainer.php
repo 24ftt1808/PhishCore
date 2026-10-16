@@ -37,6 +37,10 @@ class CheckExplainer
         'Link in Pressure Message' => 'Link in an urgent message',
         'Attachment' => 'Attachments',
         'Screenshot Text Extraction' => 'Text found in the image',
+        'File Type' => 'What the file really is',
+        'VirusTotal File Fingerprint' => 'Known bad file lookup',
+        'App Permissions' => 'What the app can do',
+        'PDF Contents' => 'Links and actions in the PDF',
     ];
 
     /** A short explanation of what each check looks at and why it matters. */
@@ -63,6 +67,10 @@ class CheckExplainer
         'Link in Pressure Message' => 'A message that pressures you to act quickly and links to an unrecognised website is one of the most common scam patterns.',
         'Attachment' => 'Some file types can install harmful software as soon as they are opened.',
         'Screenshot Text Extraction' => 'We read the text in your image so it can be checked in the same way as a typed message. This card is for information and does not affect the score.',
+        'File Type' => 'We look inside the file to see what it really is, because scam apps are often renamed to look like a document or a picture.',
+        'VirusTotal File Fingerprint' => 'We make a fingerprint of the file and ask VirusTotal, a service run by dozens of security companies, whether it already knows that file. The file itself is never sent. A file it has never seen is not proof that the file is safe.',
+        'App Permissions' => 'An Android app lists what it is allowed to do. Fake bank and parcel apps often ask to read your text messages, control your screen or draw over other apps so they can steal one-time codes. Some real apps need these too, so check where the app came from.',
+        'PDF Contents' => 'We look in the PDF for links and for hidden actions, such as starting a program or running a script. Content packed inside compressed parts of a PDF cannot be seen by this check.',
     ];
 
     private const STATUS_LABELS = [
@@ -115,7 +123,7 @@ class CheckExplainer
         'SSL certificate has expired' => "The website's security certificate has expired",
         'SSL certificate does not match the domain' => "The website's security certificate belongs to a different website",
         'Could not verify a valid, trusted SSL certificate for this domain' => "We could not confirm that this website's security certificate is genuine",
-        'Could not connect to verify SSL (unrelated to certificate validity)' => "We could not connect to the website to check its security certificate",
+        'Could not connect to verify SSL (unrelated to certificate validity)' => 'We could not connect to the website to check its security certificate',
         'Could not verify SSL certificate due to an unexpected error' => "We could not check the website's security certificate",
         'WHOIS data unavailable for this domain' => 'We could not find out when this website was created',
         'Could not retrieve WHOIS data' => 'We could not find out when this website was created',

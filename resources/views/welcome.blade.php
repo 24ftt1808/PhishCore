@@ -11,7 +11,7 @@
             Before They Cause Harm.
         </h2>
         <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8 max-w-lg">
-            PhishCore helps anyone analyse suspicious links, emails, phone numbers and screenshots &mdash; identifying phishing threats and protecting sensitive information.
+            PhishCore helps anyone analyse suspicious links, emails, phone numbers, screenshots and files &mdash; identifying phishing threats and protecting sensitive information.
         </p>
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <a href="{{ route('register') }}" class="btn-liquid btn-liquid--primary">
@@ -152,7 +152,7 @@
                 </svg>
             </div>
             <h3 class="text-white font-semibold mb-2">Multi-Format Threat Scanning</h3>
-            <p class="text-sm text-slate-400">Submit a URL, email, phone number, or screenshot and receive instant threat analysis powered by multiple detection layers.</p>
+            <p class="text-sm text-slate-400">Submit a URL, email, phone number, screenshot, or file and receive instant threat analysis powered by multiple detection layers.</p>
         </div>
 
         <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.08s">
@@ -217,7 +217,7 @@
     <div class="hidden md:max-lg:landscape:grid lg:grid grid-cols-3 gap-5 text-left">
         @php
             $steps = [
-                ['n' => '01', 'title' => 'Submit What You Received', 'desc' => 'Paste a suspicious link, sender email, phone number, or upload a screenshot into the PhishCore scanner.'],
+                ['n' => '01', 'title' => 'Submit What You Received', 'desc' => 'Paste a suspicious link, sender email, phone number, upload a screenshot, or upload an app (APK) or PDF into the PhishCore scanner.'],
                 ['n' => '02', 'title' => 'Multi-Layer Analysis', 'desc' => 'PhishCore inspects SSL certificates, domain age, URL structure, blacklists, and behavioural patterns simultaneously.'],
                 ['n' => '03', 'title' => 'Clear Risk Score & Report', 'desc' => 'Receive an easy-to-read risk score from 0–100 with a full breakdown of every indicator checked.'],
             ];
@@ -272,6 +272,10 @@
 <style>
     .scan-pill{transition:transform .38s cubic-bezier(.34,1.35,.64,1)}
     .scan-sweep{animation:scan-sweep 1.1s ease-in-out infinite}
+    /* five tabs on a phone: tighter padding and a slightly smaller label so "Screenshot" always fits */
+    .scan-tab-label{white-space:nowrap}
+    @media (max-width:639px){.scan-tab{padding-left:0!important;padding-right:0!important}.scan-tab-label{font-size:10.5px;letter-spacing:-.01em}}
+    @media (max-width:359px){.scan-tab-label{font-size:9.5px;letter-spacing:-.02em}}
     @keyframes scan-sweep{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
     @media (prefers-reduced-motion:reduce){.scan-pill{transition:none}.scan-sweep{animation:none;width:100%}}
 </style>
@@ -280,6 +284,7 @@
     if ($errors->has('email') || $errors->has('subject') || $errors->has('body')) $scanTab = 'email';
     elseif ($errors->has('phone') || $errors->has('phone_country')) $scanTab = 'phone';
     elseif ($errors->has('screenshot')) $scanTab = 'screenshot';
+    elseif ($errors->has('file')) $scanTab = 'file';
 @endphp
 <section id="scanner" class="scroll-mt-28 reveal max-w-2xl mx-auto px-4 sm:px-6 py-16 md:py-24 text-center">
     <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Try the Scanner</span>
@@ -290,12 +295,13 @@
          x-data="{
             tab: '{{ $scanTab }}',
             url: '', email: '', phone: '', phoneCountry: '{{ old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION) }}', subject: '', body: '',
-            fileName: '', drag: false, scanning: false, more: false,
+            fileName: '', docName: '', docDrag: false, drag: false, scanning: false, more: false,
             tabs: [
                 { key: 'url', label: 'URL', icon: 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244' },
                 { key: 'email', label: 'Email', icon: 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-9.75 6-9.75-6' },
                 { key: 'phone', label: 'Phone', icon: 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3' },
-                { key: 'screenshot', label: 'Screenshot', icon: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5zM10.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' }
+                { key: 'screenshot', label: 'Screenshot', icon: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5a1.5 1.5 0 011.5 1.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6a1.5 1.5 0 011.5-1.5zM10.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' },
+                { key: 'file', label: 'File', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z' }
             ],
             pick(k) {
                 if (this.scanning) return;
@@ -307,10 +313,15 @@
                 if (keep !== 'email') { this.email = ''; this.subject = ''; this.body = ''; }
                 if (keep !== 'phone') this.phone = '';
                 if (keep !== 'screenshot') this.removeFile();
+                if (keep !== 'file') this.removeDoc();
             },
             removeFile() {
                 this.fileName = '';
                 if (this.$refs.file) this.$refs.file.value = '';
+            },
+            removeDoc() {
+                this.docName = '';
+                if (this.$refs.doc) this.$refs.doc.value = '';
             }
          }"
          x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) scanning = false; })">
@@ -336,15 +347,15 @@
                 <x-scan-guard part="trap" />
 
                 {{-- Type selector --}}
-                <div class="relative grid grid-cols-4 p-1 rounded-2xl bg-black/25 border border-white/[0.07]" role="tablist">
+                <div class="relative grid grid-cols-5 p-1 rounded-2xl bg-black/25 border border-white/[0.07]" role="tablist">
                     <span class="scan-pill absolute top-1 bottom-1 left-1 rounded-xl bg-white/10 border border-white/15 pointer-events-none"
-                          :style="`width:calc((100% - 0.5rem) / 4);transform:translateX(${tabs.findIndex(t => t.key === tab) * 100}%)`"></span>
+                          :style="`width:calc((100% - 0.5rem) / 5);transform:translateX(${tabs.findIndex(t => t.key === tab) * 100}%)`"></span>
                     <template x-for="t in tabs" :key="t.key">
                         <button type="button" role="tab" @click="pick(t.key)" :aria-selected="tab === t.key"
                                 :class="tab === t.key ? 'text-white' : 'text-slate-400 hover:text-slate-200'"
-                                class="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-medium transition-colors duration-200 active:scale-95">
+                                class="scan-tab relative z-10 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-1 rounded-xl text-[11px] sm:text-xs font-medium transition-colors duration-200 active:scale-95">
                             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" /></svg>
-                            <span x-text="t.label"></span>
+                            <span class="scan-tab-label" x-text="t.label"></span>
                         </button>
                     </template>
                 </div>
@@ -449,6 +460,30 @@
                             <p class="mt-2 text-xs text-red-400">{{ $message }}</p>
                         @enderror
                     </div>
+
+                    {{-- File (APK or PDF) --}}
+                    <div x-show="tab === 'file'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
+                        <label class="relative flex items-center justify-center gap-3 w-full rounded-2xl border border-dashed px-4 py-5 text-sm cursor-pointer transition"
+                               :class="[
+                                   docDrag ? 'border-sky-300/70 bg-sky-400/[0.07] text-sky-200' : (docName ? 'border-emerald-300/40 bg-emerald-400/[0.05] text-slate-200 pr-24' : 'border-white/15 bg-black/20 text-slate-400 hover:border-sky-300/40 hover:bg-black/30'),
+                                   scanning ? 'opacity-50 pointer-events-none' : ''
+                               ]"
+                               @dragenter="docDrag = true" @dragleave="docDrag = false" @drop="docDrag = false">
+                            <svg class="w-5 h-5 shrink-0 text-sky-300/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                            <span class="truncate min-w-0" x-text="docDrag ? 'Drop it here' : (docName || 'Upload an APK or PDF (max 20MB)')"></span>
+                            <input type="file" name="file" x-ref="doc" accept=".apk,.pdf,application/pdf,application/vnd.android.package-archive"
+                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                   @change="docName = $event.target.files[0]?.name ?? ''; if (docName) clearOthers('file')">
+                            <button type="button" x-show="docName" x-cloak @click.prevent.stop="removeDoc()"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-xs px-2.5 py-1 rounded-lg border border-white/10 bg-black/30 text-slate-300 hover:text-white hover:bg-black/50 transition">
+                                Remove
+                            </button>
+                        </label>
+                        <p class="mt-2 text-xs text-slate-500">The file is never opened. Only its fingerprint is checked, and the file is deleted after the scan.</p>
+                        @error('file')
+                            <p class="mt-2 text-xs text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
                 <x-scan-guard part="check" />
@@ -463,7 +498,7 @@
                 </button>
 
                 <p class="text-center text-[11px] text-slate-500 mt-4 leading-relaxed">
-                    Checks URL structure, SSL, domain age, blacklists, sender domain, phone patterns and screenshot text.
+                    Checks URL structure, SSL, domain age, blacklists, sender domain, phone patterns, screenshot text and files.
                     @guest
                         <br><a href="{{ route('login') }}" class="text-sky-300 hover:text-sky-200">Sign in</a> to save your scans to a personal history.
                     @else

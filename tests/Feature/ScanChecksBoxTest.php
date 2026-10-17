@@ -24,3 +24,10 @@ test('the checks box can be folded away on phones and only shows the checks for 
         ->assertSee('sc-check-off', false)
         ->assertSee('checksOpen', false);
 });
+
+test('the phone tab tells people the check relies on reports from other users', function () {
+    $this->actingAs(User::factory()->create())->get('/scan')
+        ->assertOk()
+        ->assertSee('data-phone-reports-note', false)
+        ->assertSee('relies on reports from other PhishCore users');
+});

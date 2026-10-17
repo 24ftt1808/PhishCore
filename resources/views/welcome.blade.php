@@ -1,5 +1,25 @@
 <x-layouts.guest-landing>
 
+{{-- Phil's pixel sprite, reused by the Phish Lab and Cora section further down --}}
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false"><symbol id="hm-phil" viewBox="0 0 17 9"><rect x="8" y="0" width="2" height="1" fill="#0ea5e9"/><rect x="7" y="1" width="2" height="1" fill="#0ea5e9"/><rect x="9" y="1" width="3" height="1" fill="#38bdf8"/><rect x="0" y="2" width="1" height="1" fill="#0ea5e9"/><rect x="6" y="2" width="8" height="1" fill="#38bdf8"/><rect x="0" y="3" width="2" height="1" fill="#0ea5e9"/><rect x="5" y="3" width="3" height="1" fill="#38bdf8"/><rect x="8" y="3" width="6" height="1" fill="#0b1220"/><rect x="14" y="3" width="1" height="1" fill="#38bdf8"/><rect x="0" y="4" width="3" height="1" fill="#0ea5e9"/><rect x="4" y="4" width="4" height="1" fill="#38bdf8"/><rect x="8" y="4" width="1" height="1" fill="#0b1220"/><rect x="9" y="4" width="1" height="1" fill="#e0f2fe"/><rect x="10" y="4" width="4" height="1" fill="#0b1220"/><rect x="14" y="4" width="2" height="1" fill="#38bdf8"/><rect x="0" y="5" width="2" height="1" fill="#0ea5e9"/><rect x="4" y="5" width="12" height="1" fill="#38bdf8"/><rect x="16" y="5" width="1" height="1" fill="#0b1220"/><rect x="0" y="6" width="1" height="1" fill="#0ea5e9"/><rect x="4" y="6" width="1" height="1" fill="#38bdf8"/><rect x="5" y="6" width="10" height="1" fill="#bae6fd"/><rect x="15" y="6" width="1" height="1" fill="#38bdf8"/><rect x="4" y="7" width="2" height="1" fill="#38bdf8"/><rect x="6" y="7" width="7" height="1" fill="#bae6fd"/><rect x="13" y="7" width="2" height="1" fill="#38bdf8"/><rect x="6" y="8" width="6" height="1" fill="#38bdf8"/></symbol></svg>
+<style>
+    .pc-mascot { display: block; image-rendering: pixelated; filter: drop-shadow(0 0 12px rgba(56, 189, 248, .6)); animation: pc-bob 4.2s ease-in-out infinite; }
+    .pc-cora { display: grid; place-items: center; width: 3.6rem; height: 3.6rem; border-radius: 9999px; color: #7dd3fc; background: radial-gradient(circle at 30% 25%, rgba(125, 211, 252, .38), rgba(14, 165, 233, .12)); border: 1px solid rgba(125, 211, 252, .5); box-shadow: 0 0 26px rgba(56, 189, 248, .4), inset 0 1px 0 rgba(255, 255, 255, .28); animation: pc-bob 4.8s ease-in-out -2s infinite; }
+    .pc-cora > svg { width: 2.1rem; height: 2.1rem; overflow: visible; }
+    .pc-cora .rb-eye { transform-box: fill-box; transform-origin: center; animation: pc-blink 5s infinite; }
+    .pc-cora .rb-eye-happy, .pc-cora .rb-smile { opacity: 0; }
+    .pc-cora-sm { width: 2rem; height: 2rem; animation: none; box-shadow: 0 0 14px rgba(56, 189, 248, .35); flex-shrink: 0; }
+    .pc-cora-sm > svg { width: 1.2rem; height: 1.2rem; }
+    .pc-mode { display: flex; align-items: center; gap: .75rem; padding: .7rem .9rem; border-radius: .9rem; background: rgba(2, 6, 23, .45); border: 1px solid rgba(255, 255, 255, .08); }
+    .pc-cora .pc-online { position: absolute; right: 2px; bottom: 2px; width: .7rem; height: .7rem; border-radius: 9999px; background: #34d399; border: 2px solid #0b1730; }
+    .pc-cora-sm .pc-online { display: none; }
+    .pc-mode { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+    .pc-mode:hover { transform: translateX(3px); border-color: rgba(125, 211, 252, .35); background: rgba(56, 189, 248, .08); }
+    @keyframes pc-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.4rem); } }
+    @keyframes pc-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
+    @media (prefers-reduced-motion: reduce) { .pc-mascot, .pc-cora, .pc-cora .rb-eye { animation: none; } }
+</style>
+
 {{-- HERO --}}
 <section id="home" class="scroll-mt-28 max-w-7xl mx-auto px-6 pt-6 pb-8 md:py-14 lg:py-16 grid gap-8 md:gap-10 md:max-lg:landscape:grid-cols-2 lg:grid-cols-2 lg:gap-12 items-center">
     <div>
@@ -41,7 +61,7 @@
             <div class="risk-chip risk-chip--danger"><i></i>SSL Invalid</div>
             <div class="risk-chip risk-chip--warn"><i></i>Domain &lt; 7d</div>
             <div class="risk-chip risk-chip--danger"><i></i>Blacklisted</div>
-            <div class="risk-chip risk-chip--info"><i></i>Scan: 1.8s</div>
+            <div class="risk-chip risk-chip--info"><i></i>Done in seconds</div>
         </div>
 
         <div class="text-center border-t border-white/10 pt-4">
@@ -66,7 +86,7 @@
             <div class="risk-chip risk-chip--danger !py-2 !px-3 !text-[12px]"><i></i>SSL Invalid</div>
             <div class="risk-chip risk-chip--warn !py-2 !px-3 !text-[12px]"><i></i>Domain &lt; 7d</div>
             <div class="risk-chip risk-chip--danger !py-2 !px-3 !text-[12px]"><i></i>Blacklisted</div>
-            <div class="risk-chip risk-chip--info !py-2 !px-3 !text-[12px]"><i></i>Scan: 1.8s</div>
+            <div class="risk-chip risk-chip--info !py-2 !px-3 !text-[12px]"><i></i>Done in seconds</div>
         </div>
         <div class="flex items-center gap-4 border-t border-white/10 pt-3">
             <p class="text-4xl font-bold text-rose-400 leading-none">92<span class="text-base text-slate-500">/100</span></p>
@@ -266,6 +286,53 @@
             </li>
         @endforeach
     </ol>
+</section>
+
+{{-- PHISH LAB + CORA --}}
+<section id="learn" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-5xl mx-auto px-6 py-12 md:py-20 lg:py-24 text-center">
+    <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Learn &amp; Get Help</span>
+    <h2 class="text-2xl md:text-3xl font-bold text-white mb-2 md:mb-3">Practise Spotting Scams. Ask When You Are Unsure.</h2>
+    <p class="text-slate-400 text-sm md:text-base max-w-xl mx-auto mb-8 md:mb-10">Train your eye with Phil. Ask Cora when you are not sure.</p>
+
+    <div class="grid md:grid-cols-2 gap-5 lg:gap-6 text-left items-stretch">
+
+        {{-- Phil / Phish Lab --}}
+        <div class="reveal glass-card p-6 md:p-7 flex flex-col" style="transition-delay: 0s">
+            <div class="flex items-center gap-4 mb-3 min-h-[3.6rem]">
+                <span class="w-16 shrink-0 flex justify-center"><svg class="pc-mascot w-16 h-auto" viewBox="0 0 17 9" aria-hidden="true"><use href="#hm-phil"/></svg></span>
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold tracking-wider text-sky-300 uppercase">Meet Phil</p>
+                    <h3 class="text-xl font-bold text-white leading-tight">Phish Lab</h3>
+                </div>
+            </div>
+            <p class="text-sm text-slate-300 mb-5">Mini games that train you to spot scams. Win XP and level up.</p>
+            <div class="flex-1 flex flex-col justify-between gap-2.5">
+                <div class="pc-mode"><span class="icon-tile !w-9 !h-9 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" /></svg></span><div><p class="text-sm font-semibold text-white leading-tight">Scam or Safe?</p><p class="text-xs text-slate-400">Quick quiz</p></div></div>
+                <div class="pc-mode"><span class="icon-tile !w-9 !h-9 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg></span><div><p class="text-sm font-semibold text-white leading-tight">Inbox Rush</p><p class="text-xs text-slate-400">Beat the clock</p></div></div>
+                <div class="pc-mode"><span class="icon-tile !w-9 !h-9 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM12 20.25c4.97 0 9-3.37 9-7.5s-4.03-7.5-9-7.5-9 3.37-9 7.5c0 1.7.69 3.27 1.85 4.52L3.75 21l3.6-1.2a10.2 10.2 0 004.65.45z" /></svg></span><div><p class="text-sm font-semibold text-white leading-tight">Scam Survivor</p><p class="text-xs text-slate-400">Choose your path</p></div></div>
+            </div>
+        </div>
+
+        {{-- Cora / AI Chat --}}
+        <div class="reveal glass-card p-6 md:p-7 flex flex-col" style="transition-delay: 0.1s">
+            <div class="flex items-center gap-4 mb-3 min-h-[3.6rem]">
+                <span class="w-16 shrink-0 flex justify-center"><span class="pc-cora relative" aria-hidden="true"><x-robot-head /><i class="pc-online"></i></span></span>
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold tracking-wider text-sky-300 uppercase">Meet Cora</p>
+                    <h3 class="text-xl font-bold text-white leading-tight">AI Chat</h3>
+                </div>
+            </div>
+            <p class="text-sm text-slate-300 mb-5">Not sure about a message or link? Ask Cora in plain language.</p>
+            <div class="risk-field rounded-xl p-4 flex-1 flex flex-col justify-center gap-3" aria-label="Example conversation">
+                <div class="flex justify-end"><p class="max-w-[85%] rounded-2xl rounded-br-md bg-sky-500/20 border border-sky-400/25 px-3.5 py-2 text-[13px] text-white">My parcel is held and I must pay a small fee. Is it real?</p></div>
+                <div class="flex items-start gap-2.5">
+                    <span class="pc-cora pc-cora-sm" aria-hidden="true"><x-robot-head /></span>
+                    <p class="max-w-[88%] rounded-2xl rounded-tl-md bg-white/5 border border-white/10 px-3.5 py-2 text-[13px] text-slate-200">This looks like a scam. Do not open the link. You can scan it with PhishCore to be sure.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </section>
 
 {{-- LIVE SCANNER --}}

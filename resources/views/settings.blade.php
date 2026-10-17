@@ -343,7 +343,7 @@
         };
     </script>
 
-    <div class="s-grid grid xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" :class="tab === 'about' ? 's-away' : ''" x-data="{ tab: '{{ $startTab }}', placed: false, place(jelly) { const b = this.$refs[{ profile: 'tProfile', security: 'tSecurity', preferences: 'tPreferences', about: 'tAbout' }[this.tab]]; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } else if (jelly) { p.classList.remove('s-jelly'); p.offsetWidth; p.classList.add('s-jelly'); } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place(true))" @resize.window="place()">
+    <div class="s-grid grid scroll-mt-20 lg:scroll-mt-8 xl:grid-cols-[21rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] gap-x-6 items-start" :class="tab === 'about' ? 's-away' : ''" x-data="{ tab: '{{ $startTab }}', placed: false, place(jelly) { const b = this.$refs[{ profile: 'tProfile', security: 'tSecurity', preferences: 'tPreferences', about: 'tAbout' }[this.tab]]; const p = this.$refs.pill; if (!b || !p) return; if (!this.placed) { p.style.transition = 'none'; } p.style.width = b.offsetWidth + 'px'; p.style.transform = 'translateX(' + b.offsetLeft + 'px)'; if (!this.placed) { p.offsetWidth; p.style.transition = ''; this.placed = true; } else if (jelly) { p.classList.remove('s-jelly'); p.offsetWidth; p.classList.add('s-jelly'); } } }" x-init="$nextTick(() => place()); document.fonts && document.fonts.ready.then(() => place())" x-effect="tab; $nextTick(() => place(true))" @resize.window="place()">
 
         <div class="s-in relative mb-3 sm:mb-6 text-center xl:text-left xl:col-start-2 xl:row-start-1" style="z-index: 25">
             <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
@@ -522,7 +522,7 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
                     Preferences
                 </button>
-                <button type="button" x-ref="tAbout" @click="tab = 'about'" class="s-tab" :class="tab === 'about' ? 's-tab-on' : ''">
+                <button type="button" x-ref="tAbout" @click="tab = 'about'; if (window.matchMedia('(max-width: 1279px)').matches) { $nextTick(() => $root.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })) }" class="s-tab" :class="tab === 'about' ? 's-tab-on' : ''">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
                     About
                 </button>

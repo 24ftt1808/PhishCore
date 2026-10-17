@@ -360,6 +360,7 @@
                                 <span class="sc-narrow">The text may go to Google's Gemini AI for a second opinion. Don't paste passwords or bank details.</span>
                             </p>
                         @endif
+                        <p data-phone-reports-note x-show="tab === 'phone'" x-cloak class="mt-3 text-center text-[11px] leading-relaxed text-slate-400">This check relies on reports from other PhishCore users. A number with no reports isn't necessarily safe.</p>
                     </div>
                 </form>
             </div>

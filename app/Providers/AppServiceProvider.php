@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // live figures for the guest (login / register) side panel, same definitions as the welcome page
-        View::composer('layouts.guest', function ($view): void {
+        View::composer(['layouts.guest', 'auth.stage'], function ($view): void {
             $view->with('guestStats', [
                 'scans' => Report::where('status', 'completed')->count(),
                 'threats' => Analysis::whereIn('verdict', ['phishing', 'suspicious'])->count(),

@@ -51,8 +51,11 @@
         .d-tile { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .8rem; background: rgba(var(--c), .12); border: 1px solid rgba(var(--c), .3); }
 
         .d-in { animation: d-in .6s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, 0s); }
+        /* right after signing in the cards wait a moment so the sidebar slides in first */
+        body[data-intro] .d-in { animation-delay: calc(var(--d, 0s) + .35s); }
         @keyframes d-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
         .d-grow { transform-origin: left; animation: d-grow .9s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, .3s); }
+        body[data-intro] .d-grow { animation-delay: calc(var(--d, .3s) + .35s); }
         @keyframes d-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
         .d-row { transition: background-color .2s; }

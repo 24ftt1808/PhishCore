@@ -52,6 +52,9 @@ class RegisteredUserController extends Controller
 
         $user->recordLogin();
 
+        // the first page after registering plays the dashboard entrance animation (read once by the layout)
+        $request->session()->put('intro', true);
+
         return redirect(route('dashboard', absolute: false));
     }
 }

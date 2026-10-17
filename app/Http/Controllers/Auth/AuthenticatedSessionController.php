@@ -30,6 +30,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // the first page after signing in plays the dashboard entrance animation (read once by the layout)
+        $request->session()->put('intro', true);
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

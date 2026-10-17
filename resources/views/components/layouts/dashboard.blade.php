@@ -1,3 +1,5 @@
+{{-- true only for the first page after signing in or registering: it plays the entrance animation once --}}
+@php $intro = (bool) session()->pull('intro', false); @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
 <head>
@@ -12,7 +14,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased">
+<body class="bg-slate-950 text-slate-100 antialiased"@if ($intro) data-intro="1" @endif>
     {{-- Weak phones and data-saver mode get the plain version of the glass effects: no blur, no bouncy animation --}}
     <script>
         try {
@@ -241,6 +243,41 @@
             @media (prefers-reduced-motion: reduce) { .lo-pop { animation: none; } .lo-btn { transition: none; } }
         </style>
 
+        {{-- First-visit entrance (only when body has data-intro, set once after sign-in / register) --}}
+        <style>
+            @keyframes di-slide { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+            @keyframes di-rise  { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+            @keyframes di-fade  { from { opacity: 0; } to { opacity: 1; } }
+            body[data-intro] .side-brand { animation: di-rise .6s cubic-bezier(.2, .9, .3, 1) .05s backwards; }
+            body[data-intro] .side-group { animation: di-fade .5s ease .25s backwards; }
+            body[data-intro] .side-link { animation: di-slide .55s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: calc(.3s + var(--i, 0) * .06s); }
+            body[data-intro] .side-link:nth-of-type(1) { --i: 0; }
+            body[data-intro] .side-link:nth-of-type(2) { --i: 1; }
+            body[data-intro] .side-link:nth-of-type(3) { --i: 2; }
+            body[data-intro] .side-link:nth-of-type(4) { --i: 3; }
+            body[data-intro] .side-link:nth-of-type(5) { --i: 4; }
+            body[data-intro] .side-link:nth-of-type(6) { --i: 5; }
+            body[data-intro] .side-link:nth-of-type(7) { --i: 6; }
+            body[data-intro] .side-link:nth-of-type(8) { --i: 7; }
+            body[data-intro] .side-link:nth-of-type(9) { --i: 8; }
+            body[data-intro] .side-link:nth-of-type(10) { --i: 9; }
+            body[data-intro] .side-link:nth-of-type(11) { --i: 10; }
+            body[data-intro] .side-link:nth-of-type(12) { --i: 11; }
+            body[data-intro] .side-link:nth-of-type(13) { --i: 12; }
+            body[data-intro] .side-link:nth-of-type(14) { --i: 13; }
+            body[data-intro] .side-link:nth-of-type(15) { --i: 14; }
+            body[data-intro] .side-link:nth-of-type(16) { --i: 15; }
+            body[data-intro] .side-link:nth-of-type(17) { --i: 16; }
+            body[data-intro] .side-link:nth-of-type(18) { --i: 17; }
+            body[data-intro] .side-hl { animation: di-fade .5s ease .95s backwards; }
+            body[data-intro] .side-user { animation: di-rise .6s cubic-bezier(.2, .9, .3, 1) 1.15s backwards; }
+            body[data-intro] .side-out { animation: di-slide .55s cubic-bezier(.2, .9, .3, 1) 1.25s backwards; }
+            body[data-intro] .tb-btn { animation: di-rise .5s cubic-bezier(.2, .9, .3, 1) .1s backwards; }
+            @media (prefers-reduced-motion: reduce) {
+                body[data-intro] .side-brand, body[data-intro] .side-group, body[data-intro] .side-link, body[data-intro] .side-hl,
+                body[data-intro] .side-user, body[data-intro] .side-out, body[data-intro] .tb-btn { animation: none; }
+            }
+        </style>
         <aside
             class="w-64 shrink-0 side-bg border-r flex flex-col justify-between
                    fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out

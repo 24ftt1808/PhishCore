@@ -306,20 +306,27 @@
             .as-form, .as-form.as-tight { padding: 2.25rem 2.5rem 2rem; }
         }
 
-        /* short landscape (a tablet browser window): trim spacing, never tap targets, so the card fits without scrolling */
-        @media (min-width: 900px) and (min-height: 600px) and (max-height: 800px) and (orientation: landscape) and (pointer: coarse) {
-            .as-head { padding-top: calc(1rem + env(safe-area-inset-top)); }
-            .as-main { padding-top: .75rem; padding-bottom: 1rem; }
-            .as-form, .as-form.as-tight { padding: 1.6rem 2.25rem 1.4rem; }
-            .as-form form > * + * { margin-top: .8rem !important; }
-            .as-form .mb-7, .as-form .mb-6 { margin-bottom: 1.1rem; }
-            .as-title { font-size: 1.9rem; }
-            .as-sub { font-size: .92rem; }
-            .as-field { gap: .35rem; }
-            .as-input, .as-tight .as-input { height: 3.15rem; }
-            .as-btn, .as-tight .as-btn { height: 3.25rem; }
-            .as-btn-ghost { height: 3.1rem; }
-            .as-rec { padding: 2rem 2rem 1.75rem; }
+        /* tablet in landscape: every size scales with the screen height, so the card always fits without scrolling
+           (heights never drop below a 44px touch target; on screens taller than ~900px these resolve to the normal sizes) */
+        @media (min-width: 900px) and (min-height: 560px) and (orientation: landscape) and (pointer: coarse) {
+            .as-head { padding-top: calc(clamp(.6rem, 1.6vh, 1.5rem) + env(safe-area-inset-top)); }
+            .as-main { padding-top: clamp(.4rem, 1vh, 1.5rem); padding-bottom: clamp(.6rem, 1.5vh, 2.5rem); }
+            .as-form, .as-form.as-tight { padding: clamp(1rem, 3vh, 2.25rem) 2.25rem clamp(.9rem, 2.6vh, 2rem); }
+            .as-form form > * + * { margin-top: clamp(.5rem, 1.3vh, 1.1rem) !important; }
+            .as-form .mb-7, .as-form .mb-6 { margin-bottom: clamp(.8rem, 1.8vh, 1.75rem); }
+            .as-title { font-size: clamp(1.55rem, 3.7vh, 2.2rem); }
+            .as-sub { font-size: clamp(.82rem, 1.9vh, 1rem); }
+            .as-field { gap: clamp(.25rem, .5vh, .45rem); }
+            .as-input, .as-tight .as-input { height: clamp(2.75rem, 5.9vh, 3.5rem); }
+            .as-btn, .as-tight .as-btn { height: clamp(2.9rem, 6.2vh, 3.6rem); }
+            .as-btn-ghost { height: clamp(2.75rem, 5.8vh, 3.4rem); }
+            .as-form label.cursor-pointer { min-height: clamp(2.4rem, 4.5vh, 2.75rem); }
+            .as-rec { padding: clamp(1.25rem, 3vh, 2.5rem) 2rem clamp(1.1rem, 2.6vh, 2rem); }
+            .as-pin { gap: clamp(.8rem, 2vh, 1.5rem); }
+            .as-row { padding-top: clamp(.55rem, 1.9vh, 1.25rem); padding-bottom: clamp(.55rem, 1.9vh, 1.25rem); }
+            .as-lead { margin: clamp(.5rem, 1.2vh, 1rem) 0 0; font-size: clamp(.85rem, 1.7vh, .95rem); line-height: 1.5; }
+            .as-h { font-size: clamp(1.5rem, 3.4vh, 2.5rem); }
+            .as-pin .mt-7 { margin-top: 0 !important; }
         }
     </style>
 </head>

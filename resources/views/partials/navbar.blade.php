@@ -18,7 +18,7 @@
         scrolled: false,
         lock: false,
         lockTimer: null,
-        hl: { l: 0, r: 0, lt: 0, rt: 0, le: 'ease', re: 'ease', ready: false },
+        hl: { ready: false },
         sections: ['home', 'features', 'how-it-works', 'about', 'contact'],
 
         init() {
@@ -75,37 +75,60 @@
                 this.moveTo(target, true);
             }
         },
+        /* The pill is two edges, each on its own spring (like an iOS spring animation).
+           The edge that leads is stiffer, the one that trails is softer, so the pill stretches
+           and then catches up. Retargeting mid-flight keeps the speed, so sweeping across the
+           links and then leaving always flows smoothly back instead of snapping. */
         moveTo(el, snap = false) {
-            if (!el || !this.$refs.links) return;
-            const cw = this.$refs.links.offsetWidth;
+            const pill = this.$refs.pill;
+            if (!el || !this.$refs.links || !pill) return;
             const l = el.offsetLeft;
-            const r = cw - l - el.offsetWidth;
-            const dx = l - this.hl.l;
-            const still = snap || !this.hl.ready || this.reduced();
-            const ease = 'cubic-bezier(0.34, 1.4, 0.64, 1)';
-
-            /* leading edge moves first, trailing edge follows = liquid stretch */
-            let lt = 0, rt = 0;
-            if (!still) {
-                const fast = 0.28, slow = 0.5;
-                if (dx > 0)      { lt = slow; rt = fast; }
-                else if (dx < 0) { lt = fast; rt = slow; }
-                else             { lt = rt = 0.35; }
-            }
-
+            const r = l + el.offsetWidth;
             this.hlKey = el.dataset.key;
-            this.hl = { l, r, lt, rt, le: ease, re: ease, ready: true };
-            if (!still && Math.abs(dx) > 4) this.settle(Math.abs(dx));
+            let s = pill.__sp;
+            if (!s || snap || !this.hl.ready || this.reduced()) {
+                if (s && s.raf) cancelAnimationFrame(s.raf);
+                s = pill.__sp = { l, r, vl: 0, vr: 0, T: { l, r }, k: {}, c: {}, raf: 0, t: 0 };
+                this.hl.ready = true;
+                this.paint(s);
+                return;
+            }
+            const dist = Math.abs((l + r) / 2 - (s.l + s.r) / 2);
+            const dir = Math.sign((l + r) / 2 - (s.l + s.r) / 2);
+            /* fluid and bouncy: the springy end always overshoots by about the same few pixels,
+               however far the pill travelled, so short hops and long trips both get a clear bounce */
+            const resp = Math.min(0.46, 0.3 + dist / 2800);
+            const lnOs = -Math.log(Math.min(0.2, Math.max(0.01, 13 / Math.max(dist, 1))));
+            const zl = lnOs / Math.sqrt(Math.PI * Math.PI + lnOs * lnOs);
+            const spring = (response, zeta) => { const w = 2 * Math.PI / response; return [w * w, 2 * zeta * w]; };
+            const lead = spring(resp * 0.8, zl), trail = spring(resp * 1.15, Math.min(zl + 0.08, 0.95)), even = spring(resp, zl + 0.04);
+            const [kl, cl] = dir > 0 ? trail : dir < 0 ? lead : even;
+            const [kr, cr] = dir > 0 ? lead : dir < 0 ? trail : even;
+            s.T = { l, r };
+            s.k = { l: kl, r: kr };
+            s.c = { l: cl, r: cr };
+            if (!s.raf) { s.t = performance.now(); s.raf = requestAnimationFrame((n) => this.tick(n)); }
         },
-        settle(d) {
-            /* one small squash on landing, nothing more */
-            const sx = 1 + Math.min(d / 600, 0.12);
-            const sy = 1 - Math.min(d / 2000, 0.05);
-            this.$refs.blob?.animate([
-                { transform: `scale(${sx}, ${sy})`, offset: 0 },
-                { transform: `scale(${1 - (sx - 1) * 0.4}, ${1 + (1 - sy) * 0.8})`, offset: 0.5 },
-                { transform: 'scale(1, 1)', offset: 1 }
-            ], { duration: 480, easing: 'ease-out' });
+        tick(now) {
+            const s = this.$refs.pill.__sp;
+            const dt = Math.min((now - s.t) / 1000, 1 / 30);
+            s.t = now;
+            const steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
+            for (let i = 0; i < steps; i++) {
+                s.vl += (-s.k.l * (s.l - s.T.l) - s.c.l * s.vl) * h; s.l += s.vl * h;
+                s.vr += (-s.k.r * (s.r - s.T.r) - s.c.r * s.vr) * h; s.r += s.vr * h;
+            }
+            const done = Math.abs(s.l - s.T.l) < 0.05 && Math.abs(s.r - s.T.r) < 0.05 && Math.abs(s.vl) < 0.5 && Math.abs(s.vr) < 0.5;
+            if (done) { s.l = s.T.l; s.r = s.T.r; s.vl = s.vr = 0; s.raf = 0; } else { s.raf = requestAnimationFrame((n) => this.tick(n)); }
+            this.paint(s);
+        },
+        paint(s) {
+            const pill = this.$refs.pill, blob = this.$refs.blob;
+            pill.style.left = s.l + 'px';
+            pill.style.width = Math.max(s.r - s.l, 24) + 'px';
+            /* faster movement = a touch flatter and longer, like liquid in motion */
+            const speed = (Math.abs(s.vl) + Math.abs(s.vr)) / 2;
+            blob.style.transform = speed < 1 ? '' : `scale(${1 + Math.min(speed / 9000, 0.04)}, ${1 - Math.min(speed / 6000, 0.09)})`;
         },
         resetHl(snap = false) {
             this.moveTo(this.linkEl(this.active), snap);
@@ -140,63 +163,77 @@
             this.active = current;
         }
     }"
-    class="pointer-events-none fixed top-4 inset-x-0 mx-auto z-50 w-[calc(100%-2rem)] min-[1180px]:w-max max-w-full"
+    class="pointer-events-none fixed top-4 inset-x-0 mx-auto z-50 w-[calc(100%-3rem)] min-[1180px]:max-w-[77rem]"
 >
-    {{-- PILL --}}
-    <nav class="pointer-events-auto nav-glass rounded-full pl-5 pr-2 xl:pl-6 py-2 flex items-center justify-between min-[1180px]:gap-6 xl:gap-12"
-         :class="{ 'nav-glass--scrolled': scrolled }">
+    {{-- THREE ISLANDS: brand | links | auth (phones/tablets: brand | menu button) --}}
+    <div class="flex items-center justify-between gap-3">
 
-        <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)" class="flex items-center gap-2.5 shrink-0">
+        {{-- BRAND --}}
+        <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)"
+           :class="{ 'nav-glass--scrolled': scrolled }"
+           class="pointer-events-auto nav-glass rounded-full h-[60px] pl-3 pr-5 flex items-center gap-2.5 shrink-0">
             <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
             <span class="flex flex-col items-start leading-tight">
-                <span class="block text-left font-bold text-white text-sm">PhishCore</span>
-                <span class="hidden xl:block text-left text-[11px] font-medium tracking-wide text-sky-200/90 mt-0.5">Detection Platform</span>
+                <span class="block text-left font-bold text-white text-[15px]">PhishCore</span>
+                <span class="hidden xl:block text-left text-[11px] font-semibold tracking-wide text-sky-300 mt-0.5">Detection Platform</span>
             </span>
         </a>
 
-        {{-- DESKTOP LINKS --}}
-        <div x-ref="links" @mouseleave="resetHl()" class="relative hidden min-[1180px]:flex items-center p-1 rounded-full text-sm">
-            <span class="nav-highlight absolute top-1 bottom-1 rounded-full pointer-events-none"
-                  :style="`left:${hl.l}px;right:${hl.r}px;opacity:${hl.ready ? 1 : 0};transition:left ${hl.lt}s ${hl.le},right ${hl.rt}s ${hl.re},opacity .2s ease`">
-                <span x-ref="blob" class="nav-blob block w-full h-full rounded-full"></span>
-            </span>
+        {{-- LINKS --}}
+        <nav aria-label="Main" :class="{ 'nav-glass--scrolled': scrolled }"
+             class="pointer-events-auto nav-glass rounded-full hidden min-[1180px]:block p-[7px]">
+            <div x-ref="links" @mouseleave="resetHl()" class="relative flex items-center text-sm">
+                <span x-ref="pill" class="nav-highlight absolute inset-y-0 rounded-full pointer-events-none"
+                      :style="`opacity:${hl.ready ? 1 : 0};transition:opacity .2s ease`">
+                    <span x-ref="blob" class="nav-blob block w-full h-full rounded-full"></span>
+                </span>
 
-            @foreach ($navLinks as $link)
-                <a href="{{ $link['href'] }}"
-                   data-key="{{ $link['key'] }}"
-                   @mouseenter="moveTo($el)"
-                   @click="go('{{ $link['key'] }}', $el.href)"
-                   @focus="moveTo($el)"
-                   @blur="resetHl()"
-                   :class="active === '{{ $link['key'] }}' ? 'text-sky-300' : 'text-slate-300 hover:text-white'"
-                   class="relative z-10 px-3.5 xl:px-5 py-2 rounded-full whitespace-nowrap transition-colors duration-200">
-                    {{ $link['label'] }}
-                </a>
-            @endforeach
-        </div>
+                @foreach ($navLinks as $link)
+                    @if ($link['key'] === 'public-reports')
+                        <span class="w-px h-5 bg-white/15 mx-1.5" aria-hidden="true"></span>
+                    @endif
+                    <a href="{{ $link['href'] }}"
+                       data-key="{{ $link['key'] }}"
+                       @mouseenter="moveTo($el)"
+                       @click="go('{{ $link['key'] }}', $el.href)"
+                       @focus="moveTo($el)"
+                       @blur="resetHl()"
+                       :class="active === '{{ $link['key'] }}' ? 'text-sky-300' : 'text-slate-300 hover:text-white'"
+                       class="relative z-10 h-11 px-3.5 xl:px-[1.125rem] inline-flex items-center rounded-full font-medium whitespace-nowrap transition-colors duration-200">
+                        {{ $link['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </nav>
 
-        {{-- DESKTOP AUTH --}}
-        <div class="hidden min-[1180px]:flex items-center gap-1.5 xl:gap-2">
+        {{-- AUTH --}}
+        <div :class="{ 'nav-glass--scrolled': scrolled }"
+             class="pointer-events-auto nav-glass rounded-full hidden min-[1180px]:flex items-center gap-1 h-[60px] pl-2 pr-2">
             @auth
                 <a href="{{ route('dashboard') }}"
-                   class="btn-shine text-sm font-medium whitespace-nowrap px-4 xl:px-5 py-2 rounded-full bg-gradient-to-b from-sky-400 to-sky-500 text-white hover:from-sky-300 hover:to-sky-400 transition-colors">
+                   class="btn-shine group inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold whitespace-nowrap bg-gradient-to-b from-sky-300 via-sky-400 to-sky-500 text-slate-950 shadow-[0_10px_24px_-10px_rgba(14,165,233,.9)] hover:from-sky-200 hover:via-sky-300 hover:to-sky-400 transition-colors">
                     Dashboard
+                    <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </a>
             @else
-                <a href="{{ route('login') }}" class="signin-glow text-sm text-slate-300 whitespace-nowrap px-3 xl:px-4 py-2 rounded-full">Sign In</a>
+                <a href="{{ route('login') }}" class="signin-glow inline-flex items-center h-11 px-4 xl:px-5 rounded-full text-sm font-medium text-slate-300 whitespace-nowrap">Sign In</a>
                 <a href="{{ route('register') }}"
-                   class="btn-shine text-sm font-medium whitespace-nowrap px-4 xl:px-5 py-2 rounded-full bg-gradient-to-b from-sky-400 to-sky-500 text-white hover:from-sky-300 hover:to-sky-400 transition-colors">
+                   class="btn-shine group inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold whitespace-nowrap bg-gradient-to-b from-sky-300 via-sky-400 to-sky-500 text-slate-950 shadow-[0_10px_24px_-10px_rgba(14,165,233,.9)] hover:from-sky-200 hover:via-sky-300 hover:to-sky-400 transition-colors">
                     Create Account
+                    <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </a>
             @endauth
         </div>
 
-        {{-- HAMBURGER --}}
-        <button type="button" @click="mobileOpen = !mobileOpen" :aria-expanded="mobileOpen.toString()" aria-controls="nav-sheet"
-                class="nav-burger min-[1180px]:hidden" aria-label="Menu">
-            <i></i><i></i><i></i>
-        </button>
-    </nav>
+        {{-- HAMBURGER (own island) --}}
+        <div :class="{ 'nav-glass--scrolled': scrolled }"
+             class="pointer-events-auto nav-glass rounded-full p-[9px] flex min-[1180px]:hidden">
+            <button type="button" @click="mobileOpen = !mobileOpen" :aria-expanded="mobileOpen.toString()" aria-controls="nav-sheet"
+                    class="nav-burger" aria-label="Menu">
+                <i></i><i></i><i></i>
+            </button>
+        </div>
+    </div>
 
     {{-- MOBILE / TABLET MENU --}}
     <div class="nav-scrim min-[1180px]:hidden" :data-open="mobileOpen" @click="mobileOpen = false" aria-hidden="true"></div>

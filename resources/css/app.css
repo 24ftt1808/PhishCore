@@ -1,4 +1,5 @@
 @import url('https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap');
+@import url('https://fonts.bunny.net/css?family=jetbrains-mono:500,600,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -178,7 +179,7 @@ input {
    ===================================================== */
 
 .eyebrow {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -186,7 +187,7 @@ input {
 }
 
 .section-index {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 11px;
     letter-spacing: 0.14em;
     color: #64748b;
@@ -235,48 +236,334 @@ input {
     color: #7dd3fc;
 }
 
-/* ---------- Hero risk card ---------- */
-.risk-card {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
 .risk-field {
     background: rgba(2, 6, 23, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.risk-chip {
+
+/* ---------- Hero scan report (3D floating card) ---------- */
+.rpt-scene {
+    --ov: 3.5rem;   /* how far the floating chips hang outside the card */
+    --tx: 0deg;     /* pointer tilt, set from the page script */
+    --ty: 0deg;
+    position: relative;
+    min-width: 0;
+    perspective: 1800px;
+    padding: 1rem 0 2.4rem;
+}
+.rpt-ground {
+    position: absolute;
+    left: 16%;
+    bottom: 0.4rem;
+    width: 68%;
+    height: 1.8rem;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.6);
+    filter: blur(20px);
+    pointer-events: none;
+    animation: rpt-ground 8s ease-in-out infinite;
+}
+.rpt-stage {
+    position: relative;
+    max-width: 30rem;
+    margin-inline: auto;
+    transform-style: preserve-3d;
+    transform: rotateX(calc(4deg + var(--ty))) rotateY(calc(-6deg + var(--tx)));
+    transition: transform 0.35s ease-out;
+}
+.rpt-float {
+    position: relative;
+    transform-style: preserve-3d;
+    animation: rpt-float 8s ease-in-out infinite;
+}
+
+.rpt-card {
+    position: relative;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.15rem 1.15rem 1.5rem;
+    border-radius: 1.25rem;
+    background: linear-gradient(180deg, rgba(26, 40, 76, 0.84), rgba(10, 18, 40, 0.86));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 50px 80px -34px rgba(0, 0, 0, 0.9),
+        0 24px 48px -28px rgba(56, 189, 248, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.rpt-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.09), transparent 42%);
+    pointer-events: none;
+}
+.rpt-card > * { position: relative; }
+
+.rpt-head { display: flex; align-items: center; gap: 0.75rem; }
+.rpt-head .icon-tile img { width: 1.35rem; height: 1.35rem; object-fit: contain; }
+.rpt-head-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.rpt-title { white-space: nowrap; font-size: 0.95rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.01em; }
+.rpt-subtitle { font-size: 0.75rem; font-weight: 500; color: #94a3b8; }
+.rpt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: #fecdd3;
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+}
+.rpt-badge i {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: #fb7185;
+    box-shadow: 0 0 8px #fb7185;
+    animation: rpt-pulse 2s ease-in-out infinite;
+}
+
+.rpt-field {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.6rem 0.85rem;
-    border-radius: 0.8rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border: 1px solid;
-    transition: transform 0.2s ease;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.8rem 1rem;
+    border-radius: 0.9rem;
+    background: rgba(2, 6, 23, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    color: #e2e8f0;
 }
-.risk-chip:hover { transform: translateY(-1px); }
-.risk-chip i { width: 7px; height: 7px; border-radius: 9999px; flex-shrink: 0; }
-.risk-chip--danger { background: linear-gradient(135deg, rgba(244, 63, 94, 0.16), rgba(244, 63, 94, 0.07)); border-color: rgba(251, 113, 133, 0.28); color: #fecdd3; }
-.risk-chip--danger i { background: #fb7185; box-shadow: 0 0 8px rgba(251, 113, 133, 0.7); }
-.risk-chip--warn { background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.07)); border-color: rgba(251, 191, 36, 0.28); color: #fde68a; }
-.risk-chip--warn i { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.6); }
-.risk-chip--info { background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.07)); border-color: rgba(125, 211, 252, 0.28); color: #bae6fd; }
-.risk-chip--info i { background: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
+.rpt-field svg { width: 1.05rem; height: 1.05rem; flex: none; color: #fb7185; }
+.rpt-field span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.risk-bar { background: rgba(255, 255, 255, 0.08); }
-.risk-bar > span {
-    display: block;
-    height: 100%;
-    border-radius: 9999px;
-    background: linear-gradient(90deg, #f59e0b, #f43f5e);
-    transform-origin: left;
-    animation: bar-fill 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+.rpt-score {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 1rem;
+    padding: 1rem;
+    border-radius: 1.1rem;
+    background: rgba(244, 63, 94, 0.07);
+    border: 1px solid rgba(244, 63, 94, 0.2);
 }
-@keyframes bar-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.rpt-gauge { width: 8.75rem; max-width: 100%; height: auto; flex: none; }
+.rpt-gauge text { font-family: inherit; }
+.rpt-gauge .rpt-arc { stroke-dasharray: 231.2 251.3; animation: rpt-sweep 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both; }
+.rpt-verdict { flex: 1 1 9rem; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; text-align: center; }
+.rpt-eyebrow { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.625rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #94a3b8; }
+.rpt-eyebrow--sky { color: #7dd3fc; }
+.rpt-level { font-size: 1.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; color: #fda4af; }
+.rpt-desc { font-size: 0.8125rem; font-weight: 500; line-height: 1.4; color: #cbd5e1; }
+
+.rpt-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.rpt-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.rpt-ico { width: 2.25rem; height: 2.25rem; flex: none; display: grid; place-items: center; border-radius: 0.65rem; border: 1px solid; }
+.rpt-ico svg { width: 1.1rem; height: 1.1rem; }
+.rpt-ico--rose { color: #fb7185; background: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.25); }
+.rpt-ico--amber { color: #fbbf24; background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.25); }
+.rpt-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.rpt-name { font-size: 0.8125rem; font-weight: 700; line-height: 1.25; color: #f1f5f9; }
+.rpt-sub { font-size: 0.72rem; font-weight: 500; line-height: 1.3; color: #94a3b8; }
+.rpt-pts { flex: none; padding: 0.2rem 0.5rem; border-radius: 0.5rem; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.75rem; font-weight: 700; }
+.rpt-pts--rose { color: #fecdd3; background: rgba(244, 63, 94, 0.12); }
+.rpt-pts--amber { color: #fde68a; background: rgba(251, 191, 36, 0.12); }
+
+.rpt-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.75rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #7dd3fc;
+}
+.rpt-foot span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.rpt-foot svg { width: 0.95rem; height: 0.95rem; color: #38bdf8; }
+.rpt-foot .rpt-muted { font-weight: 600; color: #64748b; }
+
+/* Floating pieces. Phone default: two chips hang off the bottom edge. */
+.rpt-sat {
+    --z: 20px;
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 0.85rem;
+    border: 1px solid;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+    background: rgba(10, 18, 40, 0.9);
+    box-shadow: 0 22px 40px -14px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transform: translateZ(var(--z));
+    animation: rpt-bob 6s ease-in-out infinite;
+}
+.rpt-sat svg { width: 1rem; height: 1rem; flex: none; }
+.rpt-sat--rose { color: #fecdd3; border-color: rgba(244, 63, 94, 0.4); }
+.rpt-sat--rose svg { color: #fb7185; }
+.rpt-sat--amber { color: #fde68a; border-color: rgba(251, 191, 36, 0.4); }
+.rpt-sat--amber svg { color: #fbbf24; }
+.rpt-sat--sky { color: #bae6fd; border-color: rgba(125, 211, 252, 0.4); }
+.rpt-sat--sky svg { color: #38bdf8; }
+.rpt-sat--tile {
+    display: none;
+    width: 4.25rem;
+    height: 4.25rem;
+    padding: 0;
+    justify-content: center;
+    border-radius: 1.25rem;
+    color: #7dd3fc;
+    background: rgba(14, 40, 66, 0.92);
+    border-color: rgba(125, 211, 252, 0.4);
+    box-shadow: 0 24px 40px -14px rgba(0, 0, 0, 0.85), 0 0 44px rgba(56, 189, 248, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.rpt-sat--tile svg { width: 2rem; height: 2rem; color: #7dd3fc; }
+.rpt-sat--flag { display: none; }
+.rpt-sat--left { left: 0.6rem; bottom: -1.2rem; --dy: 8px; animation-duration: 8s; }
+.rpt-sat--scan { right: 0.6rem; bottom: -1.2rem; --dy: -9px; animation-delay: -2s; animation-duration: 6.5s; }
+
+.rpt-orb { position: absolute; border-radius: 9999px; pointer-events: none; transform: translateZ(var(--z, 30px)); animation: rpt-bob 5s ease-in-out infinite; }
+.rpt-orb--sky { --z: 50px; width: 0.8rem; height: 0.8rem; left: 0.3rem; top: -0.5rem; background: #38bdf8; box-shadow: 0 0 22px #38bdf8; }
+.rpt-orb--rose { --z: 70px; width: 0.6rem; height: 0.6rem; right: 1.4rem; top: -0.7rem; background: #fb7185; box-shadow: 0 0 20px #fb7185; animation-delay: -1s; animation-duration: 5.5s; }
+.rpt-orb--amber { display: none; --z: 20px; width: 0.5rem; height: 0.5rem; right: calc(var(--ov) * -1); top: -0.4rem; background: #fbbf24; box-shadow: 0 0 16px #fbbf24; animation-duration: 4.5s; }
+
+@keyframes rpt-float { 0%, 100% { transform: translateY(0) rotateZ(0deg); } 50% { transform: translateY(-0.8rem) rotateZ(-0.5deg); } }
+@keyframes rpt-bob { 0%, 100% { transform: translateZ(var(--z)) translateY(0); } 50% { transform: translateZ(var(--z)) translateY(var(--dy, -12px)); } }
+@keyframes rpt-ground { 0%, 100% { transform: scaleX(1); opacity: 0.55; } 50% { transform: scaleX(0.86); opacity: 0.35; } }
+@keyframes rpt-sweep { from { stroke-dasharray: 0 251.3; } to { stroke-dasharray: 231.2 251.3; } }
+@keyframes rpt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* Narrow card: stack the gauge, drop the one-line explanations */
+@container (max-width: 30rem) {
+    .rpt-sub { display: none; }
+}
+@container (min-width: 22rem) {
+    .rpt-score { flex-wrap: nowrap; justify-content: flex-start; }
+    .rpt-verdict { text-align: left; }
+}
+
+/* Phones: a compact card so the headline and buttons stay in view */
+@media (max-width: 767.98px) {
+    .rpt-card { gap: 0.7rem; padding: 1rem 1rem 1.6rem; }
+    .rpt-subtitle, .rpt-desc, .rpt-foot, .rpt-gauge .rpt-gsub { display: none; }
+    .rpt-head { gap: 0.6rem; }
+    .rpt-title { font-size: 0.9rem; }
+    .rpt-field { padding: 0.6rem 0.8rem; font-size: 0.75rem; }
+    .rpt-score { flex-wrap: nowrap; justify-content: flex-start; gap: 0.75rem; padding: 0.6rem 0.9rem; }
+    .rpt-gauge { width: 6.75rem; }
+    .rpt-verdict { flex: 1 1 0; text-align: left; gap: 0.2rem; }
+    .rpt-level { font-size: 1.25rem; }
+    .rpt-list { gap: 0.4rem; }
+    .rpt-row { gap: 0.6rem; padding: 0.45rem 0.6rem; }
+    .rpt-ico { width: 1.75rem; height: 1.75rem; border-radius: 0.5rem; }
+    .rpt-ico svg { width: 0.95rem; height: 0.95rem; }
+    .rpt-name { font-size: 0.78rem; }
+    .rpt-pts { padding: 0.15rem 0.4rem; font-size: 0.7rem; }
+    .rpt-scene { padding-bottom: 2rem; }
+}
+@media (max-width: 359.98px) {
+    .rpt-sat--left { display: none; }
+    .rpt-name { font-size: 0.72rem; }
+}
+
+/* Tablet and up: the full tilted scene with chips around the card */
+@media (min-width: 768px) {
+    .rpt-scene { padding: 2.5rem 0 3rem; --ov: 3rem; }
+    .rpt-ground { bottom: 0.7rem; }
+    .rpt-stage {
+        max-width: 28rem;
+        transform: rotateX(calc(5deg + var(--ty))) rotateY(calc(-8deg + var(--tx))) rotateZ(0.5deg);
+    }
+    .rpt-card { gap: 0.95rem; padding: 1.25rem; border-radius: 1.35rem; }
+    .rpt-list { gap: 0.45rem; }
+    .rpt-row { padding: 0.55rem 0.7rem; }
+    .rpt-ico { width: 2rem; height: 2rem; }
+    .rpt-score { padding: 0.8rem; }
+    .rpt-sat { --z: 60px; padding: 0.55rem 0.85rem; font-size: 0.8125rem; }
+    .rpt-sat--tile { display: flex; --z: 90px; right: calc(100% - 1.25rem); top: -1.75rem; animation-duration: 6s; }
+    .rpt-sat--flag { display: flex; right: calc(var(--ov) * -1 - 0.25rem); top: 5rem; bottom: auto; --z: 60px; --dy: 12px; animation-duration: 7s; }
+    .rpt-sat--left { left: calc(var(--ov) * -1 - 1.5rem); top: 10.8rem; bottom: auto; --z: 30px; --dy: -9px; }
+    .rpt-sat--scan { right: calc(var(--ov) * -1 - 0.25rem); bottom: 1rem; --z: 90px; }
+    .rpt-orb--sky { left: calc(var(--ov) * -1 + 1rem); top: auto; bottom: -1.5rem; }
+    .rpt-orb--rose { right: 2.5rem; top: -2.4rem; }
+    .rpt-orb--amber { display: block; }
+}
+/* Tablet landscape: two columns but narrow, so keep only the corner tile */
+@media (min-width: 768px) and (max-width: 1023.98px) and (orientation: landscape) {
+    .rpt-scene { --ov: 0.75rem; }
+    .rpt-sat--flag, .rpt-sat--left, .rpt-sat--scan { display: none; }
+    .rpt-sat--tile { right: auto; left: -0.5rem; top: -2.5rem; }
+    .rpt-orb--amber { display: none; }
+}
+/* Laptop-width two columns: the left chip would cover the card, so drop it */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+    .rpt-scene { --ov: 0.25rem; }
+    .rpt-sat--left, .rpt-sat--flag { display: none; }
+    .rpt-sat--scan { right: -0.5rem; }
+}
+/* Tablet portrait: push the left chip clear of the gauge */
+@media (min-width: 768px) and (max-width: 1023.98px) and (orientation: portrait) {
+    .rpt-sat--left { left: calc(var(--ov) * -1 - 3rem); }
+}
+@media (min-width: 1024px) {
+    .rpt-stage { max-width: 25rem; }
+}
+/* Tablets and up: the hero fills the first screen under the navbar and sits in the middle of it,
+   whatever the screen height (the navbar spacer is 5rem) */
+@media (min-width: 600px) {
+    section.hero-fit {
+        min-height: calc(100vh - 5rem);
+        min-height: calc(100svh - 5rem);
+        align-content: center;
+        /* shorter screens get less padding so the content still fits and stays centred */
+        padding-block: 2rem;
+        padding-block: clamp(1.25rem, 5svh, 4rem);
+    }
+}
+/* Single column (card under the text): the card's own bottom padding makes the bottom look heavier, so trim it */
+@media (min-width: 600px) and (max-width: 1023.98px) and (orientation: portrait) {
+    section.hero-fit { padding-bottom: max(0px, calc(clamp(1.25rem, 5svh, 4rem) - 1.75rem)); }
+}
+/* Laptop two columns: the card fills its column and sits on the page edge, like the text on the left */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+    .rpt-stage { max-width: 27rem; margin-inline: auto 0; }
+}
+@media (min-width: 1280px) {
+    .rpt-scene { --ov: 3.5rem; }
+}
+/* Short landscape screens (phones turned sideways): keep the card compact */
+@media (orientation: landscape) and (max-height: 520px) {
+    .rpt-sub { display: none; }
+    .rpt-card { gap: 0.9rem; padding: 1.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rpt-float, .rpt-sat, .rpt-orb, .rpt-ground, .rpt-gauge .rpt-arc, .rpt-badge i { animation: none; }
+    .rpt-stage { transition: none; }
+}
 
 /* ---------- Scanner console ---------- */
 .tab-btn {
@@ -351,10 +638,6 @@ input {
 .steps-line {
     background: repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.35) 0 6px, transparent 6px 14px);
     height: 1px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .risk-bar > span { animation: none; }
 }
 
 /* Bigger background blobs on phones */

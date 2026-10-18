@@ -21,13 +21,13 @@
 </style>
 
 {{-- HERO --}}
-<section id="home" class="scroll-mt-28 max-w-7xl mx-auto px-6 pt-6 pb-8 md:py-14 lg:py-16 grid gap-8 md:gap-10 md:max-lg:landscape:grid-cols-2 lg:grid-cols-2 lg:gap-12 items-center">
+<section id="home" class="hero-fit scroll-mt-28 overflow-x-clip max-w-7xl mx-auto px-6 pt-6 pb-8 md:py-14 lg:py-16 grid gap-8 md:gap-10 md:max-lg:landscape:grid-cols-2 lg:grid-cols-[1.1fr_.9fr] xl:grid-cols-[1.15fr_.85fr] lg:gap-12 items-center">
     <div>
-        <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4 md:mb-6">
+        <span class="inline-flex items-center gap-2 font-mono text-[10px] min-[360px]:text-[11px] font-medium uppercase tracking-[0.1em] min-[360px]:tracking-[0.14em] px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4 md:mb-6">
             <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> AI-Powered Phishing Protection
         </span>
-        <h1 class="text-[2.15rem] sm:text-5xl md:text-5xl font-extrabold text-white leading-[1.1] mb-1 md:mb-2">Detect Phishing Threats</h1>
-        <h2 class="text-[2.15rem] sm:text-5xl md:text-5xl font-extrabold text-sky-400 leading-[1.1] mb-4 md:mb-6">
+        <h1 class="text-[2.15rem] sm:text-5xl md:text-5xl lg:text-[2.4rem] xl:text-5xl font-extrabold text-white leading-[1.1] mb-1 md:mb-2">Detect Phishing Threats</h1>
+        <h2 class="text-[2.15rem] sm:text-5xl md:text-5xl lg:text-[2.4rem] xl:text-5xl font-extrabold text-sky-400 leading-[1.1] mb-4 md:mb-6">
             Before They Cause Harm.
         </h2>
         <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8 max-w-lg">
@@ -45,54 +45,73 @@
         </div>
     </div>
 
-    <div class="risk-card relative rounded-2xl p-6 md:p-8 hidden md:block md:max-lg:portrait:w-full md:max-lg:portrait:max-w-xl md:max-lg:portrait:mx-auto">
-        <div class="relative w-14 h-14 mx-auto rounded-xl bg-sky-400/10 border border-sky-300/25 flex items-center justify-center mb-6">
-            <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-8 h-8 object-contain">
-        </div>
+    {{-- Scan report: one card for every screen size, laid out by the .rpt-* rules in app.css --}}
+    <div class="rpt-scene" role="group" aria-label="Example scan result">
+        <div class="rpt-ground" aria-hidden="true"></div>
+        <div class="rpt-stage">
+            <div class="rpt-float">
+                <div class="rpt-card">
+                    <div class="rpt-head">
+                        <div class="rpt-head-title">
+                            <span class="rpt-title">Scan report</span>
+                            <span class="rpt-subtitle">Live preview</span>
+                        </div>
+                        <span class="rpt-badge"><i></i>Phishing</span>
+                    </div>
 
-        <div class="risk-field flex items-center gap-2.5 rounded-lg px-4 py-3 mb-4 text-sm text-slate-300 font-mono">
-            <svg width="16" height="16" class="text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
-            </svg>
-            https://suspicious-example.com
-        </div>
+                    <div class="rpt-field">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
+                        <span>https://suspicious-example.com</span>
+                    </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-5">
-            <div class="risk-chip risk-chip--danger"><i></i>SSL Invalid</div>
-            <div class="risk-chip risk-chip--warn"><i></i>Domain &lt; 7d</div>
-            <div class="risk-chip risk-chip--danger"><i></i>Blacklisted</div>
-            <div class="risk-chip risk-chip--info"><i></i>Done in seconds</div>
-        </div>
+                    <div class="rpt-score">
+                        <svg class="rpt-gauge" viewBox="0 0 200 120" role="img" aria-label="Risk score 92 out of 100">
+                            <defs><linearGradient id="rptGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#f43f5e"/></linearGradient></defs>
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="14" stroke-linecap="round"/>
+                            <path class="rpt-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#rptGrad)" stroke-width="14" stroke-linecap="round"/>
+                            <text x="100" y="90" text-anchor="middle" font-size="46" font-weight="800" fill="#fb7185">92</text>
+                            <text class="rpt-gsub" x="100" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="#94a3b8">out of 100</text>
+                        </svg>
+                        <div class="rpt-verdict">
+                            <span class="rpt-eyebrow">Risk score</span>
+                            <span class="rpt-level">High risk</span>
+                            <span class="rpt-desc">Phishing detected. Do not enter any personal details.</span>
+                        </div>
+                    </div>
 
-        <div class="text-center border-t border-white/10 pt-4">
-            <p class="text-xs text-slate-400 mb-1 tracking-wide">RISK SCORE</p>
-            <p class="text-4xl font-bold text-rose-400">92<span class="text-lg text-slate-500">/100</span></p>
-            <div class="risk-bar mx-auto mt-3 h-1.5 w-40 rounded-full overflow-hidden"><span style="width: 92%"></span></div>
-            <p class="text-xs text-rose-300 font-medium mt-2">HIGH RISK &mdash; PHISHING DETECTED</p>
-        </div>
-    </div>
+                    <div class="rpt-list">
+                        <span class="rpt-eyebrow rpt-eyebrow--sky">Why it was flagged</span>
+                        <div class="rpt-row">
+                            <div class="rpt-ico rpt-ico--rose"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg></div>
+                            <div class="rpt-txt"><span class="rpt-name">SSL certificate invalid</span><span class="rpt-sub">The connection is not safely encrypted</span></div>
+                            <span class="rpt-pts rpt-pts--rose">+22</span>
+                        </div>
+                        <div class="rpt-row">
+                            <div class="rpt-ico rpt-ico--amber"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+                            <div class="rpt-txt"><span class="rpt-name">Domain under 7 days old</span><span class="rpt-sub">Brand new sites are a common scam sign</span></div>
+                            <span class="rpt-pts rpt-pts--amber">+30</span>
+                        </div>
+                        <div class="rpt-row">
+                            <div class="rpt-ico rpt-ico--rose"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div>
+                            <div class="rpt-txt"><span class="rpt-name">Found on a blacklist</span><span class="rpt-sub">Reported by security companies</span></div>
+                            <span class="rpt-pts rpt-pts--rose">+40</span>
+                        </div>
+                    </div>
 
-    {{-- Phone-only compact scan preview --}}
-    <div class="risk-card md:hidden rounded-2xl p-4">
-        <div class="flex items-center justify-between mb-3">
-            <span class="eyebrow !text-[10px]">Live scan preview</span>
-            <span class="flex items-center gap-1.5 text-[10px] text-rose-300 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Phishing</span>
-        </div>
-        <div class="risk-field flex items-center gap-2 rounded-lg px-3 py-2.5 mb-3 text-[13px] text-slate-300 font-mono min-w-0">
-            <svg width="14" height="14" class="text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-            <span class="truncate">https://suspicious-example.com</span>
-        </div>
-        <div class="grid grid-cols-2 gap-2 mb-3">
-            <div class="risk-chip risk-chip--danger !py-2 !px-3 !text-[12px]"><i></i>SSL Invalid</div>
-            <div class="risk-chip risk-chip--warn !py-2 !px-3 !text-[12px]"><i></i>Domain &lt; 7d</div>
-            <div class="risk-chip risk-chip--danger !py-2 !px-3 !text-[12px]"><i></i>Blacklisted</div>
-            <div class="risk-chip risk-chip--info !py-2 !px-3 !text-[12px]"><i></i>Done in seconds</div>
-        </div>
-        <div class="flex items-center gap-4 border-t border-white/10 pt-3">
-            <p class="text-4xl font-bold text-rose-400 leading-none">92<span class="text-base text-slate-500">/100</span></p>
-            <div class="flex-1 min-w-0">
-                <div class="risk-bar h-1.5 w-full rounded-full overflow-hidden"><span style="width: 92%"></span></div>
-                <p class="text-[11px] text-rose-300 font-medium mt-2 tracking-wide">HIGH RISK &mdash; PHISHING DETECTED</p>
+                    <div class="rpt-foot">
+                        <span><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>Done in seconds</span>
+                        <span class="rpt-muted">Sample result</span>
+                    </div>
+                </div>
+
+                {{-- Floating pieces around the card (decorative) --}}
+                <div class="rpt-sat rpt-sat--tile" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+                <div class="rpt-sat rpt-sat--rose rpt-sat--flag" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>Link flagged</div>
+                <div class="rpt-sat rpt-sat--amber rpt-sat--left" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>New domain</div>
+                <div class="rpt-sat rpt-sat--sky rpt-sat--scan" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>Real-time scan</div>
+                <span class="rpt-orb rpt-orb--sky" aria-hidden="true"></span>
+                <span class="rpt-orb rpt-orb--rose" aria-hidden="true"></span>
+                <span class="rpt-orb rpt-orb--amber" aria-hidden="true"></span>
             </div>
         </div>
     </div>
@@ -159,7 +178,7 @@
 
 {{-- FEATURES --}}
 <section id="features" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 text-center">
-    <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Platform Features</span>
+    <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Platform Features</span>
     <h2 class="text-2xl md:text-3xl font-bold text-white mb-7 md:mb-12">Everything You Need to Stay Protected</h2>
 
     <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-6 px-6 pb-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 lg:gap-6 md:overflow-visible md:mx-0 md:px-0 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-left">
@@ -231,7 +250,7 @@
 
 {{-- HOW IT WORKS --}}
 <section id="how-it-works" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 text-center">
-    <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Simple Process</span>
+    <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Simple Process</span>
     <h2 class="text-2xl md:text-3xl font-bold text-white mb-8 md:mb-14">How PhishCore Works</h2>
 
     <div class="hidden md:max-lg:landscape:grid lg:grid grid-cols-3 gap-5 text-left">
@@ -279,7 +298,7 @@
                     @endunless
                 </div>
                 <div class="pt-0.5 min-w-0">
-                    <span class="font-mono text-[11px] font-semibold text-sky-300/90 tracking-[0.16em]">STEP {{ $s['n'] }}</span>
+                    <span class="font-mono text-[11px] font-semibold text-sky-300/90 tracking-[0.14em]">STEP {{ $s['n'] }}</span>
                     <h3 class="text-white font-semibold text-[17px] mt-1 mb-1.5">{{ $s['title'] }}</h3>
                     <p class="text-sm text-slate-400 leading-relaxed">{{ $s['desc'] }}</p>
                 </div>
@@ -290,7 +309,7 @@
 
 {{-- PHISH LAB + CORA --}}
 <section id="learn" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-5xl mx-auto px-6 py-12 md:py-20 lg:py-24 text-center">
-    <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Learn &amp; Get Help</span>
+    <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Learn &amp; Get Help</span>
     <h2 class="text-2xl md:text-3xl font-bold text-white mb-2 md:mb-3">Practise Spotting Scams. Ask When You Are Unsure.</h2>
     <p class="text-slate-400 text-sm md:text-base max-w-xl mx-auto mb-8 md:mb-10">Train your eye with Phil. Ask Cora when you are not sure.</p>
 
@@ -301,7 +320,7 @@
             <div class="flex items-center gap-4 mb-3 min-h-[3.6rem]">
                 <span class="w-16 shrink-0 flex justify-center"><svg class="pc-mascot w-16 h-auto" viewBox="0 0 17 9" aria-hidden="true"><use href="#hm-phil"/></svg></span>
                 <div class="min-w-0">
-                    <p class="text-xs font-semibold tracking-wider text-sky-300 uppercase">Meet Phil</p>
+                    <p class="font-mono text-[11px] font-semibold tracking-[0.14em] text-sky-300 uppercase">Meet Phil</p>
                     <h3 class="text-xl font-bold text-white leading-tight">Phish Lab</h3>
                 </div>
             </div>
@@ -318,7 +337,7 @@
             <div class="flex items-center gap-4 mb-3 min-h-[3.6rem]">
                 <span class="w-16 shrink-0 flex justify-center"><span class="pc-cora relative" aria-hidden="true"><x-robot-head /><i class="pc-online"></i></span></span>
                 <div class="min-w-0">
-                    <p class="text-xs font-semibold tracking-wider text-sky-300 uppercase">Meet Cora</p>
+                    <p class="font-mono text-[11px] font-semibold tracking-[0.14em] text-sky-300 uppercase">Meet Cora</p>
                     <h3 class="text-xl font-bold text-white leading-tight">AI Chat</h3>
                 </div>
             </div>
@@ -360,7 +379,7 @@
     elseif ($errors->has('file')) $scanTab = 'file';
 @endphp
 <section id="scanner" class="scroll-mt-28 reveal max-w-2xl mx-auto px-4 sm:px-6 py-16 md:py-24 text-center">
-    <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Try the Scanner</span>
+    <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Try the Scanner</span>
     <h2 class="text-3xl font-bold text-white mb-2">See PhishCore in Action</h2>
     <p class="text-slate-400 mb-8">Pick what you want to check and scan it. This is a live scan, not a demo.</p>
 
@@ -602,7 +621,7 @@
 {{-- WHY PHISHCORE --}}
 <section class="reveal max-w-7xl mx-auto px-6 py-12 md:py-20 lg:py-24 grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
     <div>
-        <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Why PhishCore</span>
+        <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Why PhishCore</span>
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 md:mb-4 leading-snug">Designed to Protect, Not to Confuse.</h2>
         <p class="text-slate-400">PhishCore turns complex threat intelligence into decisions your users can act on immediately.</p>
         <a href="#scanner" class="btn-ghost !rounded-lg !px-5 !py-2.5 !text-sm mt-7">
@@ -665,7 +684,7 @@
     </div>
 
     <div class="lg:col-span-2">
-        <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">About the Project</span>
+        <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">About the Project</span>
         <h2 class="text-2xl font-bold text-white mb-4">Built for Everyone.</h2>
         <p class="text-slate-400 mb-4">
             PhishCore is a student final-year project that combines <span class="text-white font-medium">application development</span>,
@@ -685,7 +704,7 @@
 {{-- CONTACT --}}
 <section id="contact" class="scroll-mt-24 md:scroll-mt-28 reveal max-w-4xl mx-auto px-6 pt-4 pb-10 md:pb-14">
     <div class="text-center mb-8 md:mb-10">
-        <span class="inline-block text-xs px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Contact</span>
+        <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Contact</span>
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Get in Touch</h2>
         <p class="text-slate-400 text-[15px] md:text-base max-w-xl mx-auto">Questions, feedback, or a scam you want us to know about? Reach the PhishCore team through our official email.</p>
     </div>
@@ -724,7 +743,7 @@
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                 </span>
                 <div class="min-w-0">
-                    <p class="text-xs tracking-[0.14em] text-slate-500 mb-1">OFFICIAL EMAIL</p>
+                    <p class="font-mono text-[11px] font-medium tracking-[0.14em] text-slate-500 mb-1">OFFICIAL EMAIL</p>
                     <a href="mailto:phishcorebn@gmail.com" class="block text-white font-semibold text-[15px] sm:text-lg break-all hover:text-sky-300 transition">phishcorebn@gmail.com</a>
                     <p class="text-sm text-slate-400 mt-1">Support, feedback and partnership questions.</p>
                 </div>
@@ -885,6 +904,22 @@
             }, { threshold: 0.6 });
             counter.observe(el);
         });
+
+        // Hero scan report: the card turns to face the pointer while it is over the card (mouse only, skipped for reduced motion)
+        const rptScene = document.querySelector('.rpt-scene');
+        const rptCard = document.querySelector('.rpt-card');
+        if (rptScene && rptCard && window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches) {
+            const clamp = (n) => Math.max(-1, Math.min(1, n));
+            const tilt = (dx, dy) => {
+                rptScene.style.setProperty('--tx', (dx * 6).toFixed(2) + 'deg');
+                rptScene.style.setProperty('--ty', (dy * -4).toFixed(2) + 'deg');
+            };
+            rptCard.addEventListener('mousemove', (e) => {
+                const r = rptCard.getBoundingClientRect();
+                tilt(clamp((e.clientX - (r.left + r.width / 2)) / (r.width / 2)), clamp((e.clientY - (r.top + r.height / 2)) / (r.height / 2)));
+            });
+            rptCard.addEventListener('mouseleave', () => tilt(0, 0));
+        }
 
         document.querySelectorAll('.glass-card').forEach((card) => {
             card.addEventListener('mousemove', (e) => {

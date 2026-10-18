@@ -85,13 +85,18 @@
 
         <style>
             /* navy with a soft blue glow from the top */
+            /* floating island: deep brand navy with a soft sky glow from the top, solid so it never looks grey */
             .side-bg {
                 background:
-                    radial-gradient(120% 40% at 0% 0%, rgba(56, 189, 248, .14), transparent 70%),
-                    linear-gradient(180deg, #0c1a38 0%, #09142c 55%, #070f24 100%);
-                border-color: rgba(125, 211, 252, .14);
-                box-shadow: inset -1px 0 0 rgba(255, 255, 255, .03), 8px 0 30px -12px rgba(2, 8, 23, .8);
+                    radial-gradient(130% 38% at 0% 0%, rgba(56, 189, 248, .17), transparent 72%),
+                    linear-gradient(180deg, #0e1e44 0%, #0a1634 50%, #070f26 100%);
+                border: 1px solid rgba(125, 211, 252, .18);
+                box-shadow: 0 30px 60px -24px rgba(0, 0, 0, .85), 0 0 0 1px rgba(2, 8, 23, .4), inset 0 1px 0 rgba(255, 255, 255, .07);
             }
+            .side-island { top: .75rem; bottom: .75rem; left: .75rem; border-radius: 2rem;
+                           /* row height follows the screen height and the number of links, so a long list (admins) fits without scrolling */
+                           --side-row: clamp(2.375rem, calc((100vh - 17rem) / var(--side-rows, 8)), 3rem); }
+            @media (min-width: 1024px) { .side-island { top: 1rem; bottom: 1rem; left: 1rem; } }
             /* phones: the top bar floats as a frosted-glass pill, like the public navbar, and the page blurs behind it */
             .dash-topbar {
                 top: max(.75rem, env(safe-area-inset-top)); left: .75rem; right: .75rem;
@@ -129,11 +134,12 @@
             /* the background blobs stay as a still glow on signed-in pages: less repaint, smoother hover */
             .dash-aurora span { animation: none !important; }
 
-            .side-link { position: relative; z-index: 1; display: flex; align-items: center; gap: .75rem; padding: .5rem .75rem; border-radius: .8rem; font-size: .875rem; color: #b9c5d6; transition: color .2s; }
+            .side-link { position: relative; z-index: 1; display: flex; align-items: center; gap: .75rem; min-height: var(--side-row, 3rem); padding: 0 .75rem 0 .375rem; border-radius: 9999px; font-size: .875rem; font-weight: 600; color: #a9b6cb; transition: color .2s; }
             .side-label { transform-origin: left center; transition: transform .28s cubic-bezier(.34, 1.4, .64, 1); }
 
             /* icon tile: the glow is a pseudo-element that only fades, so it never repaints a shadow */
-            .side-ic { position: relative; width: 2rem; height: 2rem; display: grid; place-items: center; flex-shrink: 0; border-radius: .6rem; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), background-color .2s, color .2s; }
+            .side-ic { position: relative; width: min(2.25rem, calc(var(--side-row, 3rem) - .375rem)); height: min(2.25rem, calc(var(--side-row, 3rem) - .375rem)); display: grid; place-items: center; flex-shrink: 0; border-radius: 9999px; color: #7dd3fc; background-color: rgba(56, 189, 248, .10); border: 1px solid rgba(125, 211, 252, .18); transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), background-color .2s, color .2s; }
+            .side-link[data-tone="violet"] .side-ic { color: #c4b5fd; background-color: rgba(167, 139, 250, .12); border-color: rgba(196, 181, 253, .22); }
             .side-ic::before { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 16px rgba(56, 189, 248, .55); opacity: 0; transition: opacity .25s; pointer-events: none; }
             .side-link[data-tone="violet"] .side-ic::before { box-shadow: 0 0 16px rgba(167, 139, 250, .55); }
 
@@ -181,26 +187,21 @@
             @keyframes ia-k3 { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(7px); } }
             @media (prefers-reduced-motion: reduce) { .ic-tune circle { animation: none !important; } }
 
-            .side-link[data-active="true"] { color: #fff; font-weight: 500; }
-            .side-link[data-active="true"] .side-ic { background-color: rgba(56, 189, 248, .18); color: #7dd3fc; }
+            .side-link[data-active="true"] { color: #fff; }
+            .side-link[data-active="true"] .side-ic { background-color: rgba(56, 189, 248, .34); border-color: rgba(186, 230, 253, .5); color: #fff; }
+            .side-link[data-active="true"][data-tone="violet"] .side-ic { background-color: rgba(167, 139, 250, .34); border-color: rgba(221, 214, 254, .5); }
             .side-link[data-active="true"] .side-ic::before { opacity: 1; }
-            .side-link[data-active="true"][data-tone="violet"] .side-ic { background-color: rgba(167, 139, 250, .18); color: #c4b5fd; }
-            .side-link[data-active="true"]::after { content: ""; position: absolute; left: -.75rem; top: 24%; bottom: 24%; width: 3px; border-radius: 0 4px 4px 0; background: #38bdf8; box-shadow: 0 0 12px 1px rgba(56, 189, 248, .8); }
-            .side-link[data-active="true"][data-tone="violet"]::after { background: #a78bfa; box-shadow: 0 0 12px 1px rgba(167, 139, 250, .8); }
 
             /* moving pill: only transform and opacity change while it travels, so it runs on the GPU */
             .side-hl { position: absolute; top: 0; left: .75rem; right: .75rem; pointer-events: none; will-change: transform; }
-            .side-hl-in { width: 100%; height: 100%; border-radius: .8rem; will-change: transform;
-                          background: linear-gradient(90deg, rgba(56, 189, 248, .2), rgba(56, 189, 248, .05));
-                          border: 1px solid rgba(125, 211, 252, .22);
-                          box-shadow: 0 0 12px -2px rgba(56, 189, 248, .3), inset 0 1px 0 rgba(255, 255, 255, .07); }
-            .side-hl[data-tone="violet"] .side-hl-in { background: linear-gradient(90deg, rgba(167, 139, 250, .2), rgba(167, 139, 250, .05)); border-color: rgba(196, 181, 253, .24); box-shadow: 0 0 12px -2px rgba(167, 139, 250, .3), inset 0 1px 0 rgba(255, 255, 255, .07); }
+            .side-hl-in { width: 100%; height: 100%; border-radius: 9999px; will-change: transform;
+                          background: linear-gradient(90deg, rgba(56, 189, 248, .30), rgba(56, 189, 248, .12));
+                          border: 1px solid rgba(125, 211, 252, .38);
+                          box-shadow: 0 6px 16px -8px rgba(56, 189, 248, .55); }
+            .side-hl[data-tone="violet"] .side-hl-in { background: linear-gradient(90deg, rgba(167, 139, 250, .30), rgba(167, 139, 250, .12)); border-color: rgba(196, 181, 253, .38); box-shadow: 0 6px 16px -8px rgba(167, 139, 250, .55); }
 
-            .side-dot { width: .375rem; height: .375rem; border-radius: 9999px; margin-left: auto; background: #38bdf8; box-shadow: 0 0 10px 2px rgba(56, 189, 248, .7); animation: side-pulse 2.4s ease-in-out infinite; }
-            .side-link[data-tone="violet"] .side-dot { background: #a78bfa; box-shadow: 0 0 10px 2px rgba(167, 139, 250, .7); }
-            @keyframes side-pulse { 50% { opacity: .45; } }
 
-            .side-group { padding: 0 1.5rem; margin: 1.25rem 0 .4rem; font-size: 10px; letter-spacing: .14em; color: #8191a8; }
+            .side-group { padding: 0 1rem; margin: 1rem 0 .5rem; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; font-weight: 500; letter-spacing: .16em; color: #7f8ea6; }
             .side-brand img { transition: transform .4s cubic-bezier(.34, 1.56, .64, 1), filter .3s; }
             .side-brand:hover img { transform: scale(1.1) rotate(-5deg); filter: drop-shadow(0 0 10px rgba(56, 189, 248, .7)); }
 
@@ -209,14 +210,30 @@
             .side-out .side-ic::before { box-shadow: 0 0 16px rgba(248, 113, 113, .5); }
             .side-out:hover .side-ic { transform: scale(1.1); background-color: rgba(248, 113, 113, .15); color: #fca5a5; }
 
-            @media (prefers-reduced-motion: reduce) { .side-dot, .side-link:hover .side-ic svg { animation: none !important; } .side-link:hover .side-ic, .side-link:hover .side-label { transform: none; } }
+            @media (prefers-reduced-motion: reduce) { .side-link:hover .side-ic svg { animation: none !important; } .side-link:hover .side-ic, .side-link:hover .side-label { transform: none; } }
                     /* signed-in user card: opens Settings, and the log out row is tinted so it reads as its own action */
-            .side-user { display: flex; align-items: center; gap: .75rem; padding: .6rem .75rem; border-radius: .9rem; border: 1px solid rgba(125, 211, 252, .12); background: linear-gradient(135deg, rgba(56, 189, 248, .09), rgba(56, 189, 248, .03)); transition: border-color .2s, background-color .2s; }
-            .side-user:hover { border-color: rgba(125, 211, 252, .3); background: linear-gradient(135deg, rgba(56, 189, 248, .14), rgba(56, 189, 248, .05)); }
-            .side-user-go { color: #7dd3fc; opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .2s; }
-            .side-user:hover .side-user-go { opacity: .9; transform: none; }
-            .side-out { margin-top: .1rem; }
+            .side-user { display: flex; align-items: center; gap: .625rem; min-height: 3.25rem; padding: .4rem .75rem .4rem .45rem; border-radius: 9999px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(2, 8, 23, .5); transition: border-color .2s, background-color .2s; }
+            .side-user:hover { border-color: rgba(125, 211, 252, .35); background: rgba(56, 189, 248, .1); }
+            .side-out--round { flex: none; width: 3.25rem; height: 3.25rem; min-height: 0; padding: 0; justify-content: center; border-radius: 9999px; color: #fda4af; background: rgba(244, 63, 94, .1); border: 1px solid rgba(251, 113, 133, .28); }
+            .side-out--round:hover { background: rgba(244, 63, 94, .2); }
+            .side-out--round .side-ic { background: transparent; border-color: transparent; color: #fda4af; }
             .side-out .side-ic { background-color: rgba(248, 113, 113, .1); color: #fca5a5; }
+            /* calmer rows: bare icons, only the active row gets a shape */
+            .side-ic, .side-link[data-tone="violet"] .side-ic { background-color: transparent; border-color: transparent; color: #8fa6c9; }
+            .side-link[data-tone="violet"] .side-ic { color: #a99bf0; }
+            .side-ic::before { display: none; }
+            .side-link:hover .side-ic { background-color: transparent; color: #e0f2fe; }
+            .side-link[data-tone="violet"]:hover .side-ic { background-color: transparent; color: #ede9fe; }
+            .side-link[data-active="true"] .side-ic, .side-link[data-active="true"][data-tone="violet"] .side-ic { background-color: transparent; border-color: transparent; color: #fff; }
+            /* glow behind and around the icon: on hover and on the current page */
+            .side-ic svg { position: relative; z-index: 1; transition: filter .25s; }
+            .side-ic::after { content: ""; position: absolute; inset: -5px; border-radius: 9999px; background: radial-gradient(circle, rgba(56, 189, 248, .42), rgba(56, 189, 248, 0) 68%); opacity: 0; transition: opacity .25s; pointer-events: none; }
+            .side-link[data-tone="violet"] .side-ic::after { background: radial-gradient(circle, rgba(167, 139, 250, .44), rgba(167, 139, 250, 0) 68%); }
+            .side-out .side-ic::after { background: radial-gradient(circle, rgba(248, 113, 113, .42), rgba(248, 113, 113, 0) 68%); }
+            .side-link:hover .side-ic::after, .side-link[data-active="true"] .side-ic::after { opacity: 1; }
+            .side-link:hover .side-ic svg, .side-link[data-active="true"] .side-ic svg { filter: drop-shadow(0 0 5px rgba(125, 211, 252, .9)); }
+            .side-link[data-tone="violet"]:hover .side-ic svg, .side-link[data-active="true"][data-tone="violet"] .side-ic svg { filter: drop-shadow(0 0 5px rgba(196, 181, 253, .9)); }
+            .side-out:hover .side-ic svg { filter: drop-shadow(0 0 5px rgba(252, 165, 165, .9)); }
 
             /* log out confirmation: a small frosted-glass bubble that grows out of the button */
             .lo-pop { position: absolute; left: 0; right: 0; bottom: calc(100% + .5rem); z-index: 20; padding: .9rem .9rem .8rem; border-radius: 1.1rem; overflow: hidden; transform-origin: 50% 100%; will-change: transform, opacity;
@@ -279,17 +296,18 @@
             }
         </style>
         <aside
-            class="w-64 shrink-0 side-bg border-r flex flex-col justify-between
-                   fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out
+            class="w-64 lg:w-60 xl:w-64 shrink-0 side-bg side-island flex flex-col justify-between
+                   fixed z-50 transform transition-transform duration-200 ease-in-out
                    lg:translate-x-0"
-            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+            style="--side-rows: {{ collect($navMain)->where('show', true)->count() + count($navPrefs) }}"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+1.5rem)]'">
             <div class="side-scroll overflow-y-auto overflow-x-hidden">
-                <div class="flex items-center justify-between px-6 py-6">
+                <div class="flex items-center justify-between px-5 pt-5 pb-2">
                     <a href="{{ route('welcome') }}" class="side-brand flex items-center gap-2.5">
-                        <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-11 h-11 object-contain">
+                        <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
                         <span class="leading-none">
-                            <span class="block text-base font-bold tracking-tight text-white">PhishCore</span>
-                            <span class="block mt-0.5 text-[10px] font-semibold tracking-[0.14em] text-sky-200">DETECTION PLATFORM</span>
+                            <span class="block text-[17px] font-extrabold tracking-tight text-white">PhishCore</span>
+                            <span class="block mt-1 text-[11px] font-semibold text-sky-300">Detection Platform</span>
                         </span>
                     </a>
                     <button type="button" @click.stop="$store.bell.toggle()" :aria-expanded="$store.bell.open" aria-label="Notifications" class="nb-btn nb-desktop">
@@ -355,7 +373,6 @@
                                     @endif
                                 </span>
                                 <span class="side-label">{{ $item['label'] }}</span>
-                                @if ($on) <span class="side-dot"></span> @endif
                             </a>
                         @endif
                     @endforeach
@@ -379,14 +396,14 @@
                                 @endif
                             </span>
                             <span class="side-label">{{ $item['label'] }}</span>
-                            @if ($on) <span class="side-dot"></span> @endif
                         </a>
                     @endforeach
                 </nav>
             </div>
 
-            <div class="p-3 border-t" style="border-color: rgba(125, 211, 252, .12)">
-                <a href="{{ route('profile.edit') }}" class="side-user" title="Open settings">
+            <div class="p-3">
+              <div class="relative flex items-center gap-2">
+                <a href="{{ route('profile.edit') }}" class="side-user flex-1 min-w-0" title="Open settings">
                     <span class="relative w-10 h-10 shrink-0">
                         @if ($u->photoUrl())
                             <img src="{{ $u->photoUrl() }}" alt="" class="w-10 h-10 rounded-full object-cover ring-2 ring-sky-400/40">
@@ -401,9 +418,8 @@
                         <span class="block text-sm font-semibold text-white truncate">{{ $u->name }}</span>
                         <span class="block text-xs text-sky-300/80 truncate">{{ $roleLabel }}</span>
                     </span>
-                    <svg class="side-user-go w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </a>
-                <form method="POST" action="{{ route('logout') }}" class="mt-2 relative">
+                <form method="POST" action="{{ route('logout') }}" class="shrink-0">
                     @csrf
                     <div x-show="logoutOpen" x-cloak @click.outside="logoutOpen = false" class="lo-pop" role="dialog" aria-labelledby="lo-title"
                          x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90">
@@ -415,11 +431,11 @@
                             <button type="submit" class="lo-btn lo-btn-out">Log out</button>
                         </div>
                     </div>
-                    <button type="button" @click.stop="logoutOpen = ! logoutOpen" :aria-expanded="logoutOpen" data-anim="out" class="side-link side-out w-full text-slate-300">
+                    <button type="button" @click.stop="logoutOpen = ! logoutOpen" :aria-expanded="logoutOpen" aria-label="Log out" title="Log out" data-anim="out" class="side-link side-out side-out--round">
                         <span class="side-ic"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg></span>
-                        <span class="side-label">Log Out</span>
-                    </button>
+                        </button>
                 </form>
+              </div>
             </div>
         </aside>
 
@@ -427,7 +443,7 @@
         <style>
             .nb-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: .5rem; border-radius: .75rem; color: #cbd5e1; transition: background-color .15s, color .15s; }
             .nb-btn:hover { background: rgba(125, 211, 252, .12); color: #fff; }
-            .nb-desktop { display: none; }
+            .nb-desktop { display: none; width: 2.5rem; height: 2.5rem; padding: 0; border-radius: 9999px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); }
             @media (min-width: 1024px) { .nb-desktop { display: inline-flex; } }
             .nb-count { position: absolute; top: .1rem; right: .05rem; min-width: 1.05rem; height: 1.05rem; padding: 0 .28rem; border-radius: 999px; background: #ef4444; color: #fff; font-size: .65rem; font-weight: 700; line-height: 1.05rem; text-align: center; box-shadow: 0 0 0 2px #020617; }
             /* the list: a frosted-glass bubble that drops out of the bell, with a light sweep and rows that slide in */
@@ -439,6 +455,7 @@
                 -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
                 animation: nb-drop .6s cubic-bezier(.3, 1.3, .5, 1); }
             @media (min-width: 1024px) { .nb-panel { top: 1rem; left: 16.75rem; right: auto; width: 23rem; max-height: calc(100vh - 2rem); transform-origin: 0 1.6rem; } }
+            @media (min-width: 1280px) { .nb-panel { left: 17.75rem; } }
             @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .nb-panel { background: #0c1a38; } }
             @keyframes nb-drop {
                 0% { opacity: 0; transform: translateY(-16px) scale(.55, .2); border-radius: 2.2rem; }
@@ -508,7 +525,7 @@
         </div>
 
         {{-- MAIN CONTENT --}}
-                <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-64 overflow-y-auto min-w-0">
+                <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-[17rem] xl:ml-72 overflow-y-auto min-w-0">
             {{ $slot }}
         </main>
 

@@ -505,13 +505,13 @@
 
     {{-- CHARTS ROW --}}
     <div class="grid lg:grid-cols-3 gap-4 mb-4">
-        <div class="lg:col-span-2 a-card a-in p-4 sm:p-6" style="--d:.1s">
+        <div class="lg:col-span-2 a-card a-in p-4 sm:p-6 xl:flex xl:flex-col" style="--d:.1s">
             <div class="flex items-center justify-between gap-3 mb-1">
                 <h2 class="text-white font-semibold">Report Activity Over Time</h2>
                 <span class="text-xs font-medium text-slate-300">{{ $rangeLabel }}</span>
             </div>
             <p class="text-sm text-slate-300 mb-4">Daily report totals for the selected period</p>
-            <div class="relative h-48 sm:h-56 md:max-xl:h-64 xl:h-auto"><canvas id="activityChart" height="90"></canvas></div>
+            <div class="relative h-48 sm:h-56 md:max-xl:h-64 xl:h-auto xl:flex-1 xl:min-h-[15rem]"><canvas id="activityChart" class="absolute inset-0"></canvas></div>
         </div>
 
         <div class="a-card a-in p-4 sm:p-6 md:max-xl:p-4 md:max-lg:portrait:grid md:max-lg:portrait:grid-cols-[auto_1fr] md:max-lg:portrait:items-center md:max-lg:portrait:gap-x-10" style="--d:.16s">
@@ -842,9 +842,6 @@
         }
 
         const activityCtx = document.getElementById('activityChart');
-        const fill = activityCtx.getContext('2d').createLinearGradient(0, 0, 0, 260);
-        fill.addColorStop(0, 'rgba(56, 189, 248, 0.30)');
-        fill.addColorStop(1, 'rgba(56, 189, 248, 0)');
 
         new Chart(activityCtx, {
             type: 'line',
@@ -854,7 +851,14 @@
                     label: 'Reports',
                     data: @json($chartCounts),
                     borderColor: '#38bdf8',
-                    backgroundColor: fill,
+                    backgroundColor: (ctx) => {
+                        const area = ctx.chart.chartArea;
+                        if (!area) return null;
+                        const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                        g.addColorStop(0, 'rgba(56, 189, 248, 0.30)');
+                        g.addColorStop(1, 'rgba(56, 189, 248, 0)');
+                        return g;
+                    },
                     borderWidth: 2.5,
                     fill: true,
                     tension: 0.35,
@@ -867,7 +871,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: window.matchMedia('(min-width: 1280px)').matches,
+                maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { display: false }, tooltip },
                 scales: {

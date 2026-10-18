@@ -44,6 +44,16 @@ test('forgot password uses the same stage with the form switched on', function (
         ->toContain('action="'.route('password.email').'"');
 });
 
+test('only a mouse on a wide screen gets the pinned desktop stage and the auto-focused field', function () {
+    foreach (['/login', '/register', '/forgot-password', '/reset-password/some-token?email=a@b.test'] as $url) {
+        expect($this->get($url)->getContent())
+            ->toContain('@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {')
+            ->toContain('(min-width: 1024px) and (pointer: coarse)')
+            ->toContain("window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)')")
+            ->not->toContain("window.matchMedia('(min-width: 1024px)')");
+    }
+});
+
 test('the reset screen reached from the e-mail link uses the stage too', function () {
     $this->get('/reset-password/some-token?email=a@b.test')
         ->assertOk()

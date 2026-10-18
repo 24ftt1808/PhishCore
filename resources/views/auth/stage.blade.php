@@ -134,7 +134,8 @@
         @keyframes as-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
         .as-in { animation: as-in .7s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, 0s); }
 
-        @media (min-width: 1024px) {
+        /* desktop stage: mouse + a 1024px screen. Touch tablets use the layout at the bottom of this file instead. */
+        @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
             .as-stage { height: 100vh; height: 100dvh; overflow: hidden; }
             .as-head { position: absolute; top: 0; left: 0; right: 0; z-index: 5; padding: 1.75rem var(--as-m) 0; }
             .as-main { position: absolute; inset: 3.75rem 0 0 0; display: block; min-height: 0; padding: 0; }
@@ -210,10 +211,10 @@
         .as-say { position: relative; padding: .8rem 1rem; font-family: 'Press Start 2P', 'Courier New', ui-monospace, monospace; font-size: .62rem; line-height: 1.8; color: #0b1220; background: #e0f2fe; border: 2px solid #7dd3fc; box-shadow: 3px 3px 0 rgba(0,0,0,.35); }
         .as-lead { margin: 1rem 0 1.75rem; max-width: 28rem; font-size: .95rem; line-height: 1.6; color: #94a3b8; }
         .as-gauge { width: 200px; height: auto; }
-        @media (min-width: 1280px) { .as-chip { display: inline-flex; } }
+        @media (min-width: 1280px) and (hover: hover) and (pointer: fine) { .as-chip { display: inline-flex; } }
 
         /* shorter laptop screens: tighten everything so nothing needs scrolling */
-        @media (min-width: 1024px) and (max-height: 820px) {
+        @media (min-width: 1024px) and (max-height: 820px) and (hover: hover) and (pointer: fine) {
             .as-form { padding: 1.5rem 2rem 1.25rem; }
             .as-form form > * + * { margin-top: .7rem !important; }
             .as-input { height: 2.7rem; }
@@ -233,7 +234,7 @@
             .as-steps { margin: 1.1rem 0 1rem; gap: .85rem; }
             .as-h { font-size: clamp(1.6rem, 2.3vw, 2.2rem); }
         }
-        @media (min-width: 1024px) and (max-height: 700px) { .as-stage { overflow-y: auto; } }
+        @media (min-width: 1024px) and (max-height: 700px) and (hover: hover) and (pointer: fine) { .as-stage { overflow-y: auto; } }
 
         @media (prefers-reduced-motion: reduce) {
             .as-pin, .as-card, .as-depth, .as-glow, .as-phil, .as-in, .as-chip, .as-float, .as-shield b { animation: none !important; }
@@ -262,6 +263,63 @@
             .as-form .text-sm { font-size: .8rem; }
             .as-note { font-size: .7rem; padding: .6rem .75rem; gap: .55rem; }
             .as-form input[type=checkbox] { width: 1.05rem; height: 1.05rem; }
+        }
+
+        /* ===== TOUCH TABLETS (700px and up) =====
+           The tilted, pinned desktop stage only runs for a mouse on a 1024px+ screen. Tablets get a calmer layout that
+           scrolls instead of squeezing, so nothing is clipped and the on-screen keyboard never has to cover the card.
+           Portrait: one wide, centred card. Landscape: the card on the left with the side content beside it. */
+        @media (min-width: 700px) and (max-width: 1023px), (min-width: 1024px) and (pointer: coarse) {
+            .as-head { padding: calc(1.5rem + env(safe-area-inset-top)) clamp(1.75rem, 5vw, 3rem) 0; }
+            .as-main { padding: 1.5rem clamp(1.75rem, 5vw, 3rem) calc(2.5rem + env(safe-area-inset-bottom)); }
+            .as-card-wrap { max-width: 34rem; }
+            .as-card { border-radius: 2rem; }
+            .as-form, .as-form.as-tight { padding: 2.75rem 2.75rem 2.5rem; }
+            .as-title { font-size: 2.2rem; }
+            .as-sub { font-size: 1rem; line-height: 1.5; }
+            .as-form form > * + * { margin-top: 1.1rem !important; }
+            .as-label { font-size: .75rem; }
+            .as-input, .as-tight .as-input { height: 3.5rem; font-size: 1rem; }
+            .as-btn, .as-tight .as-btn { height: 3.6rem; }
+            .as-btn-ghost { height: 3.4rem; }
+            .as-eye { width: 2.75rem; height: 2.75rem; right: .3rem; }
+            .as-input-eye { padding-right: 3.25rem; }
+            .as-note { font-size: .82rem; }
+            /* finger-sized tap targets */
+            .as-form input[type=checkbox] { width: 1.4rem; height: 1.4rem; }
+            .as-form label.cursor-pointer { min-height: 2.75rem; }
+            .as-link { position: relative; }
+            .as-link::after { content: ''; position: absolute; inset: -.7rem -.5rem; }
+        }
+
+        @media (min-width: 900px) and (min-height: 600px) and (orientation: landscape) and (pointer: coarse) {
+            .as-head { width: 100%; max-width: 76rem; margin-inline: auto; padding-inline: clamp(1.75rem, 5vw, 3rem); }
+            .as-main { display: grid; grid-template-columns: minmax(0, 30rem) minmax(0, 1fr); column-gap: clamp(2.5rem, 6vw, 5.5rem); align-content: center; align-items: center; width: 100%; max-width: 76rem; margin-inline: auto; }
+            .as-card-wrap { grid-column: 1; grid-row: 1; max-width: none; }
+            .as-panel { display: flex; flex-direction: column; justify-content: center; grid-column: 2; grid-row: 1; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .3s ease, visibility 0s linear .3s; }
+            .as-panel.is-on { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .45s ease .2s, visibility 0s; }
+            .as-pin { width: 100%; display: flex; flex-direction: column; gap: 1.5rem; }
+            .as-pin > * { margin: 0 !important; }
+            .as-h { font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1.08; font-weight: 800; color: #fff; letter-spacing: -.025em; }
+            .as-h span { color: #38bdf8; }
+            .as-chip { display: none !important; }
+            .as-form, .as-form.as-tight { padding: 2.25rem 2.5rem 2rem; }
+        }
+
+        /* short landscape (a tablet browser window): trim spacing, never tap targets, so the card fits without scrolling */
+        @media (min-width: 900px) and (min-height: 600px) and (max-height: 800px) and (orientation: landscape) and (pointer: coarse) {
+            .as-head { padding-top: calc(1rem + env(safe-area-inset-top)); }
+            .as-main { padding-top: .75rem; padding-bottom: 1rem; }
+            .as-form, .as-form.as-tight { padding: 1.6rem 2.25rem 1.4rem; }
+            .as-form form > * + * { margin-top: .8rem !important; }
+            .as-form .mb-7, .as-form .mb-6 { margin-bottom: 1.1rem; }
+            .as-title { font-size: 1.9rem; }
+            .as-sub { font-size: .92rem; }
+            .as-field { gap: .35rem; }
+            .as-input, .as-tight .as-input { height: 3.15rem; }
+            .as-btn, .as-tight .as-btn { height: 3.25rem; }
+            .as-btn-ghost { height: 3.1rem; }
+            .as-rec { padding: 2rem 2rem 1.75rem; }
         }
     </style>
 </head>
@@ -298,7 +356,7 @@
                 this.$nextTick(() => {
                     card.style.height = this.$refs[m].offsetHeight + 'px';
                     setTimeout(() => { card.style.height = ''; }, 950);
-                    if (window.matchMedia('(min-width: 1024px)').matches) setTimeout(() => { const f = this.$refs[m + 'First']; if (f) f.focus({ preventScroll: true }); }, 650);
+                    if (window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches) setTimeout(() => { const f = this.$refs[m + 'First']; if (f) f.focus({ preventScroll: true }); }, 650);
                 });
             },
          }"
@@ -309,7 +367,7 @@
                 setMode(path.endsWith('/register') ? 'register' : (path.endsWith('/forgot-password') ? 'forgot' : 'login'), false);
             });
             window.addEventListener('pageshow', (e) => { if (e.persisted) busy = false; });
-            $nextTick(() => { syncH(); const f = $refs[mode + 'First']; if (f && window.matchMedia('(min-width: 1024px)').matches) f.focus({ preventScroll: true }); });
+            $nextTick(() => { syncH(); const f = $refs[mode + 'First']; if (f && window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches) f.focus({ preventScroll: true }); });
             window.addEventListener('resize', () => syncH());
             if (window.ResizeObserver) { const ro = new ResizeObserver(() => syncH()); ['login','register','forgot','reset'].forEach(k => $refs[k] && ro.observe($refs[k])); }
          ">

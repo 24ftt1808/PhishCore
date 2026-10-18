@@ -554,6 +554,26 @@ input {
 @media (min-width: 1280px) {
     .rpt-scene { --ov: 3.5rem; }
 }
+/* Tablets and laptops turned sideways are short (a tablet browser is only about 600px tall once the
+   address bar is counted). The full card does not fit there, so the text sat low and the card ran off
+   the bottom. This smaller card lets the whole hero fit in the first screen and sit in the middle of it. */
+@media (min-width: 768px) and (orientation: landscape) and (min-height: 521px) and (max-height: 800px) {
+    .rpt-scene { padding: 0.9rem 0 1.8rem; }
+    .rpt-ground { bottom: 0.3rem; }
+    .rpt-card { gap: 0.6rem; padding: 1rem 1.1rem; border-radius: 1.2rem; }
+    .rpt-subtitle, .rpt-foot { display: none; }
+    .rpt-field { padding: 0.55rem 0.85rem; }
+    .rpt-score { padding: 0.6rem 0.8rem; }
+    .rpt-gauge { width: 7rem; }
+    .rpt-list { gap: 0.35rem; }
+    .rpt-row { padding: 0.4rem 0.6rem; }
+    .rpt-ico { width: 1.75rem; height: 1.75rem; }
+    .rpt-sat--tile { top: -1.4rem; }
+    .rpt-sat--flag { top: 3.2rem; }
+    .rpt-sat--left { top: 7.2rem; }
+    .rpt-sat--scan { bottom: -0.9rem; }
+}
+
 /* Short landscape screens (phones turned sideways): keep the card compact */
 @media (orientation: landscape) and (max-height: 520px) {
     .rpt-sub { display: none; }

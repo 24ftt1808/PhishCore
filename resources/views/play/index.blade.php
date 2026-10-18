@@ -43,6 +43,7 @@
         .pl-ranks-pop .pl-ranks::-webkit-scrollbar { display: none; }
         .pl-hud-title { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .9rem; font-weight: 800; line-height: 1.4; color: #fff; }
         .pl-hud-title span:last-child { color: #7dd3fc; font-size: .8rem; white-space: nowrap; }
+        .pl-hero .pl-hud-title { max-width: none; } /* the hero's paragraph width limit must not shorten this row, or the XP number stops short of the bar's end */
         .pl-xpbar { position: relative; height: .6rem; margin-top: .4rem; overflow: hidden; border-radius: 9999px; background: rgba(148, 163, 184, .22); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35); }
         .pl-xpbar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #6366f1); box-shadow: 0 0 12px rgba(56, 189, 248, .6); transition: width .6s ease; }
         @container (min-width: 52rem) { .pl-hero { --hx: 1.6rem; --hy: 1.3rem; grid-template-columns: 1fr minmax(18rem, 22rem); align-items: center; } .pl-hero h1 { font-size: 1.3rem; } }

@@ -95,7 +95,7 @@ test('the pdf uses the same reference id and verdict as the result page', functi
     expect($captured->data['ref'])->toBe($expectedRef);
     expect($captured->data['verdict']['headline'])->toBe('Phishing detected');
     expect($captured->data['severity'])->toBe('CRITICAL');
-    expect($captured->data['checks'][0]['name'])->toBe('URL Analysis');
+    expect($captured->data['raw'][0]['name'])->toBe('URL Analysis');
 });
 
 test('guests get no investigation section in the pdf', function () {

@@ -77,14 +77,57 @@
         .s-rule-ok .s-rule-ic svg { transform: scale(1); }
 
         .s-note li { position: relative; padding-left: 1.1rem; }
-        /* Preferences: choice buttons that save as soon as one is pressed */
-        .pf-chip { text-align: left; border-radius: .85rem; border: 1px solid rgba(148, 163, 184, .22); background: rgba(8, 15, 32, .45); color: #cbd5e1; transition: border-color .2s, background-color .2s, color .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); -webkit-tap-highlight-color: transparent; }
-        .pf-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
-        .pf-chip { padding: .5rem 1rem; font-size: .85rem; font-weight: 600; border-radius: 999px; }
-        .pf-chip:hover { border-color: rgba(148, 163, 184, .5); color: #fff; }
-        .pf-chip:active { transform: scale(.96); }
-        .pf-on { color: #fff; border-color: rgba(125, 211, 252, .6); background: rgba(56, 189, 248, .14); }
-        @media (prefers-reduced-motion: reduce) { .pf-chip { transition: none; } }
+        /* Preferences: one panel with a row per setting. Choices save as soon as one is pressed.
+           Phones: icon + title on one line, the switch beside it, the text full width, then the control and its note.
+           Wide cards: text on the left, control on the right. */
+        .pf-card { container-type: inline-size; overflow: hidden; }
+        .pf-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: .8rem; row-gap: .6rem; padding: 1rem; }
+        .pf-row + .pf-row { border-top: 1px solid rgba(148, 163, 184, .14); }
+        .pf-lead, .pf-text { display: contents; }
+        .pf-row .pf-ic { grid-column: 1; grid-row: 1; width: 2.25rem !important; height: 2.25rem !important; border-radius: .7rem !important; }
+        .pf-ttl { grid-column: 2; grid-row: 1; font-size: 1rem; }
+        .pf-desc { grid-column: 1 / -1; grid-row: 2; margin-top: 0 !important; font-size: .85rem !important; }
+        .pf-ctl { grid-column: 1 / -1; grid-row: 3; display: flex; flex-direction: column; align-items: stretch; gap: .5rem; min-width: 0; margin-top: .15rem; }
+        .pf-row-sw > .pf-ctl { grid-column: 3; grid-row: 1; margin-top: 0; }
+        .pf-state { display: none; font-size: .78rem; font-weight: 700; letter-spacing: .02em; }
+        .pf-note { grid-column: 1 / -1; grid-row: 4; display: flex; align-items: flex-start; gap: .45rem; font-size: .8rem; line-height: 1.45; color: #94a3b8; }
+        .pf-note svg { flex: none; width: .95rem; height: .95rem; margin-top: .12rem; }
+        .pf-note-warn { color: #fcd34d; }
+        .pf-note-warn svg { color: #fbbf24; }
+        .pf-seg { display: flex; gap: .2rem; padding: .25rem; border-radius: 999px; background: rgba(5, 11, 28, .55); border: 1px solid rgba(148, 163, 184, .18); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .35); }
+        .pf-opt { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.5rem; padding: .5rem .95rem; border-radius: 999px; border: 1px solid transparent; font-size: .85rem; font-weight: 600; white-space: nowrap; color: #94a3b8; transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); -webkit-tap-highlight-color: transparent; }
+        .pf-opt svg { width: 1rem; height: 1rem; flex: none; opacity: .75; }
+        .pf-opt:hover { color: #fff; background: rgba(148, 163, 184, .1); }
+        .pf-opt:active { transform: scale(.96); }
+        .pf-opt:focus-visible { outline: 2px solid rgba(125, 211, 252, .8); outline-offset: 1px; }
+        .pf-opt-on, .pf-opt-on:hover { color: #fff; background: linear-gradient(180deg, rgba(56, 189, 248, .34), rgba(37, 99, 235, .24)); border-color: rgba(125, 211, 252, .55); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 6px 16px -8px rgba(56, 189, 248, .75); }
+        .pf-opt-on svg { opacity: 1; color: #bae6fd; }
+        @media (pointer: coarse) { .pf-opt { min-height: 2.75rem; } }
+        .pf-saved { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 600; color: #6ee7b7; }
+        .pf-saved svg { width: .9rem; height: .9rem; }
+        /* medium width: five choices in one bar, icons hidden to save room */
+        @container (max-width: 36rem) { .pf-opt svg { display: none; } }
+        /* phones: 3 + 2 choices, the second row wider, icons back */
+        @container (max-width: 30rem) {
+            .pf-opt { padding-inline: .5rem; font-size: .82rem; }
+            .pf-seg-5 { display: grid; grid-template-columns: repeat(6, 1fr); border-radius: 1.3rem; }
+            .pf-seg-5 .pf-opt { grid-column: span 2; border-radius: 1rem; padding-inline: .5rem; }
+            .pf-seg-5 .pf-opt:nth-child(n+4) { grid-column: span 3; }
+            .pf-seg-5 .pf-opt svg { display: block; }
+        }
+        @container (min-width: 46rem) {
+            .pf-row, .pf-row-sw { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lead ctl" "note ctl"; column-gap: 2rem; row-gap: 0; padding: 1.4rem 1.6rem; }
+            .pf-lead { display: flex; grid-area: lead; align-items: flex-start; gap: .9rem; min-width: 0; }
+            .pf-text { display: block; min-width: 0; }
+            .pf-row .pf-ic { width: 2.6rem !important; height: 2.6rem !important; border-radius: .8rem !important; }
+            .pf-ttl { font-size: 1rem; }
+            .pf-desc { margin-top: .125rem !important; font-size: .875rem !important; }
+            .pf-row > .pf-ctl, .pf-row-sw > .pf-ctl { grid-area: ctl; align-items: flex-end; margin-top: 0; }
+            .pf-seg { display: inline-flex; }
+            .pf-state { display: inline; }
+            .pf-note { grid-area: note; margin: .6rem 0 0 3.5rem; }
+        }
+        @media (prefers-reduced-motion: reduce) { .pf-opt { transition: none; } }
         .s-note li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: var(--dot, #38bdf8); }
 
         /* ---- ID badge on a V-lanyard ---- */
@@ -662,87 +705,97 @@
                 </div>
             </div>
 
-            {{-- PREFERENCES TAB: add new app options here as new cards --}}
-            <div x-show="tab === 'preferences'" x-cloak class="space-y-5">
-                <div class="s-card p-5 sm:p-6">
-                    <form method="POST" action="{{ route('profile.preferences.update') }}" x-data="{ on: {{ $user->wantsFloatingChat() ? 'true' : 'false' }} }">
-                        @csrf
-                        @method('PATCH')
-                        <input type="hidden" name="floating_chat_enabled" :value="on ? 1 : 0">
-
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="flex items-start gap-3.5 min-w-0">
-                                <span class="a-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM12 20.25c4.97 0 9-3.694 9-8.25S16.97 3.75 12 3.75 3 7.444 3 12c0 1.6.496 3.09 1.35 4.35L3.75 20.25l4.2-.9A9.8 9.8 0 0012 20.25z" /></svg></span>
-                                <div class="min-w-0">
-                                    <h2 class="text-white font-semibold leading-tight">Floating Cora chat</h2>
-                                    <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">Show the round Cora button in the corner of every page. Turn it off if it gets in the way. You can still talk to Cora from the AI Chat page.</p>
-                                </div>
-                            </div>
-                            <button type="button" role="switch" :aria-checked="on" aria-label="Floating Cora chat" @click="on = ! on; $nextTick(() => $el.form.requestSubmit())"
-                                    class="relative shrink-0 mt-1 w-11 h-6 rounded-full border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70"
-                                    :class="on ? 'bg-sky-500 border-sky-300/50' : 'bg-white/10 border-white/20'">
-                                <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200" :class="on ? 'translate-x-5' : ''"></span>
-                            </button>
-                        </div>
-
-                        <noscript><button type="submit" class="s-btn s-btn-main mt-4">Save</button></noscript>
-
-                        @if (session('status') === 'preferences-updated' && session('pref', 'floating_chat_enabled') === 'floating_chat_enabled')
-                            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-4" role="status">Saved.</p>
-                        @endif
-                    </form>
-                </div>
-
+            {{-- PREFERENCES TAB: add new app options here as new rows --}}
+            <div x-show="tab === 'preferences'" x-cloak>
                 @php
                     $prefSaved = fn (string $key) => session('status') === 'preferences-updated' && session('pref') === $key;
                     $tabChoices = ['url' => 'URL', 'email' => 'Email', 'phone' => 'Phone', 'screenshot' => 'Screenshot', 'file' => 'File'];
+                    $tabIcons = ['url' => 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244', 'email' => 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75', 'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3', 'screenshot' => 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z', 'file' => 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'];
                     $keepChoices = ['forever' => 'Keep them', '90' => '90 days', '30' => '30 days'];
                     $keepNow = $user->scanRetentionDays() === null ? 'forever' : (string) $user->scanRetentionDays();
                 @endphp
 
-                {{-- DEFAULT SCAN TYPE --}}
-                <div class="s-card p-5 sm:p-6">
-                    <form method="POST" action="{{ route('profile.preferences.update') }}">
-                        @csrf
-                        @method('PATCH')
-                        <div class="flex items-start gap-3.5 min-w-0">
-                            <span class="a-ic" style="--c:52,211,153; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span>
-                            <div class="min-w-0">
-                                <h2 class="text-white font-semibold leading-tight">Default scan type</h2>
-                                <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">The tab that is open when you go to the Scan page. You can still switch to any other tab there.</p>
-                            </div>
-                        </div>
-                        <div class="pf-chips mt-4" role="radiogroup" aria-label="Default scan type">
-                            @foreach ($tabChoices as $value => $label)
-                                <button type="submit" name="default_scan_tab" value="{{ $value }}" role="radio" aria-checked="{{ $user->defaultScanTab() === $value ? 'true' : 'false' }}" class="pf-chip {{ $user->defaultScanTab() === $value ? 'pf-on' : '' }}">{{ $label }}</button>
-                            @endforeach
-                        </div>
-                        @if ($prefSaved('default_scan_tab'))
-                            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-3" role="status">Saved.</p>
-                        @endif
-                    </form>
-                </div>
+                <p class="text-sm text-slate-400 mb-3 px-1">Changes save the moment you tap them.</p>
 
-                {{-- HOW LONG SCANS ARE KEPT --}}
-                <div class="s-card p-5 sm:p-6">
-                    <form method="POST" action="{{ route('profile.preferences.update') }}">
+                <div class="s-card pf-card">
+                    {{-- FLOATING CORA CHAT --}}
+                    <form method="POST" action="{{ route('profile.preferences.update') }}" class="pf-row pf-row-sw" x-data="{ on: {{ $user->wantsFloatingChat() ? 'true' : 'false' }} }">
                         @csrf
                         @method('PATCH')
-                        <div class="flex items-start gap-3.5 min-w-0">
-                            <span class="a-ic" style="--c:251,146,60; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></span>
-                            <div class="min-w-0">
-                                <h2 class="text-white font-semibold leading-tight">Keep my scans</h2>
-                                <p class="text-sm text-slate-300 mt-0.5 leading-relaxed">Scans older than this are deleted for good every night, together with their results and pictures. Your account stays. Deleted scans can no longer be opened or used when we compare reports.</p>
+                        <input type="hidden" name="floating_chat_enabled" :value="on ? 1 : 0">
+
+                        <div class="pf-lead">
+                            <span class="a-ic pf-ic" style="--c:56,189,248; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM12 20.25c4.97 0 9-3.694 9-8.25S16.97 3.75 12 3.75 3 7.444 3 12c0 1.6.496 3.09 1.35 4.35L3.75 20.25l4.2-.9A9.8 9.8 0 0012 20.25z" /></svg></span>
+                            <div class="pf-text min-w-0">
+                                <h2 class="pf-ttl text-white font-semibold leading-tight">Floating Cora chat</h2>
+                                <p class="pf-desc text-sm text-slate-300 mt-0.5 leading-relaxed">Show the round Cora button in the corner of every page. Turn it off if it gets in the way. You can still talk to Cora from the AI Chat page.</p>
                             </div>
                         </div>
-                        <div class="pf-chips mt-4" role="radiogroup" aria-label="How long scans are kept">
-                            @foreach ($keepChoices as $value => $label)
-                                <button type="submit" name="scan_retention" value="{{ $value }}" role="radio" aria-checked="{{ $keepNow === $value ? 'true' : 'false' }}" class="pf-chip {{ $keepNow === $value ? 'pf-on' : '' }}"
-                                        @if ($value !== 'forever' && $keepNow !== $value) onclick="return confirm('Scans older than {{ $value }} days will be deleted for good tonight, and every night after. Continue?')" @endif>{{ $label }}</button>
-                            @endforeach
+                        <div class="pf-ctl">
+                            <div class="flex items-center gap-3">
+                                <span class="pf-state" :class="on ? 'text-sky-300' : 'text-slate-400'" x-text="on ? 'On' : 'Off'">{{ $user->wantsFloatingChat() ? 'On' : 'Off' }}</span>
+                                <button type="button" role="switch" :aria-checked="on" aria-label="Floating Cora chat" @click="on = ! on; $nextTick(() => $el.form.requestSubmit())"
+                                        class="relative shrink-0 w-12 h-7 rounded-full border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70"
+                                        :class="on ? 'bg-sky-500 border-sky-300/50 shadow-[0_0_16px_rgba(56,189,248,.45)]' : 'bg-white/10 border-white/20'">
+                                    <span class="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform duration-200" :class="on ? 'translate-x-5' : ''"></span>
+                                </button>
+                            </div>
+                            <noscript><button type="submit" class="s-btn s-btn-main">Save</button></noscript>
+                            @if (session('status') === 'preferences-updated' && session('pref', 'floating_chat_enabled') === 'floating_chat_enabled')
+                                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="pf-saved" role="status"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Saved</p>
+                            @endif
                         </div>
-                        @if ($prefSaved('scan_retention'))
-                            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="text-sm text-emerald-300 mt-3" role="status">Saved.</p>
+                    </form>
+
+                    {{-- DEFAULT SCAN TYPE --}}
+                    <form method="POST" action="{{ route('profile.preferences.update') }}" class="pf-row">
+                        @csrf
+                        @method('PATCH')
+                        <div class="pf-lead">
+                            <span class="a-ic pf-ic" style="--c:52,211,153; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span>
+                            <div class="pf-text min-w-0">
+                                <h2 class="pf-ttl text-white font-semibold leading-tight">Default scan type</h2>
+                                <p class="pf-desc text-sm text-slate-300 mt-0.5 leading-relaxed">The tab that is open when you go to the Scan page. You can still switch to any other tab there.</p>
+                            </div>
+                        </div>
+                        <div class="pf-ctl">
+                            <div class="pf-seg pf-seg-5" role="radiogroup" aria-label="Default scan type">
+                                @foreach ($tabChoices as $value => $label)
+                                    <button type="submit" name="default_scan_tab" value="{{ $value }}" role="radio" aria-checked="{{ $user->defaultScanTab() === $value ? 'true' : 'false' }}" class="pf-opt {{ $user->defaultScanTab() === $value ? 'pf-opt-on' : '' }}"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $tabIcons[$value] }}"/></svg>{{ $label }}</button>
+                                @endforeach
+                            </div>
+                            @if ($prefSaved('default_scan_tab'))
+                                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="pf-saved" role="status"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Saved</p>
+                            @endif
+                        </div>
+                    </form>
+
+                    {{-- HOW LONG SCANS ARE KEPT --}}
+                    <form method="POST" action="{{ route('profile.preferences.update') }}" class="pf-row">
+                        @csrf
+                        @method('PATCH')
+                        <div class="pf-lead">
+                            <span class="a-ic pf-ic" style="--c:251,146,60; width:2.6rem; height:2.6rem; border-radius:.8rem"><svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></span>
+                            <div class="pf-text min-w-0">
+                                <h2 class="pf-ttl text-white font-semibold leading-tight">Keep my scans</h2>
+                                <p class="pf-desc text-sm text-slate-300 mt-0.5 leading-relaxed">Old scans can be cleared out automatically, together with their results and pictures. Your account stays.</p>
+                            </div>
+                        </div>
+                        <div class="pf-ctl">
+                            <div class="pf-seg" role="radiogroup" aria-label="How long scans are kept">
+                                @foreach ($keepChoices as $value => $label)
+                                    <button type="submit" name="scan_retention" value="{{ $value }}" role="radio" aria-checked="{{ $keepNow === (string) $value ? 'true' : 'false' }}" class="pf-opt {{ $keepNow === (string) $value ? 'pf-opt-on' : '' }}"
+                                            @if ($value !== 'forever' && $keepNow !== (string) $value) onclick="return confirm('Scans older than {{ $value }} days will be deleted for good tonight, and every night after. Continue?')" @endif>{{ $label }}</button>
+                                @endforeach
+                            </div>
+                            @if ($prefSaved('scan_retention'))
+                                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="pf-saved" role="status"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Saved</p>
+                            @endif
+                        </div>
+                        @if ($keepNow === 'forever')
+                            <p class="pf-note"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>Nothing is deleted automatically. Pick a time limit if you want old scans cleared out.</span></p>
+                        @else
+                            <p class="pf-note pf-note-warn"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v3.75m0 3.75h.008M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span>Scans older than {{ $keepNow }} days are deleted for good every night. Deleted scans can no longer be opened or used when we compare reports.</span></p>
                         @endif
                     </form>
                 </div>

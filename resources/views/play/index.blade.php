@@ -772,7 +772,8 @@
         }
         /* Story on a touchscreen tablet, in either direction: the same layout as a phone, only bigger. The replies stay inside the phone
            (the floating reply box and the hands are for mouse screens), and the Phish Lab box and tabs step aside while the story runs. */
-        @media (pointer: coarse) and (min-width: 640px) {
+        /* Portrait only: a tablet held sideways is too short for the tall phone, so it gets the two-column story layout further down. */
+        @media (pointer: coarse) and (min-width: 640px) and (orientation: portrait), (pointer: coarse) and (min-width: 640px) and (min-height: 761px) {
             .pl-wrap.in-story .pl-hero, .pl-wrap.in-story .pl-tabs { display: none; }
             .pl-stage.pl-sv-stage { flex-direction: column; align-items: center; gap: 0; }
             .pl-sv-stage .pl-reply { display: none !important; }
@@ -783,6 +784,20 @@
             .pl-sv-stage .pl-device .pl-choices { padding: .7rem .9rem 1.4rem; gap: .45rem; }
             .pl-sv-stage .pl-status, .pl-sv-stage .pl-notch, .pl-sv-stage .pl-compose { display: none; }
             .pl-sv-stage .pl-device .pl-chat > :first-child { margin-top: auto; }
+        }
+        /* Story on a touchscreen tablet held sideways (about 520-760px tall once the browser bars are counted): chat on the left, replies on the right,
+           the same layout the short landscape rule above gives phones. Without this the tall-phone rule squeezes the phone to about 190px wide. */
+        @media (pointer: coarse) and (orientation: landscape) and (min-height: 521px) and (max-height: 760px) {
+            .pl-stage.pl-sv-stage { flex-direction: column; align-items: center; gap: 0; overflow: visible; padding: 0; background: none; border: 0; }
+            .pl-sv-stage .pl-3d { --ph: calc(100dvh - 6rem); width: min(100%, 46rem); height: calc(100dvh - 6rem); min-height: 12rem; perspective: none; }
+            .pl-sv-stage .pl-hold { animation: none; transform: none; }
+            .pl-sv-stage .pl-reply, .pl-sv-hud, .pl-sv-stage .pl-compose { display: none !important; }
+            .pl-sv-stage .pl-device { padding: .35rem; border-radius: 1.4rem; }
+            .pl-sv-stage .pl-btnside, .pl-sv-stage .pl-device::after, .pl-sv-stage .pl-notch, .pl-sv-stage .pl-status, .pl-sv-stage .pl-homebar { display: none; }
+            .pl-sv-stage .pl-screen { display: grid; grid-template-columns: 1.2fr 1fr; grid-template-rows: auto minmax(0, 1fr); border-radius: 1.1rem; border-width: 0; }
+            .pl-sv-stage .pl-device .pl-phone-head { grid-column: 1 / -1; }
+            .pl-sv-stage .pl-device .pl-chat { padding: .7rem .9rem 1rem; }
+            .pl-sv-stage .pl-device .pl-choices { display: grid !important; max-height: none; border-top: 0; border-left: 1px solid rgba(255, 255, 255, .08); padding: .7rem .8rem .8rem; overflow-y: auto; }
         }
         /* While a quiz or rush is running on a phone held upright, hide the whole Phish Lab header and the tabs so the game gets the screen,
            and leave room at the bottom so the chat button never sits on top of the answer buttons. */

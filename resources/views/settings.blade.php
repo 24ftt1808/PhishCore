@@ -204,6 +204,11 @@
             .b-persp .b-who { margin-top: 0; }
             .b-persp .b-mail p:first-child { margin-top: .25rem; }
         }
+        /* a tablet sideways is only about 500-600px tall: shrink the badge and its lanyard (they scale with --w) so the name tag is on the first screen */
+        @media (min-width: 640px) and (max-width: 1279px) and (orientation: landscape) and (max-height: 760px) {
+            .b-persp { --w: 15rem; }
+            .b-wrap .b-card-wrap { margin-bottom: 1rem; }
+        }
         .b-ext, .b-ext-in { display: contents; }
         .b-hint, .b-close { display: none; }
         @media (max-width: 1279px) {

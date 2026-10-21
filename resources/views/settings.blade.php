@@ -80,7 +80,7 @@
         /* Preferences: one panel with a row per setting. Choices save as soon as one is pressed.
            Phones: icon + title on one line, the switch beside it, the text full width, then the control and its note.
            Wide cards: text on the left, control on the right. */
-        .pf-card { container-type: inline-size; overflow: hidden; }
+        .pf-card { container-type: inline-size; }
         .pf-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: .8rem; row-gap: .6rem; padding: 1rem; }
         .pf-row + .pf-row { border-top: 1px solid rgba(148, 163, 184, .14); }
         .pf-lead, .pf-text { display: contents; }
@@ -94,27 +94,26 @@
         .pf-note svg { flex: none; width: .95rem; height: .95rem; margin-top: .12rem; }
         .pf-note-warn { color: #fcd34d; }
         .pf-note-warn svg { color: #fbbf24; }
-        .pf-seg { display: flex; gap: .2rem; padding: .25rem; border-radius: 999px; background: rgba(5, 11, 28, .55); border: 1px solid rgba(148, 163, 184, .18); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .35); }
-        .pf-opt { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.5rem; padding: .5rem .95rem; border-radius: 999px; border: 1px solid transparent; font-size: .85rem; font-weight: 600; white-space: nowrap; color: #94a3b8; transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); -webkit-tap-highlight-color: transparent; }
-        .pf-opt svg { width: 1rem; height: 1rem; flex: none; opacity: .75; }
-        .pf-opt:hover { color: #fff; background: rgba(148, 163, 184, .1); }
-        .pf-opt:active { transform: scale(.96); }
-        .pf-opt:focus-visible { outline: 2px solid rgba(125, 211, 252, .8); outline-offset: 1px; }
-        .pf-opt-on, .pf-opt-on:hover { color: #fff; background: linear-gradient(180deg, rgba(56, 189, 248, .34), rgba(37, 99, 235, .24)); border-color: rgba(125, 211, 252, .55); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 6px 16px -8px rgba(56, 189, 248, .75); }
-        .pf-opt-on svg { opacity: 1; color: #bae6fd; }
-        @media (pointer: coarse) { .pf-opt { min-height: 2.75rem; } }
+        /* custom dropdown: phones get the full width, wide cards a fixed-size button on the right; the menu opens below it */
+        .pf-dd { position: relative; width: 100%; }
+        .pf-dd-btn { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 2.75rem; padding: .55rem .9rem; border-radius: .85rem; border: 1px solid rgba(148, 163, 184, .22); background: rgba(5, 11, 28, .55); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .35); color: #fff; font-size: .9rem; font-weight: 600; text-align: left; transition: border-color .2s, box-shadow .2s; -webkit-tap-highlight-color: transparent; }
+        .pf-dd-btn:hover, .pf-dd-btn[aria-expanded="true"] { border-color: rgba(125, 211, 252, .45); }
+        .pf-dd-btn:focus-visible { outline: none; border-color: rgba(125, 211, 252, .8); box-shadow: 0 0 0 3px rgba(56, 189, 248, .25); }
+        .pf-dd-btn > span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pf-dd svg { width: 1.05rem; height: 1.05rem; flex: none; }
+        .pf-dd-ic { color: #bae6fd; }
+        .pf-dd-caret { color: #7dd3fc; transition: transform .2s; }
+        .pf-dd-btn[aria-expanded="true"] .pf-dd-caret { transform: rotate(180deg); }
+        .pf-dd-menu { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + .4rem); margin: 0; padding: .3rem; list-style: none; border-radius: .95rem; border: 1px solid rgba(125, 211, 252, .28); background: #0b1530; box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .75), 0 0 0 1px rgba(5, 11, 28, .6); }
+        .pf-dd-item { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 2.6rem; padding: .5rem .7rem; border-radius: .65rem; border: 1px solid transparent; color: #cbd5e1; font-size: .88rem; font-weight: 600; text-align: left; transition: color .15s, background-color .15s; -webkit-tap-highlight-color: transparent; }
+        .pf-dd-item > span { flex: 1 1 auto; }
+        .pf-dd-item svg { color: #94a3b8; }
+        .pf-dd-item:hover, .pf-dd-item:focus-visible { outline: none; color: #fff; background: rgba(148, 163, 184, .14); }
+        .pf-dd-item[aria-selected="true"] { color: #fff; background: linear-gradient(180deg, rgba(56, 189, 248, .26), rgba(37, 99, 235, .18)); border-color: rgba(125, 211, 252, .4); }
+        .pf-dd-item[aria-selected="true"] svg { color: #bae6fd; }
+        .pf-dd-item .pf-dd-tick { color: #7dd3fc; }
         .pf-saved { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 600; color: #6ee7b7; }
         .pf-saved svg { width: .9rem; height: .9rem; }
-        /* medium width: five choices in one bar, icons hidden to save room */
-        @container (max-width: 36rem) { .pf-opt svg { display: none; } }
-        /* phones: 3 + 2 choices, the second row wider, icons back */
-        @container (max-width: 30rem) {
-            .pf-opt { padding-inline: .5rem; font-size: .82rem; }
-            .pf-seg-5 { display: grid; grid-template-columns: repeat(6, 1fr); border-radius: 1.3rem; }
-            .pf-seg-5 .pf-opt { grid-column: span 2; border-radius: 1rem; padding-inline: .5rem; }
-            .pf-seg-5 .pf-opt:nth-child(n+4) { grid-column: span 3; }
-            .pf-seg-5 .pf-opt svg { display: block; }
-        }
         @container (min-width: 46rem) {
             .pf-row, .pf-row-sw { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lead ctl" "note ctl"; column-gap: 2rem; row-gap: 0; padding: 1.4rem 1.6rem; }
             .pf-lead { display: flex; grid-area: lead; align-items: flex-start; gap: .9rem; min-width: 0; }
@@ -123,11 +122,11 @@
             .pf-ttl { font-size: 1rem; }
             .pf-desc { margin-top: .125rem !important; font-size: .875rem !important; }
             .pf-row > .pf-ctl, .pf-row-sw > .pf-ctl { grid-area: ctl; align-items: flex-end; margin-top: 0; }
-            .pf-seg { display: inline-flex; }
+            .pf-dd { width: 13rem; }
             .pf-state { display: inline; }
             .pf-note { grid-area: note; margin: .6rem 0 0 3.5rem; }
         }
-        @media (prefers-reduced-motion: reduce) { .pf-opt { transition: none; } }
+        @media (prefers-reduced-motion: reduce) { .pf-dd-btn, .pf-dd-item, .pf-dd-caret { transition: none; } }
         .s-note li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: var(--dot, #38bdf8); }
 
         /* ---- ID badge on a V-lanyard ---- */
@@ -225,7 +224,7 @@
             .b-close { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; padding: .75rem 1rem .95rem; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(125, 211, 252, .85); }
             .b-persp { margin-top: -1.6rem; }
         }
-        /* About tab: the name tag swings up and away, the space under it closes; any other tab and it drops back in with a little bounce */
+        /* About tab: the name tag zooms out (shrinks away and fades) and the space under it closes; any other tab and it zooms back in to its place with a little pop */
         .b-wrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .6s cubic-bezier(.3, 1.1, .4, 1); }
         .b-wrap-in { min-height: 0; }
         @media (min-width: 1280px) {
@@ -233,15 +232,17 @@
             .b-wrap-in { cursor: grab; touch-action: pan-y; }
             .b-wrap-in button, .b-wrap-in label { cursor: pointer; }
         }
-        .b-card-wrap { transition: transform .6s cubic-bezier(.3, 1.35, .5, 1), opacity .35s ease-out .05s; transform-origin: 50% 0; }
-        .b-wrap.b-away { grid-template-rows: 0fr; overflow: hidden; visibility: hidden; pointer-events: none; transition: grid-template-rows .5s cubic-bezier(.5, 0, .2, 1), visibility 0s linear .5s; }
-        .b-away .b-card-wrap { opacity: 0; transform: translateY(-120%) rotate(-5deg) scale(.9); transition: transform .45s cubic-bezier(.55, 0, .8, .4), opacity .3s ease-in; }
+        .b-card-wrap { transition: transform .6s cubic-bezier(.3, 1.35, .5, 1), opacity .35s ease-out .05s; transform-origin: 50% 30%; }
+        /* the tag zooms out and fades first while everything else stays put, then (after .3s) the space closes and the box starts clipping (b-clip); the lanyard and the tag's edges reach outside the box, so it must not clip any earlier */
+        .b-wrap.b-away { grid-template-rows: 0fr; visibility: hidden; pointer-events: none; transition: grid-template-rows .5s cubic-bezier(.5, 0, .2, 1) .3s, visibility 0s linear .8s; animation: b-clip 1ms linear .3s both; }
+        @keyframes b-clip { from { overflow: visible; } to { overflow: hidden; } }
+        .b-away .b-card-wrap { opacity: 0; transform: scale(.5); transition: transform .45s cubic-bezier(.55, 0, .8, .4), opacity .3s ease-in; }
         @media (min-width: 1280px) {
             .b-wrap-in { width: 21rem; }
             .s-grid { transition: grid-template-columns .55s cubic-bezier(.3, 1, .4, 1), column-gap .55s cubic-bezier(.3, 1, .4, 1); }
-            .s-grid.s-away { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
+            .s-grid.s-away { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; transition-delay: .3s; }
         }
-        @media (prefers-reduced-motion: reduce) { .b-wrap, .b-card-wrap, .b-away .b-card-wrap, .s-grid { transition: none !important; } }
+        @media (prefers-reduced-motion: reduce) { .b-wrap, .b-card-wrap, .b-away .b-card-wrap, .s-grid { transition: none !important; } .b-wrap.b-away { animation: none; overflow: hidden; } }
         @keyframes b-nudge { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }
         @media (prefers-reduced-motion: reduce) { .s-fade, .s-in, .b-drop, .b-swing, .b-hint svg { animation: none; } .b-card:hover .b-shine::after { animation: none; } .b-tilt { transition: none; transform: none !important; } }
     </style>
@@ -764,10 +765,17 @@
                             </div>
                         </div>
                         <div class="pf-ctl">
-                            <div class="pf-seg pf-seg-5" role="radiogroup" aria-label="Default scan type">
-                                @foreach ($tabChoices as $value => $label)
-                                    <button type="submit" name="default_scan_tab" value="{{ $value }}" role="radio" aria-checked="{{ $user->defaultScanTab() === $value ? 'true' : 'false' }}" class="pf-opt {{ $user->defaultScanTab() === $value ? 'pf-opt-on' : '' }}"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $tabIcons[$value] }}"/></svg>{{ $label }}</button>
-                                @endforeach
+                            <div class="pf-dd" x-data="{ open: false, move(step) { const b = [...this.$refs.menu.querySelectorAll('button')]; b[(b.indexOf(document.activeElement) + step + b.length) % b.length]?.focus(); } }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.btn.focus(); }">
+                                <button type="button" x-ref="btn" class="pf-dd-btn" aria-haspopup="listbox" aria-label="Default scan type" :aria-expanded="open ? 'true' : 'false'" @click="open = ! open" @keydown.arrow-down.prevent="open = true; $nextTick(() => move(1))" @keydown.arrow-up.prevent="open = true; $nextTick(() => move(0))">
+                                    <svg class="pf-dd-ic" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $tabIcons[$user->defaultScanTab()] }}"/></svg>
+                                    <span>{{ $tabChoices[$user->defaultScanTab()] }}</span>
+                                    <svg class="pf-dd-caret" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                                </button>
+                                <ul x-show="open" x-cloak x-ref="menu" x-transition.opacity.duration.150ms role="listbox" aria-label="Default scan type" class="pf-dd-menu" @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" @keydown.tab="open = false">
+                                    @foreach ($tabChoices as $value => $label)
+                                        <li role="presentation"><button type="submit" name="default_scan_tab" value="{{ $value }}" role="option" aria-selected="{{ $user->defaultScanTab() === $value ? 'true' : 'false' }}" class="pf-dd-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $tabIcons[$value] }}"/></svg><span>{{ $label }}</span>@if ($user->defaultScanTab() === $value)<svg class="pf-dd-tick" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>@endif</button></li>
+                                    @endforeach
+                                </ul>
                             </div>
                             @if ($prefSaved('default_scan_tab'))
                                 <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="pf-saved" role="status"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Saved</p>
@@ -787,11 +795,17 @@
                             </div>
                         </div>
                         <div class="pf-ctl">
-                            <div class="pf-seg" role="radiogroup" aria-label="How long scans are kept">
-                                @foreach ($keepChoices as $value => $label)
-                                    <button type="submit" name="scan_retention" value="{{ $value }}" role="radio" aria-checked="{{ $keepNow === (string) $value ? 'true' : 'false' }}" class="pf-opt {{ $keepNow === (string) $value ? 'pf-opt-on' : '' }}"
-                                            @if ($value !== 'forever' && $keepNow !== (string) $value) onclick="return confirm('Scans older than {{ $value }} days will be deleted for good tonight, and every night after. Continue?')" @endif>{{ $label }}</button>
-                                @endforeach
+                            <div class="pf-dd" x-data="{ open: false, move(step) { const b = [...this.$refs.menu.querySelectorAll('button')]; b[(b.indexOf(document.activeElement) + step + b.length) % b.length]?.focus(); } }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.btn.focus(); }">
+                                <button type="button" x-ref="btn" class="pf-dd-btn" aria-haspopup="listbox" aria-label="How long scans are kept" :aria-expanded="open ? 'true' : 'false'" @click="open = ! open" @keydown.arrow-down.prevent="open = true; $nextTick(() => move(1))" @keydown.arrow-up.prevent="open = true; $nextTick(() => move(0))">
+                                    <span>{{ $keepChoices[$keepNow] }}</span>
+                                    <svg class="pf-dd-caret" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                                </button>
+                                <ul x-show="open" x-cloak x-ref="menu" x-transition.opacity.duration.150ms role="listbox" aria-label="How long scans are kept" class="pf-dd-menu" @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" @keydown.tab="open = false">
+                                    @foreach ($keepChoices as $value => $label)
+                                        <li role="presentation"><button type="submit" name="scan_retention" value="{{ $value }}" role="option" aria-selected="{{ $keepNow === (string) $value ? 'true' : 'false' }}" class="pf-dd-item"
+                                                @if ($value !== 'forever' && $keepNow !== (string) $value) onclick="return confirm('Scans older than {{ $value }} days will be deleted for good tonight, and every night after. Continue?')" @endif><span>{{ $label }}</span>@if ($keepNow === (string) $value)<svg class="pf-dd-tick" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>@endif</button></li>
+                                    @endforeach
+                                </ul>
                             </div>
                             @if ($prefSaved('scan_retention'))
                                 <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2500)" class="pf-saved" role="status"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Saved</p>

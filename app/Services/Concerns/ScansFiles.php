@@ -360,8 +360,7 @@ trait ScansFiles
         $points = 0;
         $worstLink = null;
 
-        preg_match_all('~/URI\s*\(\s*(https?://[^)\s]{4,500})~i', $content, $matches);
-        $links = array_slice(array_values(array_unique($matches[1])), 0, 5);
+        $links = $this->extractPdfLinks($content);
 
         $worstPoints = -1;
         foreach ($links as $link) {
@@ -512,6 +511,40 @@ trait ScansFiles
         }
 
         return implode(' ', $lines);
+    }
+
+    /**
+     * The web links a PDF opens (its /URI entries). A PDF may write a link with escapes such as
+     * "\072\057\057" for "://" or as hex digits, and many PDF tools do this, so both are decoded
+     * before the link is read.
+     *
+     * @return array<int, string> up to five different http(s) links
+     */
+    private function extractPdfLinks(string $content): array
+    {
+        $strings = [];
+
+        if (preg_match_all('~/URI\s*\(((?:[^()\\\\]|\\\\.)*)\)~s', $content, $matches)) {
+            foreach ($matches[1] as $value) {
+                $strings[] = $this->unescapePdfString($value);
+            }
+        }
+
+        if (preg_match_all('~/URI\s*<([0-9a-f\s]+)>~i', $content, $matches)) {
+            foreach ($matches[1] as $hex) {
+                $hex = preg_replace('/\s+/', '', $hex) ?? '';
+                $strings[] = (string) hex2bin(strlen($hex) % 2 === 0 ? $hex : $hex.'0');
+            }
+        }
+
+        $links = [];
+        foreach ($strings as $value) {
+            if (preg_match('~^\s*(https?://[^\s]{4,500})~i', $value, $found)) {
+                $links[] = $found[1];
+            }
+        }
+
+        return array_slice(array_values(array_unique($links)), 0, 5);
     }
 
     private function unescapePdfString(string $value): string

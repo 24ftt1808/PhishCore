@@ -98,6 +98,15 @@ test('a PDF with a lookalike link is flagged and its link is kept for a page pre
         ->and($result['extracted_url'])->toBe('http://bibd-secure-login.com/verify');
 });
 
+test('a link written with PDF escapes or hex digits is still found', function () {
+    $escaped = fileScanRun(fileScanPdf('1 0 obj << /URI (https\072\057\057bibd\055secure\055login\056com\057verify) >>'), 'letter.pdf');
+    $hex = fileScanRun(fileScanPdf('1 0 obj << /URI <'.bin2hex('http://bibd-secure-login.com/verify').'> >>'), 'letter.pdf');
+
+    expect($escaped['extracted_url'])->toBe('https://bibd-secure-login.com/verify')
+        ->and($escaped['risk_score'])->toBeGreaterThanOrEqual(25)
+        ->and($hex['extracted_url'])->toBe('http://bibd-secure-login.com/verify');
+});
+
 test('a PDF with a normal link, or no link, stays clean', function () {
     $linked = fileScanRun(fileScanPdf('1 0 obj << /URI (https://www.google.com) >>'), 'letter.pdf');
     $plain = fileScanRun(fileScanPdf('hello world'), 'letter.pdf');

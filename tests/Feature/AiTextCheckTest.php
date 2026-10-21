@@ -57,6 +57,7 @@ test('errors, rate limits and unreadable replies are reported as unavailable wit
         ->push([], 429)
         ->push(['candidates' => [['content' => ['parts' => [['text' => 'not json']]]]]])
         ->push(['error' => ['message' => 'Model not found']], 404)
+        ->push([], 500)
         ->push([], 500),
     ]);
 
@@ -71,7 +72,57 @@ test('errors, rate limits and unreadable replies are reported as unavailable wit
 
     $broken = app(AiTextCheck::class)->assess('fourth message');
     expect($broken['available'])->toBeFalse()->and($broken['points'])->toBe(0);
-    Http::assertSentCount(4);
+    // The server error (500) is tried one more time; the other failures are not.
+    Http::assertSentCount(5);
+});
+
+test('a brief server hiccup is tried once more and then succeeds', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+        ->push([], 503)
+        ->push(aiReply('scam', 90, 'Fake fine.')),
+    ]);
+
+    $result = app(AiTextCheck::class)->assess('Your traffic fine is overdue, pay now');
+
+    expect($result['available'])->toBeTrue()->and($result['points'])->toBe(35);
+    Http::assertSentCount(2);
+});
+
+test('a rate limit is not tried again', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response([], 429)]);
+
+    $result = app(AiTextCheck::class)->assess('Another message');
+
+    expect($result['available'])->toBeFalse();
+    Http::assertSentCount(1);
+});
+
+test('a warning post about a scam is shown as information and adds no points', function () {
+    $ai = new AiTextCheck;
+
+    $message = $ai->toResult('awareness', 90, 'A news post warning about invoice ZIP files.');
+    expect($message['points'])->toBe(0)
+        ->and($message['flagged'])->toBeFalse()
+        ->and($message['neutral'])->toBeTrue()
+        ->and($message['verdict'])->toBe('awareness')
+        ->and($message['reasons'][0])->toContain('warning or news post');
+
+    $page = $ai->toResult('awareness', 90, 'x', 'page');
+    expect($page['points'])->toBe(0)->and($page['verdict'])->toBe('legitimate');
+
+    expect($ai->parse('{"verdict":"awareness","confidence":80,"reason":"r"}')['verdict'])->toBe('awareness');
+});
+
+test('the email scan shows an awareness verdict as an information check', function () {
+    aiOn();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(aiReply('awareness', 85, 'A tech site warning about a ZIP scam.'))]);
+
+    $result = app(AnalysisEngine::class)->analyze('email', null, 'someone@example.com', null, null, null, 'Beware', 'Got a random invoice ZIP file? Do not open it!');
+    $check = collect($result['checks'])->firstWhere('name', 'AI Message Review');
+
+    expect($check['status'])->toBe('INFO')->and($check['points'])->toBe(0);
 });
 
 test('the reply parser accepts fenced json and rejects unknown verdicts', function () {

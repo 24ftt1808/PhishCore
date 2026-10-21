@@ -412,7 +412,6 @@
                                 {{ collect(explode(' ', $u->name))->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('') }}
                             </span>
                         @endif
-                        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
                     </span>
                     <span class="leading-tight min-w-0 flex-1">
                         <span class="block text-sm font-semibold text-white truncate">{{ $u->name }}</span>

@@ -25,6 +25,18 @@ test('multi-part endings such as com.bn are kept whole', function () {
     expect($this->engine->extractBareDomainsFromText('open www.bibd.com.bn now'))->toBe(['bibd.com.bn']);
 });
 
+test('a link that breaks after https:// onto the next line is read as one link', function () {
+    $text = "Sila semak butiran pelanggaran yang tersedia. https://\neqncgov-bn.cfd/bn";
+
+    expect($this->engine->scoreMessageRules($text)['url'])->toBe('https://eqncgov-bn.cfd/bn');
+    expect($this->engine->extractBareDomainsFromText($text))->toBe([]);
+});
+
+test('scam endings such as .cfd are found in a bare domain', function () {
+    expect($this->engine->extractBareDomainsFromText("Sila semak eqncgov-bn.cfd/bn\nTerima kasih"))
+        ->toBe(['eqncgov-bn.cfd']);
+});
+
 test('things that only look like domains are ignored', function (string $text) {
     expect($this->engine->extractBareDomainsFromText($text))->toBe([]);
 })->with([

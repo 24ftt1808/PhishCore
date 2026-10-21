@@ -56,6 +56,19 @@ test('the preferences tab shows the two new options', function () {
         ->assertSee('Keep my scans');
 });
 
+test('both options are dropdowns that mark the current choice', function () {
+    $user = User::factory()->create(['default_scan_tab' => 'phone', 'scan_retention_days' => 90]);
+
+    $this->actingAs($user)->get(route('profile.edit'))
+        ->assertOk()
+        ->assertSee('aria-label="Default scan type"', false)
+        ->assertSee('name="default_scan_tab" value="phone" role="option" aria-selected="true"', false)
+        ->assertSee('name="default_scan_tab" value="url" role="option" aria-selected="false"', false)
+        ->assertSee('aria-label="How long scans are kept"', false)
+        ->assertSee('name="scan_retention" value="90" role="option" aria-selected="true"', false)
+        ->assertSee('name="scan_retention" value="forever" role="option" aria-selected="false"', false);
+});
+
 test('the scan page opens on the tab the person chose', function () {
     $user = User::factory()->create(['default_scan_tab' => 'phone']);
 

@@ -72,6 +72,39 @@
         .d-arrow { transition: transform .25s cubic-bezier(.34, 1.4, .64, 1); }
         a:hover > .d-arrow, .d-link:hover .d-arrow { transform: translateX(4px); }
 
+        /* Quick URL Check */
+        .qc-card { padding: 1.85rem 2.25rem 1.6rem; }
+        .qc-eyebrow { display: flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 800; letter-spacing: .1em; color: #7dd3fc; }
+        .qc-title { margin: .6rem 0 0; font-size: 1.75rem; line-height: 1.2; font-weight: 800; color: #fff; }
+        .qc-form { margin-top: 1.4rem; display: flex; align-items: center; gap: .65rem; padding: .5rem; border-radius: 1.1rem; background: #0a1630; border: 1px solid rgba(125, 211, 252, .3); box-shadow: 0 0 0 4px rgba(56, 189, 248, .08); transition: border-color .2s, box-shadow .2s; }
+        .qc-form:focus-within { border-color: rgba(125, 211, 252, .7); box-shadow: 0 0 0 4px rgba(56, 189, 248, .18); }
+        .qc-field { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: .7rem; padding-left: .75rem; }
+        .qc-input, .qc-input:focus { flex: 1 1 0; min-width: 0; height: 3rem; padding: 0; border: 0; outline: 0; box-shadow: none; background: transparent; color: #fff; font-size: 1rem; font-weight: 500; }
+        .qc-input::placeholder { color: #94a3b8; }
+        .qc-paste { height: 2.5rem; padding: 0 1rem; border-radius: .65rem; border: 1px solid rgba(148, 163, 184, .25); background: rgba(255, 255, 255, .05); color: #e2e8f0; font-size: .8125rem; font-weight: 700; transition: background-color .15s; }
+        .qc-paste:hover { background: rgba(255, 255, 255, .1); }
+        .qc-paste:disabled { opacity: .5; }
+        .qc-go { height: 3rem; padding: 0 1.6rem; display: inline-flex; align-items: center; justify-content: center; gap: .6rem; border-radius: .8rem; border: 0; background: linear-gradient(90deg, #38bdf8, #60a5fa); color: #06203a; font-size: .95rem; font-weight: 800; white-space: nowrap; box-shadow: 0 8px 22px -8px rgba(56, 189, 248, .7); transition: filter .15s, transform .15s; }
+        .qc-go:hover { filter: brightness(1.07); }
+        .qc-go:active { transform: scale(.98); }
+        .qc-go:disabled { opacity: .7; }
+        .qc-meta { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; margin-top: 1.1rem; font-size: .8125rem; font-weight: 500; color: #94a3b8; }
+        .qc-meta b { color: #cbd5e1; font-weight: 700; }
+        .qc-more { color: #7dd3fc; font-weight: 700; white-space: nowrap; }
+        .qc-more:hover { color: #bae6fd; }
+        @media (max-width: 639px) {
+            .qc-card { padding: 1.35rem 1.25rem 1.25rem; }
+            .qc-title { margin-top: .5rem; font-size: 1.375rem; }
+            .qc-form { margin-top: 1.1rem; flex-direction: column; align-items: stretch; gap: .65rem; padding: 0; background: none; border: 0; box-shadow: none; }
+            .qc-form:focus-within { border: 0; box-shadow: none; }
+            .qc-field { padding: .25rem .4rem .25rem .9rem; border-radius: .9rem; background: #0a1630; border: 1px solid rgba(125, 211, 252, .3); transition: border-color .2s; }
+            .qc-field:focus-within { border-color: rgba(125, 211, 252, .7); }
+            .qc-paste { height: 2.75rem; min-width: 3.5rem; }
+            .qc-go { height: 3.25rem; font-size: 1rem; }
+            .qc-meta { flex-direction: column; align-items: flex-start; gap: .75rem; line-height: 1.5; }
+            .qc-more { width: 100%; padding-top: .85rem; border-top: 1px solid rgba(148, 163, 184, .16); white-space: normal; }
+        }
+
         @media (prefers-reduced-motion: reduce) { .d-in, .d-grow { animation: none; } .d-lift:hover { transform: none; } }
     </style>
 
@@ -120,40 +153,28 @@
     {{-- QUICK CHECK + QUICK ACTIONS --}}
     <div class="mb-6">
 
-        <div class="d-in d-card overflow-hidden" style="--d:.2s"
+        <div class="d-in d-card qc-card" style="--d:.2s"
              x-data="{ busy: false }"
              x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) busy = false; })">
-            <div class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10">
-                <div class="flex items-center gap-3 min-w-0">
-                    <span class="d-tile shrink-0 text-sky-300" style="--c: 56,189,248">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-                    </span>
-                    <div class="min-w-0">
-                        <p class="text-white font-semibold text-sm">Quick URL Check</p>
-                        <p class="text-xs text-slate-300 mt-0.5">Paste a link for an instant security check</p>
-                    </div>
-                </div>
-                <span class="hidden sm:flex items-center gap-2 text-[10px] tracking-wide text-slate-200 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full shrink-0">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> PHISHCORE ENGINE
-                </span>
+            <div class="qc-eyebrow">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                QUICK URL CHECK
             </div>
+            <h2 class="qc-title">Check a link before you click it</h2>
 
-            <div class="p-4 sm:p-6" x-data="{ url: '' }">
-                <form method="POST" action="{{ route('scan.store') }}" class="flex flex-col sm:flex-row gap-3" @submit="busy = true">
+            <div x-data="{ url: '' }">
+                <form method="POST" action="{{ route('scan.store') }}" class="qc-form" @submit="busy = true">
                     @csrf
                     <x-scan-guard />
-                    <div class="relative flex-1">
-                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" /></svg>
-                        <input type="text" name="url" required x-model="url" :readonly="busy" placeholder="https://example.com"
-                               class="w-full rounded-xl pl-11 pr-20 py-3.5 text-sm text-white placeholder-slate-400 bg-[#0a1630]/80 border border-sky-200/15 focus:outline-none focus:border-sky-400/70 focus:ring-2 focus:ring-sky-400/20 transition">
-                        <button type="button" :disabled="busy"
-                                @click="navigator.clipboard.readText().then(t => url = t)"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white transition disabled:opacity-50">Paste</button>
+                    <div class="qc-field">
+                        <svg width="18" height="18" class="shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18" /></svg>
+                        <input type="text" name="url" required x-model="url" :readonly="busy" placeholder="https://example.com" aria-label="Link to check"
+                               inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" class="qc-input">
+                        <button type="button" :disabled="busy" @click="navigator.clipboard.readText().then(t => url = t)" class="qc-paste">Paste</button>
                     </div>
-                    <button type="submit" :disabled="busy"
-                            class="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 text-white text-sm font-semibold whitespace-nowrap shadow-[0_0_20px_-2px_rgba(56,189,248,0.45)] hover:brightness-110 active:scale-[0.98] transition disabled:opacity-70">
-                        <svg x-show="!busy" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
-                        <svg x-show="busy" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    <button type="submit" :disabled="busy" class="qc-go">
+                        <svg x-show="!busy" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
+                        <svg x-show="busy" x-cloak width="17" height="17" class="animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         <span x-text="busy ? 'Scanning...' : 'Scan URL'"></span>
                     </button>
                 </form>
@@ -162,19 +183,10 @@
                     <p class="mt-3 text-xs text-red-300">{{ $message }}</p>
                 @enderror
 
-                <div class="d-scroll flex gap-2 mt-4 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                    @foreach (['URL structure', 'Domain age analysis', 'HTTPS validation', 'Blacklist verification'] as $chip)
-                        <span class="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap text-xs text-slate-200 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04]">
-                            <svg class="w-3 h-3 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            {{ $chip }}
-                        </span>
-                    @endforeach
+                <div class="qc-meta">
+                    <p>Checks <b>URL structure</b> &middot; <b>domain age</b> &middot; <b>HTTPS</b> &middot; <b>blacklists</b></p>
+                    <a href="{{ route('scan.index') }}" class="qc-more d-link">Email, phone or screenshot? Full scan <span class="d-arrow inline-block">&rarr;</span></a>
                 </div>
-
-                <p class="text-xs text-slate-300 mt-4">
-                    Need to report a sender email, phone number, or screenshot instead?
-                    <a href="{{ route('scan.index') }}" class="d-link text-sky-300 hover:text-sky-200 font-medium">Go to the full Scan page <span class="d-arrow inline-block">→</span></a>
-                </p>
             </div>
         </div>
     </div>

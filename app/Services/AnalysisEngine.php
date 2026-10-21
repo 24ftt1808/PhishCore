@@ -2505,19 +2505,41 @@ class AnalysisEngine
         return ['flagged' => true, 'points' => $points, 'reasons' => $reasons];
     }
 
+    /**
+     * File names shown in a message or screenshot, judged by name only (a screenshot shows a file's
+     * name, never what is inside it). The same name rules as the file scan: an app or program,
+     * a program dressed up as a document with two endings, an archive or an Office file.
+     * A PDF is normal in a message, so it adds no points and is shown as information.
+     *
+     * Only an APK or a PDF can be checked inside by the file scan, so only those get the hint to
+     * upload the file itself.
+     *
+     * @return array{flagged: bool, points: int, reasons: array<int, string>, neutral?: bool, file_name?: string}
+     */
     private function detectAttachment(string $text): array
     {
-        if (preg_match('/([\w\-]+\.(exe|scr|js|bat|vbs))\b/i', $text, $m)) {
-            return ['flagged' => true, 'points' => 25, 'reasons' => ["Executable/script attachment detected: {$m[1]} — high risk file type"]];
+        $uploadHint = ' The screenshot only shows its name. If you still have the file, save it and upload it in Scan File to check what is inside.';
+
+        if (preg_match('/([\w\-]+\.(?:pdf|docx?|xlsx?|jpe?g|png|txt|mp4)\.(?:apk|exe|scr|bat|js|vbs|msi|jar|lnk|hta|cmd|pif))\b/i', $text, $m)) {
+            return ['flagged' => true, 'points' => 30, 'file_name' => $m[1], 'reasons' => ["File name with two endings detected: {$m[1]} — a program made to look like a document or a picture".(str_ends_with(strtolower($m[1]), '.apk') ? '.'.$uploadHint : '')]];
         }
-        if (preg_match('/([\w\-]+\.(zip|rar|7z))\b/i', $text, $m)) {
-            return ['flagged' => true, 'points' => 15, 'reasons' => ["Compressed archive attachment detected: {$m[1]}"]];
+        if (preg_match('/([\w\-]+\.apk)\b/i', $text, $m)) {
+            return ['flagged' => true, 'points' => 30, 'file_name' => $m[1], 'reasons' => ["Android app (APK) attachment detected: {$m[1]} — installing an app sent in a message is a common way scams take over phones.".$uploadHint]];
         }
-        if (preg_match('/([\w\-]+\.(docm|xlsm))\b/i', $text, $m)) {
-            return ['flagged' => true, 'points' => 15, 'reasons' => ["Macro-enabled Office document attachment detected: {$m[1]} — can execute code when opened"]];
+        if (preg_match('/([\w\-]+\.(?:exe|scr|js|bat|vbs|msi|jar|lnk|hta|ps1|cmd|pif))\b/i', $text, $m)) {
+            return ['flagged' => true, 'points' => 25, 'file_name' => $m[1], 'reasons' => ["Executable/script attachment detected: {$m[1]} — high risk file type"]];
         }
-        if (preg_match('/([\w\-]+\.(doc|docx|xls|xlsx))\b/i', $text, $m)) {
-            return ['flagged' => true, 'points' => 10, 'reasons' => ["Office document attachment detected: {$m[1]}"]];
+        if (preg_match('/([\w\-]+\.(?:zip|rar|7z|iso))\b/i', $text, $m)) {
+            return ['flagged' => true, 'points' => 15, 'file_name' => $m[1], 'reasons' => ["Compressed archive attachment detected: {$m[1]}"]];
+        }
+        if (preg_match('/([\w\-]+\.(?:docm|xlsm))\b/i', $text, $m)) {
+            return ['flagged' => true, 'points' => 15, 'file_name' => $m[1], 'reasons' => ["Macro-enabled Office document attachment detected: {$m[1]} — can execute code when opened"]];
+        }
+        if (preg_match('/([\w\-]+\.(?:doc|docx|xls|xlsx))\b/i', $text, $m)) {
+            return ['flagged' => true, 'points' => 10, 'file_name' => $m[1], 'reasons' => ["Office document attachment detected: {$m[1]}"]];
+        }
+        if (preg_match('/([\w\-]+\.pdf)\b/i', $text, $m)) {
+            return ['flagged' => false, 'neutral' => true, 'points' => 0, 'file_name' => $m[1], 'reasons' => ["A PDF file is mentioned: {$m[1]}.".$uploadHint]];
         }
 
         return ['flagged' => false, 'points' => 0, 'reasons' => []];
@@ -2688,9 +2710,19 @@ class AnalysisEngine
      */
     private function extractAllUrlsFromText(string $text): array
     {
-        preg_match_all('/https?:\/\/[^\s"\'<>]+/i', $text, $matches);
+        preg_match_all('/https?:\/\/[^\s"\'<>]+/i', $this->joinWrappedLinks($text), $matches);
 
         return array_map(fn ($m) => rtrim($m, '.,;:)'), $matches[0] ?? []);
+    }
+
+    /**
+     * A long link in a chat bubble often breaks right after "https://", so the OCR text has the
+     * start of the link on one line and the address on the next. Joins them back together so the
+     * link is read as one.
+     */
+    private function joinWrappedLinks(string $text): string
+    {
+        return preg_replace('~\b(https?://)\s+(?=[a-z0-9])~i', '$1', $text) ?? $text;
     }
 
     /**
@@ -2704,8 +2736,9 @@ class AnalysisEngine
      */
     public function extractBareDomainsFromText(string $text): array
     {
-        $endings = 'com|net|org|info|biz|edu|gov|mil|io|co|me|app|dev|top|xyz|online|site|store|shop|live|club|vip|icu|cc|tk|ml|ga|cf|gq|ws|link|click|cloud|tech|pro|fun|buzz|work|world|today|page|pages|win|bid|loan|men|rest|cyou|sbs|mobi|bn|my|sg|id|in|uk|us|au|ph|th|vn|cn|hk|jp|kr|de|fr|ru';
+        $endings = 'com|net|org|info|biz|edu|gov|mil|io|co|me|app|dev|top|xyz|online|site|store|shop|live|club|vip|icu|cc|tk|ml|ga|cf|gq|ws|link|click|cloud|tech|pro|fun|buzz|work|world|today|page|pages|win|bid|loan|men|rest|cyou|sbs|mobi|bn|my|sg|id|in|uk|us|au|ph|th|vn|cn|hk|jp|kr|de|fr|ru|cfd|bond|quest|monster|uno|boats|autos|homes|cam|pw';
 
+        $text = $this->joinWrappedLinks($text);
         $withoutEmails = preg_replace('/[a-z0-9._%+\-]+@[a-z0-9.\-]+/i', ' ', $text) ?? $text;
         $withoutLinks = preg_replace('~https?://[^\s"\'<>]+~i', ' ', $withoutEmails) ?? $withoutEmails;
 
@@ -3770,6 +3803,8 @@ class AnalysisEngine
         if ($attachmentResult['flagged']) {
             $totalPoints += $attachmentResult['points'];
             $signalCategories++;
+        }
+        if ($attachmentResult['flagged'] || ($attachmentResult['neutral'] ?? false)) {
             $checks[] = $this->buildCheck('Attachment', $attachmentResult, 'SUSPICIOUS');
         }
 

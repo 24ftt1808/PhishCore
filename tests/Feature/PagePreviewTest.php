@@ -103,6 +103,30 @@ test('the result page offers the button to the owner when it is switched on', fu
         ->assertSee('Show page preview');
 });
 
+test('the result page has a loading skeleton for the picture, hidden from screen readers, with the wait message', function () {
+    previewOn();
+    Http::fake();
+    $owner = User::factory()->create();
+
+    $this->actingAs($owner)->get(route('scan.show', previewScan($owner)))
+        ->assertOk()
+        ->assertSee('<div class="pv-skel" aria-hidden="true">', false)
+        ->assertSee('Taking the picture. This usually takes 10 to 30 seconds...');
+});
+
+test('the loading state shows rotating phishing tips', function () {
+    previewOn();
+    Http::fake();
+    $owner = User::factory()->create();
+
+    $this->actingAs($owner)->get(route('scan.show', previewScan($owner)))
+        ->assertOk()
+        ->assertSee('Did you know?')
+        ->assertSee('never ask for your password or OTP', false)
+        ->assertSee('startTips()', false)
+        ->assertSee('stopTips()', false);
+});
+
 test('the enlarged viewer is on the page for the owner but not on a public share link', function () {
     previewOn();
     Http::fake();

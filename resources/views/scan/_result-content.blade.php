@@ -197,89 +197,151 @@
         $vtUndetected = $vtStats['undetected'] ?? 0;
         $vtTotal = $vtMalicious + $vtSuspicious + $vtHarmless + $vtUndetected;
         $vtFlagged = $vtMalicious + $vtSuspicious;
+        $vtDen = max($vtTotal, 1);
         $vtColor = $vtFlagged > 0 ? 'text-red-400' : 'text-emerald-400';
         $vtBadge = $vtFlagged > 0 ? 'bg-red-500/10 border-red-500/25 text-red-300' : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300';
+
+        $vtParts = [
+            ['label' => 'Malicious', 'count' => $vtMalicious, 'color' => '#f87171'],
+            ['label' => 'Suspicious', 'count' => $vtSuspicious, 'color' => '#fb923c'],
+            ['label' => 'Harmless', 'count' => $vtHarmless, 'color' => '#34d399'],
+            ['label' => 'Undetected', 'count' => $vtUndetected, 'color' => '#64748b'],
+        ];
+
+        // donut: one arc per group on a circle of radius 54, each arc a little shorter than its share so a thin gap shows between groups
+        $vtCirc = 2 * M_PI * 54;
+        $vtArcs = [];
+        $vtUsed = 0.0;
+        foreach ($vtParts as $part) {
+            $share = $part['count'] / $vtDen * $vtCirc;
+            if ($part['count'] > 0) {
+                $dash = max($share - 2, 0.8);
+                $vtArcs[] = ['color' => $part['color'], 'dash' => round($dash, 2), 'rest' => round($vtCirc - $dash, 2), 'offset' => $vtUsed > 0 ? round(-$vtUsed, 2) : 0];
+            }
+            $vtUsed += $share;
+        }
+
+        $vendorResults = collect($ctiLookup->raw_response['data']['attributes']['last_analysis_results'] ?? [])
+            ->map(function ($result, $vendor) {
+                return [
+                    'vendor' => $vendor,
+                    'category' => $result['category'] ?? 'undetected',
+                    'result' => $result['result'] ?? null,
+                ];
+            })
+            ->values()
+            ->sortBy(function ($row) {
+                // Show the interesting ones first: malicious, then suspicious,
+                // then everything else, alphabetically within each group.
+                $rank = match ($row['category']) {
+                    'malicious' => 0,
+                    'suspicious' => 1,
+                    default => 2,
+                };
+                return [$rank, $row['vendor']];
+            })
+            ->values();
+
+        // the vendors that flagged it, already in malicious-first order; the first few are shown as chips under the chart
+        $flaggedVendors = $vendorResults->filter(fn ($row) => in_array($row['category'], ['malicious', 'suspicious'], true))->values();
+        $flaggedShown = $flaggedVendors->take(6);
+        $flaggedMore = $flaggedVendors->count() - $flaggedShown->count();
+
+        $categoryStyles = [
+            'malicious' => 'bg-red-500/10 text-red-300 border-red-500/25',
+            'suspicious' => 'bg-orange-500/10 text-orange-300 border-orange-500/25',
+            'harmless' => 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+            'undetected' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
+        ];
     @endphp
-    <div class="r-card r-in p-6 mb-6" style="--d:.25s">
-        <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
-            <div class="flex items-center gap-3">
+    <div class="r-card r-in vt p-6 mb-6" style="--d:.25s">
+        <div class="vt-head">
+            <div class="vt-id">
                 <span class="r-tile" style="--c: 56,189,248">
-                    <svg width="20" height="20" class="text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z" />
+                    <svg width="20" height="20" class="text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5.2" /><path d="M12 12l6.2-6.2" /><circle cx="8.6" cy="9" r=".9" fill="#f87171" stroke="none" />
                     </svg>
                 </span>
-                <div>
+                <div class="min-w-0">
                     <h2 class="text-lg font-bold text-white">{{ $ctiLookup->source }} / CTI Lookup</h2>
-                    <p class="text-sm text-slate-300">Cross-referenced against {{ $vtTotal }} independent security vendors</p>
+                    <p class="text-sm text-slate-300">Looked up {{ $ctiLookup->created_at->diffForHumans() }}</p>
                 </div>
             </div>
-            <span class="text-xs font-semibold px-3 py-1.5 rounded-full border {{ $vtBadge }}">
-                {{ $vtFlagged }} / {{ $vtTotal }} FLAGGED
-            </span>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="r-well p-4 text-center">
-                <p class="text-2xl font-bold {{ $vtColor }}">{{ $vtMalicious }}</p>
-                <p class="text-xs text-slate-300 mt-1">Malicious</p>
-            </div>
-            <div class="r-well p-4 text-center">
-                <p class="text-2xl font-bold text-orange-400">{{ $vtSuspicious }}</p>
-                <p class="text-xs text-slate-300 mt-1">Suspicious</p>
-            </div>
-            <div class="r-well p-4 text-center">
-                <p class="text-2xl font-bold text-emerald-400">{{ $vtHarmless }}</p>
-                <p class="text-xs text-slate-300 mt-1">Harmless</p>
-            </div>
-            <div class="r-well p-4 text-center">
-                <p class="text-2xl font-bold text-slate-300">{{ $vtUndetected }}</p>
-                <p class="text-xs text-slate-300 mt-1">Undetected</p>
+            <div class="vt-pills">
+                <span class="text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 {{ $vtBadge }}">
+                    {{ $vtFlagged }} / {{ $vtTotal }} FLAGGED
+                </span>
+                <span class="vt-score">Threat score {{ $ctiLookup->threat_score }}%</span>
             </div>
         </div>
 
-        <p class="text-xs text-slate-400 mt-4">
-            Threat score: {{ $ctiLookup->threat_score }}% &middot; Looked up {{ $ctiLookup->created_at->diffForHumans() }} via VirusTotal's public API (70+ integrated antivirus and security engines).
-        </p>
+        @if ($vtTotal > 0)
+            <div class="vt-hero">
+                <div class="vt-donut" role="img" aria-label="{{ $vtMalicious }} malicious, {{ $vtSuspicious }} suspicious, {{ $vtHarmless }} harmless and {{ $vtUndetected }} undetected, out of {{ $vtTotal }} security vendors">
+                    <svg viewBox="0 0 140 140" aria-hidden="true">
+                        <circle cx="70" cy="70" r="54" fill="none" stroke="rgba(148,163,184,.14)" stroke-width="14" />
+                        @foreach ($vtArcs as $arc)
+                            <circle cx="70" cy="70" r="54" fill="none" stroke="{{ $arc['color'] }}" stroke-width="14" stroke-dasharray="{{ $arc['dash'] }} {{ $arc['rest'] }}" stroke-dashoffset="{{ $arc['offset'] }}" />
+                        @endforeach
+                    </svg>
+                    <div class="vt-donut-mid">
+                        <span class="vt-donut-num {{ $vtColor }}">{{ $vtFlagged }}</span>
+                        <span class="vt-donut-cap"><span>OF {{ $vtTotal }}</span><span>FLAGGED</span></span>
+                    </div>
+                </div>
 
-        @php
-            $vendorResults = collect($ctiLookup->raw_response['data']['attributes']['last_analysis_results'] ?? [])
-                ->map(function ($result, $vendor) {
-                    return [
-                        'vendor' => $vendor,
-                        'category' => $result['category'] ?? 'undetected',
-                        'result' => $result['result'] ?? null,
-                    ];
-                })
-                ->values()
-                ->sortBy(function ($row) {
-                    // Show the interesting ones first: malicious, then suspicious,
-                    // then everything else, alphabetically within each group.
-                    $rank = match ($row['category']) {
-                        'malicious' => 0,
-                        'suspicious' => 1,
-                        default => 2,
-                    };
-                    return [$rank, $row['vendor']];
-                })
-                ->values();
+                <ul class="vt-legend">
+                    @foreach ($vtParts as $part)
+                        <li class="vt-row">
+                            <span class="vt-dot" style="background: {{ $part['color'] }}"></span>
+                            <span class="vt-label">{{ $part['label'] }}</span>
+                            <span class="vt-track"><span class="vt-fill r-grow" style="--d:.45s; width: {{ round($part['count'] / $vtDen * 100, 1) }}%; min-width: {{ $part['count'] > 0 ? '.35rem' : '0' }}; background: {{ $part['color'] }}"></span></span>
+                            <span class="vt-count">{{ $part['count'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
 
-            $categoryStyles = [
-                'malicious' => 'bg-red-500/10 text-red-300 border-red-500/25',
-                'suspicious' => 'bg-orange-500/10 text-orange-300 border-orange-500/25',
-                'harmless' => 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
-                'undetected' => 'bg-slate-500/10 text-slate-300 border-slate-500/25',
-            ];
-        @endphp
+            @if ($flaggedVendors->isNotEmpty())
+                <div class="vt-flagged r-well">
+                    <div class="vt-flagged-top">
+                        <p class="vt-eyebrow">FLAGGED BY</p>
+                        <p class="vt-note">showing {{ $flaggedShown->count() }} of {{ $flaggedVendors->count() }}, malicious first</p>
+                    </div>
+                    <div class="vt-chips">
+                        @foreach ($flaggedShown as $row)
+                            <span class="vt-chip vt-chip-{{ $row['category'] }}">
+                                <span class="vt-chip-name">{{ $row['vendor'] }}</span>
+                                <span class="vt-chip-res">{{ Str::limit($row['result'] ?: ucfirst($row['category']), 14) }}</span>
+                            </span>
+                        @endforeach
+                        @if ($flaggedMore > 0)
+                            <span class="vt-chip vt-chip-more">+{{ $flaggedMore }} more</span>
+                        @endif
+                    </div>
+                </div>
+            @else
+                <div class="vt-clear r-well">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
+                    <span>No security vendor flagged this.</span>
+                </div>
+            @endif
+        @else
+            <p class="vt-note vt-empty">VirusTotal returned no vendor results for this lookup.</p>
+        @endif
 
-        @if ($vendorResults->isNotEmpty())
-            <div class="mt-5 border-t border-slate-600/40 pt-4" x-data="{ open: false }">
-                <button @click="open = !open" class="w-full flex items-center justify-between text-left">
-                    <span class="text-sm font-medium text-slate-100">View all {{ $vendorResults->count() }} security vendor results</span>
-                    <span class="flex items-center gap-2">
-                        <span class="text-xs text-slate-400 max-sm:hidden" x-text="open ? 'Click to collapse' : 'Click to expand'">Click to expand</span>
-                        <svg class="w-4 h-4 text-slate-300 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </span>
-                </button>
+        <div class="vt-foot-wrap" x-data="{ open: false }">
+            <div class="vt-foot">
+                @if ($vendorResults->isNotEmpty())
+                    <button type="button" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" class="vt-btn">
+                        <span>View all {{ $vendorResults->count() }} security vendor results</span>
+                        <svg class="vt-btn-ic" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                @endif
+                <p class="vt-src">VirusTotal public API &middot; 70+ antivirus and security engines</p>
+            </div>
+
+            @if ($vendorResults->isNotEmpty())
                 <div x-show="open" x-collapse class="mt-4">
                     <div class="grid sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-1">
                         @foreach ($vendorResults as $row)
@@ -295,8 +357,8 @@
                         @endforeach
                     </div>
                 </div>
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 @endif
 
@@ -318,6 +380,31 @@
                 src: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? $report->previewPicture() : null),
                 state: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? 'ready' : 'idle'),
                 message: '',
+                tips: @js([
+                    'Real banks and government offices never ask for your password or OTP by SMS, WhatsApp or email.',
+                    'Scammers like pressure. Words such as "urgent", "last chance" or "your account will be closed" are a warning sign.',
+                    'A shortened link (bit.ly and similar) hides where it really goes. Be extra careful before opening one.',
+                    'Check the address, not the look of the page. Anyone can copy a bank logo, but not its real web address.',
+                    'Look closely at the spelling of the link. Fake sites often swap or add a letter, like "paypa1" or "bibd-secure".',
+                    'Unexpected fine, parcel or prize messages are a very common scam. Check with the real organisation yourself.',
+                    'Do not install an app (APK) sent to you in a chat or message. It can take over your phone.',
+                    'If you already clicked and typed your details, change that password at once and tell your bank.',
+                    'A padlock in the browser only means the connection is private. It does not mean the site is honest.',
+                    'When in doubt, close the message and open the official website or app yourself instead of using the link.',
+                ]),
+                tip: '',
+                tipTimer: null,
+                startTips() {
+                    this.stopTips();
+                    this.tip = this.tips[Math.floor(Math.random() * this.tips.length)];
+                    this.tipTimer = setInterval(() => {
+                        const others = this.tips.filter(t => t !== this.tip);
+                        this.tip = others[Math.floor(Math.random() * others.length)];
+                    }, 6000);
+                },
+                stopTips() {
+                    if (this.tipTimer) { clearInterval(this.tipTimer); this.tipTimer = null; }
+                },
                 shown: false,
                 viewer: false,
                 zoom: 1,
@@ -375,7 +462,8 @@
                     this.message = text || 'The preview could not be loaded. Please try again.';
                     this.state = 'failed';
                 },
-             }">
+             }"
+             x-init="$watch('state', value => value === 'loading' ? startTips() : stopTips())">
         <h2 class="text-lg font-bold text-white mb-1">Page preview</h2>
         <p class="text-sm text-slate-300 mb-4">
             @if ($report->type === 'screenshot')
@@ -402,9 +490,37 @@
             <p class="text-sm text-amber-300 mt-3" x-show="state === 'failed'" x-text="message" style="display: none;"></p>
         </div>
 
-        <p class="text-sm text-slate-300" x-show="state === 'loading'" style="display: none;">
-            Taking the picture. This usually takes 10 to 30 seconds...
-        </p>
+        <div x-show="state === 'loading'" style="display: none;" role="status" aria-live="polite">
+            <div class="pv-skel" aria-hidden="true">
+                <div class="pv-skel-bar">
+                    <span class="pv-skel-dot"></span><span class="pv-skel-dot"></span><span class="pv-skel-dot"></span>
+                    <span class="pv-skel-url"></span>
+                </div>
+                <div class="pv-skel-body">
+                    <div class="pv-skel-row">
+                        <span class="pv-sk" style="width: 5.5rem; height: 1.6rem;"></span>
+                        <span class="pv-skel-nav">
+                            <span class="pv-sk" style="width: 3rem; height: .8rem;"></span>
+                            <span class="pv-sk" style="width: 3rem; height: .8rem;"></span>
+                            <span class="pv-sk" style="width: 3rem; height: .8rem;"></span>
+                        </span>
+                    </div>
+                    <span class="pv-sk" style="height: 6.5rem;"></span>
+                    <span class="pv-sk" style="width: 68%; height: 1rem;"></span>
+                    <span class="pv-sk" style="width: 46%; height: 1rem;"></span>
+                    <div class="pv-skel-cards">
+                        <span class="pv-sk" style="height: 3.2rem;"></span>
+                        <span class="pv-sk" style="height: 3.2rem;"></span>
+                        <span class="pv-sk" style="height: 3.2rem;"></span>
+                    </div>
+                </div>
+            </div>
+            <p class="text-sm text-slate-300 mt-3">Taking the picture. This usually takes 10 to 30 seconds...</p>
+            <p class="pv-tip" aria-live="off">
+                <span class="pv-tip-label">Did you know?</span>
+                <span x-text="tip"></span>
+            </p>
+        </div>
 
         <div x-show="state === 'ready'" style="display: none;">
             <div class="relative overflow-hidden rounded-lg border border-white/10 bg-black/30">

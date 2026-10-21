@@ -613,7 +613,7 @@
         .pl-say { position: absolute; top: 50%; left: calc(100% + .55rem); width: max-content; max-width: 11rem; padding: .3rem .5rem; transform: translateY(-50%); font-family: var(--pl-display); font-size: .5rem; line-height: 1.55; text-align: left; color: #0b1220; background: #e0f2fe; border: 2px solid #7dd3fc; box-shadow: 3px 3px 0 rgba(0, 0, 0, .35); pointer-events: none; }
         .pl-say::after { content: ""; position: absolute; left: -.3rem; top: 50%; width: .5rem; height: .5rem; transform: translateY(-50%) rotate(45deg); background: #e0f2fe; border: 0 solid #7dd3fc; border-width: 0 0 2px 2px; }
         @media (max-width: 639px) { .pl-fish-px { width: 2.6rem; } .pl-fish.mini .pl-fish-px { width: calc(var(--w, 2.1rem) * .75); } .pl-say { max-width: 9rem; font-size: .45rem; } @keyframes pl-swim { from { transform: translateX(0); } to { transform: translateX(calc(100cqw - 12.5rem)); } } @keyframes pl-swim-mini { from { transform: translateX(0); } to { transform: translateX(calc(100cqw - 2.8rem)); } } }
-        @media (max-height: 520px) and (orientation: landscape) { .pl-water, .pl-sea { display: none; } }
+        @media (max-height: 520px) and (orientation: landscape) { .pl-water { display: none; } .pl-sea { height: 3rem; } }
 
         /* ---------- side panel: stats, ranks, tip, help ---------- */
         .pl-layout { display: block; }
@@ -670,7 +670,7 @@
         }
         /* landscape phones and small tablets: little height, so use the width */
         @media (max-height: 520px) and (orientation: landscape) {
-            .pl-hero { grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: .55rem .9rem; margin-bottom: .6rem; border-radius: 1rem; }
+            .pl-hero { --hx: .9rem; --hy: .55rem; --r: 1rem; grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: .55rem .9rem; margin-bottom: .6rem; border-radius: 1rem; }
             .pl-hero h1 { font-size: .85rem; }
             .pl-hero p { display: none; }
             .pl-hud { padding: .35rem .7rem .35rem .4rem; }

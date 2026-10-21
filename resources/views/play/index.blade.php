@@ -673,7 +673,7 @@
             .pl-hero { --hx: .9rem; --hy: .55rem; --r: 1rem; grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: .55rem .9rem; margin-bottom: .6rem; border-radius: 1rem; }
             .pl-hero h1 { font-size: .85rem; }
             .pl-hero p { display: none; }
-            .pl-hud { padding: .35rem .7rem .35rem .4rem; }
+            .pl-hud { min-width: 15rem; padding: .35rem .7rem .35rem .4rem; }
             .pl-lvl { width: 2.2rem; height: 2.2rem; font-size: .75rem; }
             .pl-tabs { gap: .4rem; margin-bottom: .6rem; }
             .pl-tab { flex-direction: row; min-height: 2.6rem; padding: .35rem .6rem; gap: .45rem; justify-content: center; }

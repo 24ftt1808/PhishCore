@@ -672,7 +672,7 @@
         @media (max-height: 520px) and (orientation: landscape) {
             .pl-hero { --hx: .9rem; --hy: .55rem; --r: 1rem; grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: .55rem .9rem; margin-bottom: .6rem; border-radius: 1rem; }
             .pl-hero h1 { font-size: .85rem; }
-            .pl-hero p { display: none; }
+            .pl-hero p:not(.pl-hud-title) { display: none; }
             .pl-hud { min-width: 15rem; padding: .35rem .7rem .35rem .4rem; }
             .pl-lvl { width: 2.2rem; height: 2.2rem; font-size: .75rem; }
             .pl-tabs { gap: .4rem; margin-bottom: .6rem; }

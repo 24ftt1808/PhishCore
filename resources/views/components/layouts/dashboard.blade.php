@@ -524,7 +524,7 @@
         </div>
 
         {{-- MAIN CONTENT --}}
-                <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-[17rem] xl:ml-72 overflow-y-auto min-w-0">
+                <main class="flex-1 p-4 pt-20 lg:p-8 lg:pt-8 lg:ml-4 lg:pl-[18rem] xl:pl-[19rem] overflow-y-auto min-w-0">
             {{ $slot }}
         </main>
 

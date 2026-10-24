@@ -9,7 +9,7 @@
 
     /* open on the tab that matches the last submission or the field that has an error */
     $startTab = auth()->user()?->defaultScanTab() ?? 'url';
-    if (old('email') || old('subject') || old('body') || old('email_headers') || $errors->has('eml_file') || $errors->has('email') || $errors->has('subject') || $errors->has('body') || $errors->has('email_headers')) $startTab = 'email';
+    if (old('email') || old('subject') || old('body') || $errors->has('email') || $errors->has('subject') || $errors->has('body')) $startTab = 'email';
     elseif (old('phone') || $errors->has('phone') || $errors->has('phone_country')) $startTab = 'phone';
     elseif ($errors->has('screenshot')) $startTab = 'screenshot';
     elseif ($errors->has('file')) $startTab = 'file';
@@ -65,20 +65,27 @@
         .sc-phone-row .sc-phone-country { width: 100% !important; }
     }
 
-    /* phones: shorter wording, and the list of checks is tucked away until it is wanted */
+    /* phones: shorter wording */
     .sc-narrow, .sc-narrow-p { display: none; }
-    .sc-chev { display: none; }
     @media (max-width: 639px) {
         .sc-wide { display: none; }
         .sc-narrow { display: inline; }
         .sc-narrow-p { display: block; }
-        .sc-chev { display: block; }
-        .sc-checks-toggle { cursor: pointer; }
-        .sc-checks-body { display: none; }
-        .sc-checks-body.is-open { display: block; }
-        .sc-check-off { display: none; }
     }
-    @media (min-width: 640px) { .sc-checks-toggle { cursor: default; pointer-events: none; } }
+
+    /* the list of checks stays folded until it is wanted: it slides open, and each check that runs fades in one after the other */
+    .sc-checks-toggle { cursor: pointer; }
+    .sc-checks-body { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows .5s cubic-bezier(.2, .9, .3, 1), opacity .35s ease, visibility 0s linear .5s; }
+    .sc-checks-body.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition-delay: 0s; }
+    .sc-checks-inner { overflow: hidden; min-height: 0; }
+    .sc-check-off { display: none; }
+    .sc-checks-body.is-open .sc-check-item { animation: sc-check-in .5s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: calc(var(--i, 0) * 55ms + 80ms); }
+    .sc-checks-body.is-open .sc-check-tick { animation: sc-check-pop .45s cubic-bezier(.3, 1.6, .5, 1) backwards; animation-delay: calc(var(--i, 0) * 55ms + 260ms); }
+    .sc-check-item:hover { transform: translateY(-2px); border-color: rgba(56, 189, 248, .45); box-shadow: 0 10px 24px -14px rgba(56, 189, 248, .6); }
+    @keyframes sc-check-in { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+    @keyframes sc-check-pop { from { opacity: 0; transform: scale(.2) rotate(-25deg); } to { opacity: 1; transform: none; } }
+    .sc-bump { animation: sc-bump .45s cubic-bezier(.3, 1.6, .5, 1); }
+    @keyframes sc-bump { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
 
     /* the text inside the upload boxes wraps instead of pushing the card wider than the screen */
     .sc-dz-text { max-width: 100%; padding: 0 .5rem; text-align: center; overflow-wrap: anywhere; }
@@ -100,21 +107,21 @@
     .sc-pill-in::after { content: ""; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent); }
     .sc-tile { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: .75rem; background: rgba(56, 189, 248, .12); border: 1px solid rgba(125, 211, 252, .28); color: #7dd3fc; }
 
-    .sc-in { animation: sc-in .6s cubic-bezier(.2, .9, .3, 1) both; animation-delay: var(--d, 0s); }
+    .sc-in { animation: sc-in .6s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: var(--d, 0s); }
     @keyframes sc-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
     /* rotating light sweep around the scanner box border while a scan runs */
     .scanner-border-glow { position: absolute; inset: -2px; border-radius: 1.65rem; padding: 2px; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; pointer-events: none; transition: opacity .3s ease; z-index: 0; }
     /* the light travels around the border: only the gradient angle animates, the box itself never moves */
     @property --scan-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-    .scanner-border-glow.is-scanning { opacity: 1; background: conic-gradient(from var(--scan-angle), transparent 0%, #38bdf8 10%, #93c5fd 16%, transparent 30%, transparent 100%); animation: scanner-rotate 2s linear infinite; }
+    .scanner-border-glow.is-scanning { opacity: 1; background: conic-gradient(from var(--scan-angle), transparent 0%, #38bdf8 10%, #93c5fd 16%, transparent 30%, transparent 100%); filter: drop-shadow(0 0 6px rgba(56, 189, 248, .6)); animation: scanner-rotate 2s linear infinite; }
     @keyframes scanner-rotate { to { --scan-angle: 360deg; } }
     .scanner-box.is-scanning { animation: scanner-pulse 1.8s ease-in-out infinite; }
-    @keyframes scanner-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); } 50% { box-shadow: 0 0 36px 4px rgba(56, 189, 248, .3); } }
+    @keyframes scanner-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); } 50% { box-shadow: 0 0 30px 2px rgba(56, 189, 248, .22); } }
     .sc-sweep { animation: sc-sweep 1.1s ease-in-out infinite; }
     @keyframes sc-sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
-    @media (prefers-reduced-motion: reduce) { .sc-in, .sc-pill, .sc-sweep, .scanner-border-glow.is-scanning, .scanner-box.is-scanning { animation: none; transition: none; } .sc-lift:hover { transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .sc-in, .sc-pill, .sc-sweep, .scanner-border-glow.is-scanning, .scanner-box.is-scanning { animation: none; transition: none; } .sc-lift:hover, .sc-check-item:hover { transform: none; } .sc-checks-body, .sc-checks-body.is-open { transition: none; } .sc-checks-body.is-open .sc-check-item, .sc-checks-body.is-open .sc-check-tick, .sc-bump { animation: none; } }
 </style>
 
 <div class="mb-10"
@@ -126,9 +133,7 @@
         phoneCountry: @js(old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION)),
         subject: @js(old('subject', '')),
         body: @js(old('body', '')),
-        headers: @js(old('email_headers', '')),
-        emlName: '',
-        checksOpen: false, fileName: '', docName: '', docDrag: false, drag: false, more: {{ old('subject') || old('body') || old('email_headers') ? 'true' : 'false' }}, scanning: false,
+        checksOpen: false, fileName: '', docName: '', docDrag: false, drag: false, more: {{ old('subject') || old('body') ? 'true' : 'false' }}, scanning: false,
         tabs: [
             { key: 'url', label: 'URL' },
             { key: 'email', label: 'Email' },
@@ -138,8 +143,9 @@
         ],
         icons: @js($tabIcons),
         counts: @js($checkCounts),
-        get canScan() { return ({ url: this.url, email: this.email || this.emlName || (this.looksRaw ? 'raw' : ''), phone: this.phone, screenshot: this.fileName, file: this.docName }[this.tab] || '').trim() !== ''; },
-        get looksRaw() { return /^\s*[!-9;-~]+:[ \t]*\S/.test(this.body) && /^(received|received-spf|authentication-results|return-path|message-id|mime-version|dkim-signature|delivered-to):/im.test(this.body) && /^from:/im.test(this.body); },
+        checkFor: @js(collect($checks)->map(fn ($c) => $c[1])->values()),
+        rank(i) { return this.checkFor.slice(0, i).filter(f => f.includes(this.tab)).length; },
+        get canScan() { return ({ url: this.url, email: this.email, phone: this.phone, screenshot: this.fileName, file: this.docName }[this.tab] || '').trim() !== ''; },
         get needsProto() { return this.tab === 'url' && this.url.trim() !== '' && !/^https?:\/\//i.test(this.url.trim()); },
         get scanLabel() { return { url: 'Scan URL', email: 'Scan Email', phone: 'Scan Phone Number', screenshot: 'Scan Screenshot', file: 'Scan File' }[this.tab]; },
         get idx() { return this.tabs.findIndex(t => t.key === this.tab); },
@@ -163,14 +169,13 @@
         },
         clearOthers(keep) {
             if (keep !== 'url') this.url = '';
-            if (keep !== 'email') { this.email = ''; this.subject = ''; this.body = ''; this.headers = ''; this.removeEml(); }
+            if (keep !== 'email') { this.email = ''; this.subject = ''; this.body = ''; }
             if (keep !== 'phone') this.phone = '';
             if (keep !== 'screenshot') this.removeFile();
             if (keep !== 'file') this.removeDoc();
         },
         removeFile() { this.fileName = ''; if (this.$refs.file) this.$refs.file.value = ''; },
-        removeDoc() { this.docName = ''; if (this.$refs.doc) this.$refs.doc.value = ''; },
-        removeEml() { this.emlName = ''; if (this.$refs.eml) this.$refs.eml.value = ''; }
+        removeDoc() { this.docName = ''; if (this.$refs.doc) this.$refs.doc.value = ''; }
      }"
      x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) scanning = false; })">
 
@@ -181,14 +186,9 @@
         <div class="relative">
             <div class="scanner-border-glow" :class="{ 'is-scanning': scanning }"></div>
 
-            <div class="scanner-box sc-card sc-in relative z-10 overflow-hidden h-full flex flex-col">
-                <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/10">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="min-w-0">
-                            <p class="text-white font-semibold text-sm">PhishCore Scanner</p>
-                            <p class="hidden sm:block text-xs text-slate-300 mt-0.5">Check a link, email, phone number, screenshot or file before you trust it.</p>
-                        </div>
-                    </div>
+            <div class="scanner-box sc-card sc-in relative z-10 overflow-hidden h-full flex flex-col" :class="{ 'is-scanning': scanning }">
+                <div class="flex items-center justify-between gap-3 px-5 sm:px-6 py-3 border-b border-white/10">
+                    <p class="min-w-0 truncate text-white font-semibold text-sm">PhishCore Scanner</p>
                     <span class="shrink-0 inline-flex items-center gap-2 text-xs font-medium pl-2.5 pr-3 py-1.5 rounded-full border transition-colors duration-300"
                           :class="scanning ? 'text-sky-200 border-sky-300/30 bg-sky-400/10' : 'text-emerald-200 border-emerald-300/25 bg-emerald-400/10'"
                           role="status" aria-live="polite">
@@ -250,23 +250,8 @@
                             <label class="block text-xs tracking-wide text-slate-300 mb-2">SENDER EMAIL</label>
                             <input type="text" name="email" x-model="email" :readonly="scanning" @input="clearOthers('email')"
                                    :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                   placeholder="scammer@suspicious-domain.com (not needed if you upload or paste the whole email)" class="sc-input !py-4">
+                                   placeholder="scammer@suspicious-domain.com" class="sc-input !py-4">
                             @error('email')
-                                <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
-                            @enderror
-
-                            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
-                                <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white transition cursor-pointer"
-                                       :class="{ 'opacity-50 pointer-events-none': scanning }">
-                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
-                                    <span class="truncate max-w-[16rem]" x-text="emlName || 'Upload a saved email (.eml)'"></span>
-                                    <input type="file" name="eml_file" x-ref="eml" accept=".eml,.txt,message/rfc822" class="sr-only"
-                                           @change="emlName = $event.target.files[0]?.name ?? ''; if (emlName) clearOthers('email')">
-                                </label>
-                                <button type="button" x-show="emlName" x-cloak @click="removeEml()" class="text-sky-300 hover:text-sky-200 transition">Remove</button>
-                                <span class="text-slate-400">or paste the whole email into the message box below. Either way the sender, subject and checks are filled in for you.</span>
-                            </div>
-                            @error('eml_file')
                                 <p class="mt-2 text-xs text-red-300">{{ $message }}</p>
                             @enderror
 
@@ -274,7 +259,7 @@
                                 <svg class="w-3.5 h-3.5 transition-transform" :class="more ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                                 Add subject &amp; body <span class="text-slate-300">(optional, improves accuracy)</span>
                             </button>
-                            <div x-show="more || subject || body || headers" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="mt-3 space-y-3">
+                            <div x-show="more || subject || body" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="mt-3 space-y-3">
                                 <input type="text" name="subject" x-model="subject" :readonly="scanning" @input="clearOthers('email')"
                                        :class="{ 'opacity-50 pointer-events-none': scanning }"
                                        placeholder="Email subject, e.g. Urgent Transfer of Funds Required" class="sc-input">
@@ -283,15 +268,8 @@
                                 @enderror
                                 <textarea name="body" x-model="body" :readonly="scanning" rows="4" @input="clearOthers('email')"
                                           :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                          placeholder="Paste the email body text, or the whole email from Show original" class="sc-input resize-y min-h-[96px]"></textarea>
+                                          placeholder="Paste the email body text here" class="sc-input resize-y min-h-[96px]"></textarea>
                                 @error('body')
-                                    <p class="text-xs text-red-300">{{ $message }}</p>
-                                @enderror
-                                <textarea name="email_headers" x-model="headers" :readonly="scanning" rows="3" @input="clearOthers('email')"
-                                          :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                          placeholder="Full email headers (optional): checks the email really came from its sender" class="sc-input resize-y min-h-[72px] font-mono text-xs"></textarea>
-                                <p class="text-xs text-slate-400">In Gmail, open the email, choose <span class="text-slate-200">&#8942; &rarr; Show original</span> and copy the top part. In Outlook, open <span class="text-slate-200">File &rarr; Properties</span> and copy the "Internet headers". They are only used for this check and are not saved.</p>
-                                @error('email_headers')
                                     <p class="text-xs text-red-300">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -393,26 +371,27 @@
         </div>
 
         {{-- WHAT EACH SCAN CHECKS: tiles for the selected tab light up --}}
-        <div class="sc-card sc-card-sm sc-in p-5 sm:p-6" style="--d:.08s">
+        <div class="sc-card sc-card-sm sc-in px-5 py-4 sm:px-6" style="--d:.08s">
             <button type="button" class="sc-checks-toggle flex w-full items-center justify-between gap-3 text-left" @click="checksOpen = !checksOpen" :aria-expanded="checksOpen.toString()">
                 <p class="text-[11px] tracking-[0.14em] text-slate-300">WHAT THIS SCAN CHECKS</p>
                 <span class="flex items-center gap-2">
-                    <span class="text-[11px] font-medium text-sky-200 bg-sky-400/10 border border-sky-300/25 px-2 py-0.5 rounded-full tabular-nums" x-text="counts[tab] + (counts[tab] === 1 ? ' check' : ' checks')"></span>
-                    <svg class="sc-chev w-4 h-4 text-slate-300 transition-transform duration-200" :class="checksOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                    <span class="inline-block text-[11px] font-medium text-sky-200 bg-sky-400/10 border border-sky-300/25 px-2 py-0.5 rounded-full tabular-nums" x-effect="counts[tab]; $el.classList.remove('sc-bump'); void $el.offsetWidth; $el.classList.add('sc-bump')" x-text="counts[tab] + (counts[tab] === 1 ? ' check' : ' checks')"></span>
+                    <svg class="w-4 h-4 text-slate-300 transition-transform duration-200" :class="checksOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                 </span>
             </button>
 
             <div class="sc-checks-body" :class="checksOpen ? 'is-open' : ''">
-            <p class="sc-wide text-sm text-slate-300 mt-1 mb-4">Highlighted checks run for the option you picked.</p>
-            <p class="sc-narrow-p text-xs text-slate-400 mt-2 mb-3">Checks that run for the option you picked.</p>
+            <div class="sc-checks-inner">
+            <p class="text-xs text-slate-400 mt-3 mb-3">The checks that run for the option you picked.</p>
 
             <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($checks as [$name, $for, $text])
                     @php $forJs = json_encode($for); @endphp
-                    <li class="rounded-xl px-3 py-3 border transition-colors duration-300"
+                    <li class="sc-check-item rounded-xl px-3 py-3 border transition duration-300"
+                        :style="'--i:' + rank({{ $loop->index }})"
                         :class="{{ $forJs }}.includes(tab) ? 'border-sky-300/30 bg-sky-400/10 text-white' : 'sc-check-off border-white/5 text-slate-400'">
                         <div class="flex items-center gap-2.5">
-                            <span class="w-5 h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
+                            <span class="sc-check-tick w-5 h-5 grid place-items-center rounded-full shrink-0 transition-colors duration-300"
                                   :class="{{ $forJs }}.includes(tab) ? 'bg-emerald-400/20 text-emerald-300' : 'bg-white/5 text-slate-500'">
                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             </span>
@@ -424,12 +403,13 @@
                 @endforeach
             </ul>
             </div>
+            </div>
         </div>
     </div>
 </div>
 
 @if (count($recentScans ?? []) > 0)
-    <div class="flex items-center justify-between mb-4">
+    <div class="sc-in flex items-center justify-between mb-4" style="--d:.16s">
         <div>
             <h2 class="text-lg font-bold text-white">Recently Scanned</h2>
             <p class="text-sm text-slate-300">Your three most recent reports</p>
@@ -460,7 +440,7 @@
                     default => $scan->url,
                 };
             @endphp
-            <div class="sc-card sc-card-sm sc-lift relative flex items-center justify-between gap-3 pl-5 pr-4 sm:pr-5 py-4 overflow-hidden">
+            <div class="sc-card sc-card-sm sc-lift sc-in relative flex items-center justify-between gap-3 pl-5 pr-4 sm:pr-5 py-4 overflow-hidden" style="--d:{{ number_format(0.22 + $loop->index * 0.07, 2) }}s">
                 <span class="absolute left-0 top-0 bottom-0 w-1 {{ $accent }}"></span>
                 <div class="flex items-center gap-3 min-w-0">
                     <span class="w-9 h-9 shrink-0 grid place-items-center rounded-lg bg-white/5 border border-white/10 text-sky-300">

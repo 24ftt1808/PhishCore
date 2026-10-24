@@ -171,13 +171,13 @@
             .c-chartbox canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
         }
         /* Tabs: My scans / Community. A soft glass pill glides between the two and stretches a little as it moves. */
-        .a-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .25rem; margin-bottom: 1.25rem; width: 100%; max-width: 26rem; border-radius: 999px; isolation: isolate; background: linear-gradient(180deg, rgba(20, 33, 62, .75), rgba(8, 15, 32, .7)); border: 1px solid rgba(148, 163, 184, .2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), inset 0 -8px 16px rgba(2, 6, 23, .35), 0 8px 24px rgba(2, 6, 23, .35); }
-        .a-glider { position: absolute; z-index: 0; top: .25rem; bottom: .25rem; left: .25rem; width: calc((100% - .75rem) / 2); transform: translateX(0); transition: transform .6s cubic-bezier(.34, 1.5, .5, 1); pointer-events: none; will-change: transform; }
+        .a-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .25rem; margin-bottom: 1.25rem; width: 100%; max-width: 26rem; border-radius: 999px; isolation: isolate; background: linear-gradient(180deg, rgba(18, 30, 58, .72), rgba(10, 18, 38, .7)); border: 1px solid rgba(148, 163, 184, .18); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03), 0 6px 18px rgba(2, 6, 23, .28); }
+        .a-glider { position: absolute; z-index: 0; top: .25rem; bottom: .25rem; left: .25rem; width: calc((100% - .75rem) / 2); transform: translateX(0); transition: transform .5s cubic-bezier(.34, 1.25, .5, 1); pointer-events: none; will-change: transform; }
         .a-glider.is-right { transform: translateX(calc(100% + .25rem)); }
-        .a-glider-blob { position: absolute; inset: 0; border-radius: 999px; overflow: hidden; background: linear-gradient(180deg, rgba(125, 211, 252, .32), rgba(56, 189, 248, .12) 55%, rgba(14, 165, 233, .18)); border: 1px solid rgba(186, 230, 253, .45); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), inset 0 -8px 14px rgba(56, 189, 248, .14), 0 6px 20px rgba(56, 189, 248, .22); }
-        .a-glider-blob::after { content: ''; position: absolute; left: 10%; right: 10%; top: 3px; height: 38%; border-radius: 999px; background: linear-gradient(180deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0)); }
+        .a-glider-blob { position: absolute; inset: 0; border-radius: 999px; overflow: hidden; background: linear-gradient(180deg, rgba(125, 211, 252, .2), rgba(56, 189, 248, .12)); border: 1px solid rgba(186, 230, 253, .3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 4px 14px rgba(56, 189, 248, .12); }
+        .a-glider-blob::after { content: ''; position: absolute; left: 10%; right: 10%; top: 3px; height: 30%; border-radius: 999px; background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0)); }
         .a-glider.is-squish .a-glider-blob { animation: a-squish .6s cubic-bezier(.3, .7, .3, 1); }
-        @keyframes a-squish { 0% { transform: scale(1, 1); } 30% { transform: scale(1.14, .88); } 65% { transform: scale(.97, 1.06); } 100% { transform: scale(1, 1); } }
+        @keyframes a-squish { 0% { transform: scale(1, 1); } 30% { transform: scale(1.06, .95); } 65% { transform: scale(.99, 1.02); } 100% { transform: scale(1, 1); } }
         .a-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .6rem .9rem; border-radius: 999px; font-size: .85rem; font-weight: 600; color: #94a3b8; background: transparent; border: 0; cursor: pointer; transition: color .3s ease, transform .2s ease; white-space: nowrap; }
         .a-tab:hover { color: #e2e8f0; }
         .a-tab:active { transform: scale(.96); }

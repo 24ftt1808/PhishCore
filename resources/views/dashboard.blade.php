@@ -75,7 +75,7 @@
         /* Quick URL Check */
         .qc-card { padding: 1.85rem 2.25rem 1.6rem; }
         .qc-eyebrow { display: flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 800; letter-spacing: .1em; color: #7dd3fc; }
-        .qc-title { margin: .6rem 0 0; font-size: 1.75rem; line-height: 1.2; font-weight: 800; color: #fff; }
+        .qc-title { margin: .5rem 0 0; font-size: 1.3rem; line-height: 1.25; font-weight: 800; color: #fff; }
         .qc-form { margin-top: 1.4rem; display: flex; align-items: center; gap: .65rem; padding: .5rem; border-radius: 1.1rem; background: #0a1630; border: 1px solid rgba(125, 211, 252, .3); box-shadow: 0 0 0 4px rgba(56, 189, 248, .08); transition: border-color .2s, box-shadow .2s; }
         .qc-form:focus-within { border-color: rgba(125, 211, 252, .7); box-shadow: 0 0 0 4px rgba(56, 189, 248, .18); }
         .qc-field { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: .7rem; padding-left: .75rem; }
@@ -94,7 +94,7 @@
         .qc-more:hover { color: #bae6fd; }
         @media (max-width: 639px) {
             .qc-card { padding: 1.35rem 1.25rem 1.25rem; }
-            .qc-title { margin-top: .5rem; font-size: 1.375rem; }
+            .qc-title { margin-top: .4rem; font-size: 1.1rem; }
             .qc-form { margin-top: 1.1rem; flex-direction: column; align-items: stretch; gap: .65rem; padding: 0; background: none; border: 0; box-shadow: none; }
             .qc-form:focus-within { border: 0; box-shadow: none; }
             .qc-field { padding: .25rem .4rem .25rem .9rem; border-radius: .9rem; background: #0a1630; border: 1px solid rgba(125, 211, 252, .3); transition: border-color .2s; }

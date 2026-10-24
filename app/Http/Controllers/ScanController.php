@@ -6,13 +6,16 @@ use App\Models\Analysis;
 use App\Models\CtiLookup;
 use App\Models\Report;
 use App\Services\AnalysisEngine;
+use App\Support\EmailHeaders;
 use App\Support\PhoneCountries;
+use App\Support\RawEmail;
 use App\Support\ScanGuard;
 use App\Support\ScanRateLimit;
 use App\Support\ScanReuse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ScanController extends Controller
@@ -34,6 +37,9 @@ class ScanController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // A whole email (pasted, or a saved .eml file) is split into sender, subject, message and headers first.
+        $this->expandWholeEmail($request);
+
         $type = $this->resolveType($request);
 
         // A robot filled in the hidden trap field: do nothing, and say nothing.
@@ -134,6 +140,7 @@ class ScanController extends Controller
                 reportId: $report->id,
                 emailSubject: $request->input('subject'),
                 emailBody: $request->input('body'),
+                emailHeaders: $request->input('email_headers'),
                 filePath: $filePath,
                 fileName: $fileName,
             );
@@ -214,6 +221,48 @@ class ScanController extends Controller
     }
 
     /**
+     * Fills in the email form from a whole email, so nobody has to copy each part by hand. The email is either a
+     * saved .eml file, or its full source pasted into the message box ("Show original" in Gmail). Whatever the
+     * person typed into the sender and subject boxes is kept. The file itself is read from PHP's temporary upload
+     * and never stored.
+     */
+    private function expandWholeEmail(Request $request): void
+    {
+        $raw = null;
+        $fromFile = false;
+
+        if ($request->hasFile('eml_file')) {
+            $file = $request->file('eml_file');
+            $fromFile = true;
+
+            if ($file->isValid() && $file->getSize() <= RawEmail::MAX_BYTES && in_array(strtolower($file->getClientOriginalExtension()), ['eml', 'txt'], true)) {
+                $raw = (string) file_get_contents($file->getRealPath());
+            }
+        } elseif (is_string($request->input('body')) && strlen($request->input('body')) <= RawEmail::MAX_BYTES && RawEmail::looksRaw($request->input('body'))) {
+            $raw = $request->input('body');
+        }
+
+        if ($raw === null && ! $fromFile) {
+            return;
+        }
+
+        $parsed = $raw !== null ? RawEmail::parse($raw) : null;
+
+        if ($parsed === null) {
+            throw ValidationException::withMessages([
+                'eml_file' => 'That file could not be read as an email. In your mail app, save the email as an .eml file (or copy its full source) and try again.',
+            ]);
+        }
+
+        $request->merge([
+            'email' => $request->filled('email') ? $request->input('email') : ($parsed['from'] ?? ''),
+            'subject' => $request->filled('subject') ? $request->input('subject') : mb_substr((string) $parsed['subject'], 0, 255),
+            'body' => $fromFile && $request->filled('body') ? $request->input('body') : $parsed['body'],
+            'email_headers' => $parsed['headers'],
+        ]);
+    }
+
+    /**
      * Determine which scan type was submitted based on which field is filled.
      */
     private function resolveType(Request $request): string
@@ -224,7 +273,7 @@ class ScanController extends Controller
         if ($request->hasFile('file')) {
             return 'file';
         }
-        if ($request->filled('email') || $request->filled('subject') || $request->filled('body')) {
+        if ($request->hasFile('eml_file') || $request->filled('email') || $request->filled('subject') || $request->filled('body')) {
             return 'email';
         }
         if ($request->filled('phone')) {
@@ -241,6 +290,9 @@ class ScanController extends Controller
                 'email' => ['required', 'email', 'max:255'],
                 'subject' => ['nullable', 'string', 'max:255'],
                 'body' => ['nullable', 'string', 'max:5000'],
+                // Only read during the scan, never saved with the report: headers can hold addresses and IPs.
+                'email_headers' => ['nullable', 'string', 'max:'.EmailHeaders::MAX_LENGTH],
+                'eml_file' => ['nullable', 'file', 'max:1024', 'extensions:eml,txt'],
             ],
             'phone' => [
                 'phone' => ['required', 'string', 'max:30'],

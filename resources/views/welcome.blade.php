@@ -373,7 +373,7 @@
 </style>
 @php
     $scanTab = 'url';
-    if ($errors->has('email') || $errors->has('subject') || $errors->has('body')) $scanTab = 'email';
+    if ($errors->has('email') || $errors->has('subject') || $errors->has('body') || $errors->has('email_headers') || $errors->has('eml_file')) $scanTab = 'email';
     elseif ($errors->has('phone') || $errors->has('phone_country')) $scanTab = 'phone';
     elseif ($errors->has('screenshot')) $scanTab = 'screenshot';
     elseif ($errors->has('file')) $scanTab = 'file';
@@ -386,7 +386,7 @@
     <div class="text-left"
          x-data="{
             tab: '{{ $scanTab }}',
-            url: '', email: '', phone: '', phoneCountry: '{{ old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION) }}', subject: '', body: '',
+            url: '', email: '', phone: '', phoneCountry: '{{ old('phone_country', \App\Support\PhoneCountries::DEFAULT_REGION) }}', subject: '', body: '', headers: '', emlName: '',
             fileName: '', docName: '', docDrag: false, drag: false, scanning: false, more: false,
             tabs: [
                 { key: 'url', label: 'URL', icon: 'M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244' },
@@ -416,7 +416,7 @@
             },
             clearOthers(keep) {
                 if (keep !== 'url') this.url = '';
-                if (keep !== 'email') { this.email = ''; this.subject = ''; this.body = ''; }
+                if (keep !== 'email') { this.email = ''; this.subject = ''; this.body = ''; this.headers = ''; this.removeEml(); }
                 if (keep !== 'phone') this.phone = '';
                 if (keep !== 'screenshot') this.removeFile();
                 if (keep !== 'file') this.removeDoc();
@@ -428,6 +428,10 @@
             removeDoc() {
                 this.docName = '';
                 if (this.$refs.doc) this.$refs.doc.value = '';
+            },
+            removeEml() {
+                this.emlName = '';
+                if (this.$refs.eml) this.$refs.eml.value = '';
             }
          }"
          x-init="window.addEventListener('pageshow', (e) => { if (e.persisted) scanning = false; })">
@@ -499,11 +503,26 @@
                             <p class="mt-2 text-xs text-red-400">{{ $message }}</p>
                         @enderror
 
+                        <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+                            <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                                   :class="{ 'opacity-50 pointer-events-none': scanning }">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
+                                <span class="truncate max-w-[16rem]" x-text="emlName || 'Upload a saved email (.eml)'"></span>
+                                <input type="file" name="eml_file" x-ref="eml" accept=".eml,.txt,message/rfc822" class="sr-only"
+                                       @change="emlName = $event.target.files[0]?.name ?? ''; if (emlName) clearOthers('email')">
+                            </label>
+                            <button type="button" x-show="emlName" x-cloak @click="removeEml()" class="text-sky-300 hover:text-sky-200 transition">Remove</button>
+                            <span class="text-slate-500">or paste the whole email into the message box below. Either way the sender, subject and checks are filled in for you.</span>
+                        </div>
+                        @error('eml_file')
+                            <p class="mt-2 text-xs text-red-400">{{ $message }}</p>
+                        @enderror
+
                         <button type="button" @click="more = !more" class="mt-3 flex items-center gap-1.5 text-xs text-sky-300 hover:text-sky-200 transition">
                             <svg class="w-3.5 h-3.5 transition-transform" :class="more ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                             Add subject &amp; body <span class="text-slate-500">(optional, improves accuracy)</span>
                         </button>
-                        <div x-show="more || subject || body" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="mt-3 space-y-3">
+                        <div x-show="more || subject || body || headers" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="mt-3 space-y-3">
                             <input type="text" name="subject" x-model="subject" :readonly="scanning"
                                    @input="clearOthers('email')"
                                    :class="{ 'opacity-50 pointer-events-none': scanning }"
@@ -514,8 +533,16 @@
                             <textarea name="body" x-model="body" :readonly="scanning" rows="3"
                                       @input="clearOthers('email')"
                                       :class="{ 'opacity-50 pointer-events-none': scanning }"
-                                      placeholder="Paste the email body text" class="field resize-y min-h-[84px]"></textarea>
+                                      placeholder="Paste the email body text, or the whole email from Show original" class="field resize-y min-h-[84px]"></textarea>
                             @error('body')
+                                <p class="text-xs text-red-400">{{ $message }}</p>
+                            @enderror
+                            <textarea name="email_headers" x-model="headers" :readonly="scanning" rows="3"
+                                      @input="clearOthers('email')"
+                                      :class="{ 'opacity-50 pointer-events-none': scanning }"
+                                      placeholder="Full email headers (optional): checks the email really came from its sender" class="field resize-y min-h-[72px] font-mono text-xs"></textarea>
+                            <p class="text-xs text-slate-500">In Gmail, open the email, choose <span class="text-slate-300">&#8942; &rarr; Show original</span> and copy the top part. In Outlook, open <span class="text-slate-300">File &rarr; Properties</span> and copy the "Internet headers". They are only used for this check and are not saved.</p>
+                            @error('email_headers')
                                 <p class="text-xs text-red-400">{{ $message }}</p>
                             @enderror
                         </div>

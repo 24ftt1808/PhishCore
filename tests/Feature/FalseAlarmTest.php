@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\PopularDomain;
 use App\Services\AnalysisEngine;
+use App\Support\SafeUrl;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -126,7 +129,7 @@ test('a lookalike that only ends in gov.bn is not treated as government', functi
 // --- site availability ---
 
 test('a server that does not answer is reported as unknown, not offline', function () {
-    Http::fake(fn () => throw new Illuminate\Http\Client\ConnectionException('cURL error 28: timed out'));
+    Http::fake(fn () => throw new ConnectionException('cURL error 28: timed out'));
 
     expect($this->engine->checkSiteAvailability('https://example.com')['status_label'])->toBe('UNKNOWN');
 })->skip(fn () => gethostbyname('example.com') === 'example.com', 'needs DNS to resolve example.com');
@@ -401,4 +404,237 @@ test('a pressure message with a link to an unknown domain adds points, but not f
         ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $lure, 'https://www.paypal.com/help')['points'])->toBe(0)
         ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $lure, null)['points'])->toBe(0)
         ->and(callPrivate($this->engine, 'checkLinkInPressureMessage', $calm, 'https://example.test/x')['points'])->toBe(0);
+});
+// --- sign-in buttons, sibling subdomains, the word "bank", mail-server subdomains, internal addresses ---
+
+function pageBrand(AnalysisEngine $engine, string $html): ?string
+{
+    // Real pages put tags on separate lines; keeping that here stops words from running together.
+    $html = preg_replace('/></', ">\n<", $html);
+    preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $match);
+    $title = trim(strip_tags($match[1] ?? ''));
+    $body = trim(strip_tags(preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html)));
+
+    $found = callPrivate($engine, 'detectBrandExactMatch', trim($title.' '.$body), fn (string $brand) => callPrivate($engine, 'brandIsPageIdentityOrLoginPrompt', $brand, $title, $html, $body));
+
+    return $found['brand'];
+}
+
+test('"Sign in with Google / Facebook / Apple" buttons on an ordinary site are not a brand impersonation', function () {
+    $html = '<html><head><title>Sign in | Example Shop</title></head><body><h1>Welcome back</h1>'
+        .'<a>Sign in with Google</a> <a>Continue with Facebook</a> <button>Log in with Apple</button></body></html>';
+
+    expect(pageBrand($this->engine, $html))->toBeNull();
+});
+
+test('a link to the provider\'s own sign-in page is treated as a social button, whatever its text says', function () {
+    $html = '<html><head><title>Example Shop</title></head><body><a href="https://accounts.google.com/o/oauth2/auth?client_id=1">Google</a></body></html>';
+
+    expect(pageBrand($this->engine, $html))->toBeNull();
+});
+
+test('a page that really claims to be the brand is still detected next to a social button', function () {
+    $cases = [
+        '<html><head><title>Google - Sign in</title></head><body><a>Sign in with Google</a></body></html>',
+        '<html><head><title>Account</title></head><body><h1>Log in to your PayPal account</h1><a>Sign in with Google</a></body></html>',
+        '<html><head><title>Account</title></head><body><button>Log in with your PayPal account</button></body></html>',
+    ];
+
+    expect(pageBrand($this->engine, $cases[0]))->toBe('google')
+        ->and(pageBrand($this->engine, $cases[1]))->toBe('paypal')
+        ->and(pageBrand($this->engine, $cases[2]))->toBe('paypal');
+});
+
+test('a login form that posts to a sibling subdomain of the same site is not flagged', function () {
+    $form = fn (string $action) => '<form action="'.$action.'"><input type="password" name="p"></form>';
+
+    expect(callPrivate($this->engine, 'checkFormActionSecurity', $form('https://accounts.example.com/login'), 'shop.example.com')['points'])->toBe(0)
+        ->and(callPrivate($this->engine, 'checkFormActionSecurity', $form('https://login.bibd.com.bn/auth'), 'www.bibd.com.bn')['points'])->toBe(0)
+        ->and(callPrivate($this->engine, 'checkFormActionSecurity', $form('https://sso.pb.edu.bn/auth'), 'lms.pb.edu.bn')['points'])->toBe(0);
+});
+
+test('a login form that posts to another site is still flagged, including look-alike and shared-hosting cases', function () {
+    $form = fn (string $action) => '<form action="'.$action.'"><input type="password" name="p"></form>';
+
+    expect(callPrivate($this->engine, 'checkFormActionSecurity', $form('https://evil.example/collect'), 'shop.example.com')['points'])->toBeGreaterThan(0)
+        ->and(callPrivate($this->engine, 'checkFormActionSecurity', $form('https://pb.edu.bn.evil.example/auth'), 'lms.pb.edu.bn')['points'])->toBeGreaterThan(0)
+        ->and(callPrivate($this->engine, 'checkFormActionSecurity', $form('https://b.github.io/login'), 'a.github.io')['points'])->toBeGreaterThan(0);
+});
+
+test('the common word "bank" in a domain is only a mild warning, but a disguised address still scores fully', function () {
+    foreach (['https://bankofchina.com', 'https://bankdirect.com', 'https://dbs-bank.com'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBeLessThan(25);
+    }
+
+    foreach (['https://secure-bank-login.com', 'https://b4nk-verify.com', 'https://paypa1-secure.com', 'https://bank-secure.com', 'https://maybank2u.com.my.evil.com', 'https://notmaybank2u.com.my', 'https://citibank-help.example'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBeGreaterThanOrEqual(25);
+    }
+});
+
+test('the same applies to the sender address of an email', function () {
+    $mild = $this->engine->checkEmailDomain('service@bankofchina.com');
+    $disguised = $this->engine->checkEmailDomain('service@bank-secure-login.com');
+
+    expect($mild['points'])->toBe(10)
+        ->and($disguised['points'])->toBeGreaterThanOrEqual(35);
+});
+
+test('mail-server subdomains of a bulk sender do not count as hyphens or digit runs, but a bad registered name does', function () {
+    expect($this->engine->checkEmailDomain('news@em1234.mail.example.com')['points'])->toBe(0)
+        ->and($this->engine->checkEmailDomain('news@mail-us-east-1.example.com')['points'])->toBe(0)
+        ->and($this->engine->checkEmailDomain('news@secure-login-1234.com')['points'])->toBeGreaterThanOrEqual(25);
+});
+
+test('an address that points to an internal location is never requested', function () {
+    Http::fake();
+
+    foreach (['http://127.0.0.1/', 'http://2130706433/', 'http://[::1]/', 'http://169.254.169.254/latest/meta-data/', 'http://10.0.0.5:6379/'] as $url) {
+        $redirects = $this->engine->checkRedirectChain($url);
+        $ssl = $this->engine->checkSslCertificate(preg_replace('/^http:/', 'https:', $url));
+
+        expect($redirects['unavailable'] ?? false)->toBeTrue()
+            ->and($redirects['points'])->toBe(0)
+            ->and($ssl['unavailable'] ?? false)->toBeTrue();
+    }
+
+    Http::assertNothingSent();
+});
+
+test('a name that resolves to an internal address is never requested', function () {
+    SafeUrl::resolveUsing(fn (string $host): array => $host === 'sneaky.example' ? ['127.0.0.1'] : []);
+    Http::fake();
+
+    $result = $this->engine->checkRedirectChain('https://sneaky.example/login');
+
+    expect($result['unavailable'] ?? false)->toBeTrue();
+    Http::assertNothingSent();
+});
+
+test('a public site that redirects to an internal address is flagged and the internal address is not visited', function () {
+    Http::fake([
+        'https://redirector.example/*' => Http::response('', 302, ['Location' => 'http://169.254.169.254/latest/meta-data/']),
+        '*' => Http::response('secret', 200),
+    ]);
+
+    $result = $this->engine->checkRedirectChain('https://redirector.example/go');
+
+    expect($result['points'])->toBe(20)
+        ->and($result['reasons'][0])->toContain('internal or private address')
+        ->and($result['unavailable'] ?? false)->toBeFalse();
+    Http::assertSentCount(1);
+});
+
+test('a redirect between sibling subdomains of the same site adds no points, a redirect to another domain still does', function () {
+    Http::fake([
+        'https://example.com/*' => Http::response('', 301, ['Location' => 'https://shop.example.com/']),
+        'https://shop.example.com/*' => Http::response('ok', 200),
+        'https://short.example/*' => Http::response('', 302, ['Location' => 'https://other-site.example/']),
+        'https://other-site.example/*' => Http::response('ok', 200),
+    ]);
+
+    $same = $this->engine->checkRedirectChain('https://example.com/');
+    $different = $this->engine->checkRedirectChain('https://short.example/x');
+
+    expect($same['points'])->toBe(0)
+        ->and($different['points'])->toBe(20);
+});
+
+// --- names written to look like a brand (look-alike letters, repeated letters, a missing letter) ---
+
+test('copies of a brand name are flagged, as links and as email senders', function () {
+    foreach (['https://gooogle.com', 'https://arnazon.com', 'https://microsft.com', 'https://netflixx.com', 'https://dropb0x.com', 'https://login.paypai.com/signin'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBeGreaterThanOrEqual(25);
+    }
+
+    foreach (['service@gooogle.com', 'billing@arnazon.com', 'it@microsft.com'] as $email) {
+        expect($this->engine->checkEmailDomain($email)['points'])->toBeGreaterThanOrEqual(25);
+    }
+});
+
+test('look-alike letters from another alphabet are flagged, but a genuine foreign-language address is not', function () {
+    foreach (['https://аpple.com', 'https://аррӏе.com', 'https://paypаl.com'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBeGreaterThanOrEqual(25);
+    }
+
+    foreach (['https://пример.рф', 'https://bücher.de', 'https://xn--bcher-kva.de', 'https://xn--e1afmkfd.xn--p1ai'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBe(0);
+    }
+});
+
+test('ordinary words one letter away from a brand are not flagged', function () {
+    foreach (['https://finance.com', 'https://lively.com', 'https://shoppe.com', 'https://goggles.com', 'https://appie.nl', 'https://paypay.ne.jp'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBe(0);
+    }
+});
+
+test('the hyphens inside a punycode address are not counted as a suspicious number of hyphens', function () {
+    $result = $this->engine->checkUrlSyntax('https://xn--e1afmkfd.xn--p1ai');
+
+    expect($result['reasons'])->not->toContain('Domain contains 3 hyphens, which is unusually high')
+        ->and($result['points'])->toBe(0);
+});
+
+// --- brand names inside an address, and parcel / e-wallet messages ---
+
+test('a distinctive brand name inside an address is flagged, an everyday word is not', function () {
+    foreach (['https://netflix-billing.com', 'https://instagram-login.com', 'https://whatsapp-web.net', 'https://binance-support.com', 'https://poslaju-parcel.com', 'https://ninjavan-delivery.com', 'https://jtexpress-bn.com', 'https://touchngo-reload.com'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBeGreaterThanOrEqual(25);
+    }
+
+    foreach (['https://economic-outlook.com', 'https://outlook-weekly.example', 'https://pos.com.my', 'https://www.jtexpress.my', 'https://www.tngdigital.com.my', 'https://spotifycharts.com'] as $url) {
+        expect($this->engine->checkUrlSyntax($url)['points'])->toBe(0);
+    }
+});
+
+test('the brand-word rule is shown as a brand-word rule so an old, clean site can still be calmed down', function () {
+    expect($this->engine->checkUrlSyntax('https://netflix-billing.com')['brand_rule_points'])->toBe(30);
+});
+
+test('parcel and e-wallet scam messages with a wrong link are flagged', function () {
+    $scams = [
+        'Pos Laju: Your parcel PL88231 is on hold due to unpaid shipping fee RM2.50. Pay now at http://poslaju-track.xyz/pay within 24 hours or it will be returned.',
+        'J&T Express: your parcel cannot be delivered, address incomplete. Update your address here https://jtexpress-bn.top/update',
+        'Ninja Van: Pakej anda tertahan. Sila bayar caj penghantaran di http://ninjavan-delivery.com/bayar untuk elak dipulangkan.',
+        "Touch 'n Go eWallet: your account is suspended, verify your identity within 24h at http://tng-verify.cc/login or your balance will be frozen.",
+    ];
+
+    foreach ($scams as $message) {
+        expect($this->engine->scoreMessageRules($message)['score'])->toBeGreaterThanOrEqual(25);
+    }
+});
+
+test('real parcel and e-wallet messages and ordinary talk about couriers are not flagged', function () {
+    $legit = [
+        'Pos Laju: your parcel PL88231 is out for delivery today. Track at https://www.pos.com.my/track',
+        'J&T Express: your parcel is on its way. Track it at https://www.jtexpress.my/tracking',
+        "Touch 'n Go eWallet: you received RM10 from Ali. Open the app to view.",
+        'Your order has shipped with Ninja Van and will arrive in 2 days. Order #1234 - thanks for shopping with us!',
+        'Hi, can you ship via J&T Express or Pos Laju? Which is cheaper to Kuala Belait?',
+    ];
+
+    foreach ($legit as $message) {
+        expect($this->engine->scoreMessageRules($message)['score'])->toBeLessThan(25);
+    }
+});
+
+test('a redirect between two well-known sites costs nothing, but a well-known site sending visitors to an unknown one still does', function () {
+    PopularDomain::create(['domain' => 'githubusercontent.com', 'position' => 1800]);
+    PopularDomain::create(['domain' => 'github.com', 'position' => 40]);
+    PopularDomain::create(['domain' => 'unknownshop.example', 'position' => 900_000]);
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'raw.githubusercontent.com*' => Http::response('', 301, ['Location' => 'https://github.com/']),
+        'github.com*' => Http::response('ok', 200),
+        'unknownshop.example*' => Http::response('', 302, ['Location' => 'https://github.com/']),
+        'evil.example*' => Http::response('', 302, ['Location' => 'https://github.com/']),
+    ]);
+
+    $wellKnown = $this->engine->checkRedirectChain('https://raw.githubusercontent.com/');
+
+    expect($wellKnown['points'])->toBe(0)
+        ->and($wellKnown['flagged'])->toBeFalse()
+        // a site outside the popular range gets no exemption, and neither does one that is not listed at all
+        ->and($this->engine->checkRedirectChain('https://unknownshop.example/')['points'])->toBe(20)
+        ->and($this->engine->checkRedirectChain('https://evil.example/')['points'])->toBe(20);
 });

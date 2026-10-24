@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\SafeUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,6 +17,13 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    ->beforeEach(function () {
+        // The scan refuses to visit names that resolve to internal addresses (SafeUrl). Local dev tools such as
+        // Herd point every *.test name at 127.0.0.1, so tests never use real DNS: every name "does not resolve",
+        // and a test that needs a specific answer sets its own with SafeUrl::resolveUsing().
+        SafeUrl::resolveUsing(fn (string $host): array => []);
+    })
+    ->afterEach(fn () => SafeUrl::resolveUsing(null))
     ->in('Feature');
 
 /*

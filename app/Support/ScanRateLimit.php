@@ -73,7 +73,7 @@ class ScanRateLimit
         return match (true) {
             $request->hasFile('screenshot') => 'screenshot',
             $request->hasFile('file') => 'file',
-            $request->filled('email') || $request->filled('subject') || $request->filled('body') => 'email',
+            $request->hasFile('eml_file') || $request->filled('email') || $request->filled('subject') || $request->filled('body') => 'email',
             $request->filled('phone') => 'phone',
             default => 'url',
         };

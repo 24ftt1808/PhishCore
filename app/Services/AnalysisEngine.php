@@ -6,6 +6,11 @@ use App\Models\HiddenNumber;
 use App\Models\NumberReport;
 use App\Models\Report;
 use App\Services\Concerns\ScansFiles;
+use App\Support\EmailHeaders;
+use App\Support\LookAlike;
+use App\Support\RegistrableDomain;
+use App\Support\SafeUrl;
+use App\Support\ThreatLookup;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -25,155 +30,33 @@ class AnalysisEngine
     use ScansFiles;
 
     /**
-     * Brunei-specific brands and their OFFICIAL domains. Every domain here was
-     * confirmed against the organisation's own site/Wikipedia before adding —
-     * a wrong domain would flag the brand's real site as impersonating itself.
+     * Brand data lives in config/brands.php (see the note at the top of that file), so adding a brand
+     * is a data change, not a code change.
      *
-     * Deliberately multi-word for names that are ordinary words or surnames
-     * ("imagine", "taib", "dst"): a bare match would fire on unrelated pages.
-     * Merged into the page-content and email brand checks below.
+     * @return array<string, array<int, string>> brand => its official domains
      */
-    private const BRUNEI_BRANDS = [
-        'baiduri' => ['baiduri.com.bn'],
-        'bdcb' => ['bdcb.gov.bn'],
-        'progresif' => ['progresif.com'],
-        'datastream digital' => ['dst.com.bn'],
-        'dst brunei' => ['dst.com.bn'],
-        'imagine brunei' => ['imagine.com.bn'],
-        'perbadanan taib' => ['taib.com.bn', 'insuranstaib.com.bn'],
-        'insurans islam taib' => ['insuranstaib.com.bn'],
-        'brunei customs' => ['customs.gov.bn'],
-        'royal customs and excise' => ['customs.gov.bn'],
-        'royal brunei airlines' => ['flyroyalbrunei.com'],
-        'royal brunei police force' => ['polis.gov.bn', 'police.gov.bn'],
-        'polis diraja brunei' => ['polis.gov.bn', 'police.gov.bn'],
-        'immigration and national registration department' => ['immigration.gov.bn'],
-        'jabatan imigresen' => ['immigration.gov.bn'],
-        'land transport department' => ['jpd.gov.bn'],
-        'jabatan pengangkutan darat' => ['jpd.gov.bn'],
-        'department of electrical services' => ['des.gov.bn'],
-        'jabatan perkhidmatan elektrik' => ['des.gov.bn'],
-        'brunei post' => ['post.gov.bn'],
-        'brunei postal services' => ['post.gov.bn'],
-        // Added Oct 2026. BIBD's full name, Pos Brunei (the Malay name) and TAP (tap.com.bn, its
-        // own site). The police list police.gov.bn as well as polis.gov.bn (Wikipedia infobox).
-        'bank islam brunei darussalam' => ['bibd.com.bn'],
-        'pos brunei' => ['post.gov.bn'],
-        'tabung amanah pekerja' => ['tap.com.bn'],
-    ];
+    private function officialBrandDomains(): array
+    {
+        return config('brands.official_domains', []);
+    }
 
-    /**
-     * Government names whose real home is any .gov.bn site (the e-Darussalam portal is
-     * www.gov.bn). Kept out of BRUNEI_BRANDS on purpose: listing "gov.bn" there would make every
-     * .gov.bn site count as an "official brand page", which switches off the redirect check for
-     * a hacked ministry site that sends people elsewhere.
-     */
-    private const BRUNEI_GOV_NAMES = ['e-darussalam', 'edarussalam'];
+    /** @return array<string, array<int, string>> Brunei brand (a name that is not an everyday word) => its official domains */
+    private function bruneiBrands(): array
+    {
+        return config('brands.brunei_brands', []);
+    }
 
-    /**
-     * Short Brunei names that are only treated as the brand when written in capitals ("DST",
-     * "JPD"), the same way "UPS" is handled: in lower case they are ordinary words or parts of
-     * words ("tap the button", "dst" in a file name).
-     */
-    private const BRUNEI_ACRONYMS = [
-        'DST' => ['dst.com.bn'],
-        'JPD' => ['jpd.gov.bn'],
-        'TAP' => ['tap.com.bn'],
-        'TAIB' => ['taib.com.bn', 'insuranstaib.com.bn'],
-        'RBPF' => ['polis.gov.bn', 'police.gov.bn'],
-    ];
+    /** @return array<string, array<int, string>> Brunei acronym (written in capitals) => its official domains */
+    private function bruneiAcronyms(): array
+    {
+        return config('brands.brunei_acronyms', []);
+    }
 
-    /**
-     * Brand => official domains, shared by the page-content brand check and
-     * by checkUrlSyntax() so a brand's own site is never treated as imitating
-     * it. Add a domain here only after confirming it against the
-     * organisation's own site: a wrong entry would flag the real site.
-     */
-    private const OFFICIAL_BRAND_DOMAINS = [
-        'dhl' => ['dhl.com'],
-        'fedex' => ['fedex.com'],
-        'ups' => ['ups.com'],
-        'paypal' => ['paypal.com'],
-        // google.github.io, googleblog.blogspot.com and blog.google are
-        // Google's own pages; microsoft/netflix/spotify .github.io are those
-        // companies' official open-source pages. Each was opened and confirmed
-        // before adding, because GitHub account names are first come first
-        // served and other brands' same-named accounts may belong to someone else.
-        'google' => ['google.com', 'gmail.com', 'blog.google', 'googleblog.blogspot.com', 'google.github.io'],
-        'facebook' => ['facebook.com', 'fb.com'],
-        'apple' => ['apple.com', 'icloud.com'],
-        'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com', 'microsoft.github.io'],
-        'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
-        'amazon' => ['amazon.com'],
-        'netflix' => ['netflix.com', 'netflix.github.io'],
-        'maybank' => ['maybank2u.com.my', 'maybank.com'],
-        'bibd' => ['bibd.com.bn'],
-        // Verified by opening each site: whatsapp.com, livelo.com.br, correios.com.br;
-        // bradesco.com.br redirects to banco.bradesco.
-        'bradesco' => ['bradesco.com.br', 'banco.bradesco'],
-        'livelo' => ['livelo.com.br'],
-        'correios' => ['correios.com.br'],
-        'whatsapp' => ['whatsapp.com', 'whatsapp.net'],
-        // Crypto/wallets — domains verified via web search before adding,
-        // not assumed, after an earlier session mistake (a wrong domain
-        // guess for politeknikbrunei.edu.bn) taught the cost of guessing.
-        'trezor' => ['trezor.io'],
-        'metamask' => ['metamask.io'],
-        'binance' => ['binance.com'],
-        'coinbase' => ['coinbase.com'],
-        'kraken' => ['kraken.com'],
-        'crypto.com' => ['crypto.com'],
-        'blockchain.com' => ['blockchain.com'],
-        'trust wallet' => ['trustwallet.com'],
-        // Regional banking — baiduri.com.bn and progresif.com confirmed
-        // via web search; both differ from a naive first guess.
-        'baiduri' => ['baiduri.com.bn'],
-        'hsbc' => ['hsbc.com', 'hsbc.com.bn'],
-        'citibank' => ['citibank.com', 'citi.com'],
-        'standard chartered' => ['sc.com'],
-        // E-commerce
-        // Regional sites Bruneians use: shopee.sg/.co.id/.com.br are listed as Shopee's own
-        // domains (netify.ai); the Lazada country sites are on its Wikipedia page.
-        'shopee' => ['shopee.com', 'shopee.com.my', 'shopee.sg', 'shopee.co.id', 'shopee.ph', 'shopee.co.th', 'shopee.vn', 'shopee.tw', 'shopee.com.br', 'shopeemobile.com'],
-        'lazada' => ['lazada.com', 'lazada.com.my', 'lazada.sg', 'lazada.co.id', 'lazada.co.th', 'lazada.vn', 'lazada.com.ph'],
-        'alibaba' => ['alibaba.com'],
-        'ebay' => ['ebay.com'],
-        // Telco
-        'progresif' => ['progresif.com'],
-        // Tech/social — steam and zoom deliberately do NOT use
-        // "brandname.com" (steampowered.com, zoom.us), confirmed before
-        // adding since a wrong domain here would flag the brand's own
-        // real site as impersonating itself.
-        'instagram' => ['instagram.com'],
-        'whatsapp' => ['whatsapp.com'],
-        'linkedin' => ['linkedin.com'],
-        'tiktok' => ['tiktok.com'],
-        'spotify' => ['spotify.com', 'spotify.github.io'],
-        'adobe' => ['adobe.com'],
-        'dropbox' => ['dropbox.com'],
-        'steam' => ['steampowered.com', 'steamcommunity.com'],
-        // Gaming platforms and publishers. Their own domains are brand + ".com" in most cases, but
-        // each was named on the company's own site or store pages; open each once to confirm before
-        // relying on it, because a wrong entry would flag the real site (and a lookalike of it).
-        'roblox' => ['roblox.com'],
-        'discord' => ['discord.com', 'discord.gg', 'discord.gift', 'discordapp.com'],
-        'epic games' => ['epicgames.com'],
-        'riot games' => ['riotgames.com'],
-        // garena.sg is the main site named on Garena's Wikipedia page, and its Taiwan sites are on garena.tw;
-        // the other country sites (my, ph, vn, th, id) are not listed until each one is confirmed.
-        'garena' => ['garena.com', 'garena.sg', 'garena.tw'],
-        'mobile legends' => ['mobilelegends.com', 'moonton.com'],
-        'minecraft' => ['minecraft.net', 'mojang.com'],
-        'playstation' => ['playstation.com'],
-        'xbox' => ['xbox.com'],
-        'nintendo' => ['nintendo.com'],
-        'zoom' => ['zoom.us'],
-        'twitter' => ['twitter.com', 'x.com'],
-        // Shipping
-        'usps' => ['usps.com'],
-        'royal mail' => ['royalmail.com'],
-        'singpost' => ['singpost.com'],
-    ];
+    /** @return array<int, string> government names whose real home is any .gov.bn site */
+    private function bruneiGovNames(): array
+    {
+        return config('brands.brunei_gov_names', []);
+    }
 
     public function checkUrlSyntax(string $url): array
     {
@@ -193,7 +76,7 @@ class AnalysisEngine
             $points += 25;
         }
 
-        $hyphenCount = substr_count(parse_url($url, PHP_URL_HOST) ?? '', '-');
+        $hyphenCount = LookAlike::hyphenCount(parse_url($url, PHP_URL_HOST) ?? '');
         if ($hyphenCount >= 2) {
             $reasons[] = "Domain contains {$hyphenCount} hyphens, which is unusually high";
             $points += 15;
@@ -212,7 +95,9 @@ class AnalysisEngine
         // A brand's own site can contain a brand word without imitating
         // anything: "maybank2u.com.my" contains "bank" and is Maybank's real
         // domain. Exact official domains (and their subdomains) are skipped.
-        $isOfficialBrandSite = $this->isOfficialBrandDomain($host);
+        // A very popular site (top of the Tranco ranking, see ThreatLookup) is treated the same way: it is
+        // a well-known name, not a fresh copy of one, so the spelling rules below leave it alone.
+        $isOfficialBrandSite = $this->isOfficialBrandDomain($host) || ThreatLookup::isPopular($host);
         foreach ($brands as $brand) {
             $matchesBrand = ! $isOfficialBrandSite && str_contains($normalizedHost, $brand);
             // The legit-domain exclusion must run on the ORIGINAL host, not the
@@ -222,12 +107,20 @@ class AnalysisEngine
             $isLegitDomain = $host === $brand.'.com' || str_ends_with($host, '.'.$brand.'.com');
 
             if ($matchesBrand && ! $isLegitDomain) {
+                // An ordinary word ("bank") is not one organisation's name, so on its own it is only a mild
+                // warning; it counts in full when something else about the address looks like a disguise.
+                $isOrdinaryWord = in_array($brand, self::ORDINARY_WORD_BRANDS, true)
+                    && ! $this->addressLooksDisguised($host, $brand);
+
                 $reasons[] = str_contains($host, $brand)
-                    ? "Contains brand name \"{$brand}\" in a suspicious position within the domain"
+                    ? ($isOrdinaryWord
+                        ? "Contains the common word \"{$brand}\" in the domain, which is only a mild warning on its own"
+                        : "Contains brand name \"{$brand}\" in a suspicious position within the domain")
                     : "Domain appears to mimic \"{$brand}\" using character substitution (e.g. a digit in place of a letter)";
-                $points += 30;
+                $weight = $isOrdinaryWord ? 10 : 30;
+                $points += $weight;
                 // only a plain brand word can be calmed down; a digit-for-letter disguise ("paypa1") never is
-                $brandRulePoints = str_contains($host, $brand) ? 30 : 0;
+                $brandRulePoints = str_contains($host, $brand) ? $weight : 0;
                 break;
             }
         }
@@ -249,14 +142,16 @@ class AnalysisEngine
                 'bibd' => ['bibd.com.bn'],
                 'baiduri' => ['baiduri.com.bn'],
                 'bdcb' => ['bdcb.gov.bn'],
-                'progresif' => ['progresif.com'],
+                'progresif' => ['progresif.com', 'progresifevents.com'],
+                'mydst' => ['dst.com.bn'],
+                'tarus' => ['tarus.com.bn'],
                 'bruneipost' => ['post.gov.bn'],
                 'posbrunei' => ['post.gov.bn'],
                 'posbn' => ['post.gov.bn'],
                 'royalbrunei' => ['flyroyalbrunei.com'],
                 'edarussalam' => ['gov.bn'],
-                'shopee' => self::OFFICIAL_BRAND_DOMAINS['shopee'],
-                'lazada' => self::OFFICIAL_BRAND_DOMAINS['lazada'],
+                'shopee' => $this->officialBrandDomains()['shopee'],
+                'lazada' => $this->officialBrandDomains()['lazada'],
             ];
             // Short names only count as a hyphenated word in the address ("dst-update.online", not
             // "midstream.com" or another country's "dst.com"); TAP also needs a pension word, as
@@ -307,6 +202,30 @@ class AnalysisEngine
             }
         }
 
+        // A distinctive brand name from config/brands.php inside the address ("netflix-billing.com",
+        // "ninjavan-delivery.com"). The short fixed list above only covers a few brands; this one grows
+        // with the config. Counted as a brand-word rule, so a clean, long-established site is calmed down
+        // the same way (see softenBrandWordForEstablishedSite).
+        if (! $isOfficialBrandSite && ! preg_grep('/brand name|mimic|imitates/', $reasons)
+            && ! in_array(RegistrableDomain::of($host), array_map('strtolower', config('brands.known_lookalikes', [])), true)) {
+            foreach ($this->distinctiveBrandNames() as $name) {
+                if (str_contains($host, $name)) {
+                    $reasons[] = "Contains brand name \"{$name}\" in a suspicious position within the domain";
+                    $points += 30;
+                    $brandRulePoints = 30;
+                    break;
+                }
+            }
+        }
+
+        // A name written to be mistaken for a known brand ("gooogle", "arnazon", a Cyrillic "а" in "аpple").
+        // Only when no brand-word rule above has already fired, so one fake is not counted twice.
+        if (! $isOfficialBrandSite && ! preg_grep('/brand name|mimic|imitates|looks like|alphabets/', $reasons)
+            && ($lookAlike = $this->lookAlikeFinding($host)) !== null) {
+            $reasons[] = $this->lookAlikeReason($lookAlike);
+            $points += $lookAlike['type'] === 'typo' ? 25 : 30;
+        }
+
         // Fake Brunei-government look: "gov.bn" / "gov-bn" used inside a
         // domain that does not actually end in .gov.bn.
         if (preg_match('/gov[.\-]?bn/', $host) && ! str_ends_with($host, '.gov.bn') && $host !== 'gov.bn') {
@@ -328,6 +247,92 @@ class AnalysisEngine
             'reasons' => $reasons,
             'brand_rule_points' => $brandRulePoints,
         ];
+    }
+
+    /** "Brands" that are ordinary words too, so a domain containing one is not necessarily imitating anyone. */
+    private const ORDINARY_WORD_BRANDS = ['bank'];
+
+    /**
+     * Whether an address has a second sign of a disguise besides containing a word: the word written
+     * with look-alike characters ("b4nk"), a heap of hyphens, a word scams use to sound official, or a
+     * longer brand name that contains the word ("maybank").
+     */
+    private function addressLooksDisguised(string $host, string $word): bool
+    {
+        // The word may be part of a real organisation's name ("maybank", "citibank"), taken from the
+        // official-domain list. An address that carries such a name but is not that organisation's site
+        // is imitating it, not just using an everyday word.
+        foreach (array_keys($this->officialBrandDomains()) as $name) {
+            if ($name !== $word && str_contains($name, $word) && str_contains($host, $name)) {
+                return true;
+            }
+        }
+
+        return ! str_contains($host, $word)
+            || substr_count($host, '-') >= 2
+            || preg_match('/(secure|login|signin|verify|verification|update|support|alert|confirm|auth|unlock|billing|refund|claim|wallet)/', $host) === 1;
+    }
+
+    /**
+     * Brand names (from config/brands.php) distinctive enough that finding one inside a web address means
+     * something: one word of at least seven letters that is not also an everyday word.
+     *
+     * @return array<int, string>
+     */
+    private function distinctiveBrandNames(): array
+    {
+        $everyday = config('brands.ordinary_word_brands', []);
+
+        return array_values(array_filter(
+            array_keys($this->brandDomainMap()),
+            fn (string $name): bool => strlen($name) >= 7
+                && preg_match('/^[a-z0-9]+$/', $name) === 1
+                && ! in_array($name, $everyday, true),
+        ));
+    }
+
+    /**
+     * A host written to be mistaken for a known brand (see LookAlike), or null. The brands and the
+     * list of real sites that must never be caught come from config/brands.php.
+     *
+     * @return array{type: string, brand: ?string, name: string}|null
+     */
+    private function lookAlikeFinding(string $host): ?array
+    {
+        $brands = array_values(array_filter(
+            array_keys($this->brandDomainMap()),
+            fn (string $brand): bool => preg_match('/^[a-z0-9]+$/', $brand) === 1,
+        ));
+
+        $knownGood = config('brands.known_lookalikes', []);
+        $found = LookAlike::find($host, $brands, $knownGood);
+
+        if ($found !== null) {
+            return $found;
+        }
+
+        // The most visited sites of the world are protected too (see ThreatLookup::popularNames), unless the
+        // address is itself a site on the popular list: a real site of its own is not a copy of another.
+        if (ThreatLookup::position($host) !== null) {
+            return null;
+        }
+
+        $popular = array_values(array_diff(ThreatLookup::popularNames(), $brands));
+
+        return $popular === [] ? null : LookAlike::find($host, $popular, $knownGood);
+    }
+
+    /** Plain-language reason for a look-alike finding. */
+    private function lookAlikeReason(array $finding): string
+    {
+        $brand = $finding['brand'] !== null ? ucfirst($finding['brand']) : null;
+
+        return match ($finding['type']) {
+            'mixed' => 'The domain mixes letters from different alphabets (for example Latin and Cyrillic), a trick used to fake a real name',
+            'homoglyph' => "The domain uses look-alike letters from another alphabet to imitate \"{$brand}\"",
+            'typo' => "The domain looks like \"{$brand}\" with a letter missing or swapped, but is not its official domain",
+            default => "The domain looks like \"{$brand}\" written with look-alike or repeated letters, but is not its official domain",
+        };
     }
 
     /** A site must be at least this old (in days) before a brand word in its address is treated as a plain name. */
@@ -453,6 +458,10 @@ class AnalysisEngine
             ];
         }
 
+        if (($why = SafeUrl::problem($url)) !== null) {
+            return ['flagged' => false, 'points' => 0, 'reasons' => [$why], 'unavailable' => true];
+        }
+
         try {
             // Confirmed via testing: a raw stream_socket_client TLS handshake
             // (the previous approach) failed on a legitimate, correctly
@@ -463,7 +472,7 @@ class AnalysisEngine
             // versions, and certificate chains far more robustly than a raw
             // socket handshake. A HEAD request is enough to trigger the full
             // TLS handshake without downloading the page body.
-            Http::timeout(10)->head($url);
+            Http::withOptions(SafeUrl::redirectOptions())->timeout(10)->head($url);
 
             return ['flagged' => false, 'points' => 0, 'reasons' => []];
         } catch (ConnectionException $e) {
@@ -507,7 +516,62 @@ class AnalysisEngine
         }
     }
 
+    /**
+     * Known threat lists: the community phishing lists saved by feeds:update (OpenPhish, URLhaus, PhishTank)
+     * and Google Safe Browsing. A hit on either is a warning; with no hit the Google result is returned as it is.
+     */
     public function checkBlacklist(string $url): array
+    {
+        $google = $this->checkSafeBrowsing($url);
+        $feeds = $this->checkThreatFeeds($url);
+
+        if (! $feeds['flagged']) {
+            return $google;
+        }
+
+        $googleHit = $google['flagged'] && ! ($google['unavailable'] ?? false);
+
+        return [
+            'flagged' => true,
+            'points' => min(60, $feeds['points'] + ($googleHit ? $google['points'] : 0)),
+            'reasons' => array_merge($feeds['reasons'], $googleHit ? $google['reasons'] : []),
+        ];
+    }
+
+    /**
+     * The saved community lists. The exact address on a list is a strong sign. Another page on the same
+     * registered domain is a weaker one, and is ignored for a well-known site: one phishing page on a big
+     * platform says nothing about the platform.
+     */
+    public function checkThreatFeeds(string $url): array
+    {
+        $none = ['flagged' => false, 'points' => 0, 'reasons' => []];
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        if ($host === '') {
+            return $none;
+        }
+
+        if (($listed = ThreatLookup::exactMatch($url)) !== null) {
+            return [
+                'flagged' => true,
+                'points' => 50,
+                'reasons' => ["This exact address is on {$listed['name']}, a community list of reported phishing and malware pages"],
+            ];
+        }
+
+        if (($listed = ThreatLookup::domainMatch($host)) !== null && ! ThreatLookup::isPopular($host)) {
+            return [
+                'flagged' => true,
+                'points' => 25,
+                'reasons' => ["Another page on this website is on {$listed['name']}, a community list of reported phishing and malware pages"],
+            ];
+        }
+
+        return $none;
+    }
+
+    private function checkSafeBrowsing(string $url): array
     {
         $apiKey = config('services.google_safe_browsing.key');
 
@@ -784,6 +848,19 @@ class AnalysisEngine
         $originalHost = parse_url($url, PHP_URL_HOST);
         $current = $url;
         $reached = false;
+        $refusedHop = false;
+
+        // This server visits whatever address a visitor types in, so each address (the first one and
+        // every redirect after it) is checked before it is requested. See SafeUrl.
+        if (($why = SafeUrl::problem($url)) !== null) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'reasons' => [$why],
+                'chain' => $chain,
+                'unavailable' => true,
+            ];
+        }
 
         for ($hop = 0; $hop < 5; $hop++) {
             try {
@@ -812,6 +889,13 @@ class AnalysisEngine
             }
 
             $chain[] = $location;
+
+            if (SafeUrl::problem($location) !== null) {
+                $refusedHop = true;
+
+                break;
+            }
+
             $current = $location;
         }
 
@@ -838,14 +922,16 @@ class AnalysisEngine
             $points += 15;
         }
 
-        // Comparing hosts as raw strings would flag the extremely common,
-        // totally benign "apex domain redirects to www subdomain" pattern
-        // (e.g. google.com -> www.google.com) as if it were a suspicious
-        // cross-domain redirect. Strip a leading "www." before comparing so
-        // only genuinely different domains get flagged.
-        $normalizeHost = fn (?string $h) => preg_replace('/^www\./', '', strtolower($h ?? ''));
-
-        if ($finalHost && $originalHost && $normalizeHost($finalHost) !== $normalizeHost($originalHost)) {
+        // A legitimate site that sends its own visitors elsewhere on the same site is the everyday
+        // case: example.com -> www.example.com, example.com -> shop.example.com, bibd.com.bn ->
+        // online.bibd.com.bn. Comparing the registrable domain (see RegistrableDomain) treats all of
+        // those as the same site; only a genuinely different domain is flagged.
+        if ($refusedHop) {
+            // A public website that sends the visitor to an internal address is attacking whoever follows
+            // it (or whoever scans it), and no real site does this to the open internet.
+            $reasons[] = 'The link redirects to an internal or private address, which no legitimate public website does';
+            $points += 20;
+        } elseif ($finalHost && $originalHost && ! RegistrableDomain::same($finalHost, $originalHost)) {
             if ($this->isOfficialBrandDomain((string) $originalHost)) {
                 // Domains on the curated official list cannot be registered by a
                 // scammer, so where they send visitors is the owner's choice.
@@ -853,6 +939,11 @@ class AnalysisEngine
             } elseif ($this->isBruneiGovernmentHost($originalHost) && $this->isBruneiGovernmentHost($finalHost)) {
                 // e.g. www.mofe.gov.bn -> www.mof.gov.bn after a ministry rename.
                 $reasons[] = "URL redirects to another .gov.bn domain ({$finalHost}); redirects between Brunei government sites are normal";
+            } elseif (ThreatLookup::isPopular((string) $originalHost) && ThreatLookup::isPopular((string) $finalHost)) {
+                // Two of the world's most visited sites (raw.githubusercontent.com -> github.com, youtu.be ->
+                // youtube.com). A scammer cannot make a brand-new site rank among them, so this is the owner's
+                // own routing. A popular site that sends visitors to an unknown one is still flagged below.
+                $reasons[] = "URL redirects to {$finalHost}; both are well-known, widely visited websites";
             } else {
                 $reasons[] = "URL ultimately redirects to a different domain ({$finalHost}) than the one submitted ({$originalHost})";
                 $points += 20;
@@ -891,15 +982,8 @@ class AnalysisEngine
         $host = strtolower(parse_url($url, PHP_URL_HOST) ?? '');
         $host = preg_replace('/^www\./', '', $host);
 
-        $freeHostSuffixes = [
-            'weebly.com', 'wixsite.com', 'blogspot.com', 'netlify.app',
-            'github.io', 'pages.dev', 'carrd.co', 'glitch.me',
-            '000webhostapp.com', 'firebaseapp.com', 'web.app',
-            'herokuapp.com', 'vercel.app', 'repl.co', 'r2.dev',
-            'sites.google.com', 'wordpress.com', 'square.site',
-        ];
-
-        foreach ($freeHostSuffixes as $suffix) {
+        // One shared list (also used to tell "same site" from "same platform", see RegistrableDomain).
+        foreach (RegistrableDomain::FREE_HOSTING_SUFFIXES as $suffix) {
             if ($host === $suffix || str_ends_with($host, '.'.$suffix)) {
                 $points = 10;
                 $reasons = ["Hosted on \"{$suffix}\", a free website-builder/hosting platform commonly used for disposable phishing pages — legitimate small projects also use these, so this is a supporting signal only"];
@@ -976,11 +1060,18 @@ class AnalysisEngine
             ];
         }
 
+        if (($why = SafeUrl::problem($url)) !== null) {
+            return [
+                'status_label' => 'UNKNOWN',
+                'reasons' => [$why],
+            ];
+        }
+
         try {
             // Same browser-style User-Agent as the page-content check: many
             // banks and CDNs drop connections from the default HTTP-client agent.
             $response = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'])
-                ->withOptions(['allow_redirects' => ['max' => 3]])
+                ->withOptions(SafeUrl::redirectOptions(3))
                 ->timeout(8)
                 ->get($url);
         } catch (ConnectionException $e) {
@@ -1060,23 +1151,16 @@ class AnalysisEngine
             return $empty;
         }
 
-        // Refuse to fetch when the URL's host is a raw IP literal pointing
-        // at a private/internal address (e.g. "http://127.0.0.1" or an
-        // internal IP) — the direct, obvious SSRF risk: someone submitting
-        // a URL that makes this server attack its own internal network.
+        // Refuse to fetch an address that leads to this server's own network: an IP in any spelling
+        // (127.0.0.1, 2130706433, 0x7f.0.0.1, [::1]), a name that resolves to an internal address,
+        // an unusual port, and every redirect the page answers with (see SafeUrl).
         //
-        // Deliberately does NOT attempt to pre-resolve domain names to an
-        // IP and check that instead — confirmed via testing that PHP's
-        // gethostbyname() can fail to resolve a domain that the actual
-        // fetch (via curl) resolves and reaches successfully, which caused
-        // a real, legitimate site to be wrongly blocked as "private."
-        // Known scope limitation: a domain specifically crafted to resolve
-        // to an internal IP (DNS rebinding) would not be caught by this
-        // check — a genuinely hard problem even for production-grade
-        // security tools, and out of scope for this project.
-        if (filter_var($host, FILTER_VALIDATE_IP)
-            && ! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            $empty['reasons'][] = 'Content check skipped: URL points directly at a private/internal address';
+        // A name that PHP cannot resolve is still fetched: PHP's resolver can fail on a domain that
+        // curl reaches, and blocking those wrongly flagged a real site as "private" once. A name that
+        // resolves to an internal address on this lookup but to a public one on curl's own lookup
+        // (DNS rebinding) is the one gap left; pinning the resolved address would close it.
+        if (($why = SafeUrl::problem($url)) !== null) {
+            $empty['reasons'][] = 'Content check skipped: '.lcfirst($why);
 
             return $empty;
         }
@@ -1087,7 +1171,7 @@ class AnalysisEngine
             // against Wikipedia) — improving real-world coverage without
             // pretending to be anything other than an automated fetch.
             $response = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'])
-                ->withOptions(['allow_redirects' => ['max' => 3]])
+                ->withOptions(SafeUrl::redirectOptions(3))
                 ->timeout(8)
                 ->get($url);
         } catch (\Throwable $e) {
@@ -1341,7 +1425,7 @@ class AnalysisEngine
     {
         $words = preg_split('/[^a-z0-9]+/', strtolower($path), -1, PREG_SPLIT_NO_EMPTY);
 
-        foreach (array_keys(self::OFFICIAL_BRAND_DOMAINS) as $brand) {
+        foreach (array_keys($this->officialBrandDomains()) as $brand) {
             if (! preg_match('/^[a-z0-9]+$/', $brand)) {
                 continue; // multi-word or dotted names such as "royal mail"
             }
@@ -1363,7 +1447,7 @@ class AnalysisEngine
     /** Every known brand (lower case) => its official domains, Brunei names and acronyms included. */
     private function brandDomainMap(): array
     {
-        return array_merge(self::OFFICIAL_BRAND_DOMAINS, self::BRUNEI_BRANDS, array_change_key_case(self::BRUNEI_ACRONYMS, CASE_LOWER));
+        return array_merge($this->officialBrandDomains(), $this->bruneiBrands(), array_change_key_case($this->bruneiAcronyms(), CASE_LOWER));
     }
 
     private function isOfficialBrandDomain(string $host): bool
@@ -1560,6 +1644,24 @@ class AnalysisEngine
         ];
     }
 
+    /** "Sign in with Google", "Continue with Facebook", "Log in using Apple", "Daftar dengan Google". Not "with YOUR PayPal account". */
+    private const SOCIAL_LOGIN_PHRASE = '/\b(?:sign\s*(?:in|up)|log\s*(?:in|on)|login|continue|connect|register|join|masuk|daftar|log\s*masuk)\s+(?:with|using|via|through|dengan|guna|melalui)\b(?!\s+(?:your|my|an?|the|akaun|kata)\b)/iu';
+
+    /** Sign-in pages of the big identity providers, for "Sign in with ..." buttons that show only a logo. */
+    private const IDENTITY_PROVIDER_LINK = '~(?:accounts\.google\.com|facebook\.com/(?:v[\d.]+/)?dialog/oauth|appleid\.apple\.com|login\.microsoftonline\.com|login\.live\.com|github\.com/login/oauth|linkedin\.com/oauth|(?:api\.)?(?:twitter|x)\.com/(?:i/)?oauth)~i';
+
+    /** The page's HTML without its "sign in with another service" buttons and links. */
+    private function withoutSocialLoginControls(string $html): string
+    {
+        return preg_replace_callback('/<(a|button)\b[^>]*>.*?<\/\1>/is', function (array $match): string {
+            $block = $match[0];
+            $namesProviderAsLogin = mb_strlen(trim(strip_tags($block))) <= 80 && preg_match(self::SOCIAL_LOGIN_PHRASE, $block) === 1;
+            $linksToProvider = preg_match(self::IDENTITY_PROVIDER_LINK, $block) === 1;
+
+            return $namesProviderAsLogin || $linksToProvider ? ' ' : $block;
+        }, $html) ?? $html;
+    }
+
     /**
      * Whether a brand named somewhere in a page is being USED by the page, not
      * just mentioned. It counts when the brand is in the page's identity (title,
@@ -1571,6 +1673,15 @@ class AnalysisEngine
      */
     private function brandIsPageIdentityOrLoginPrompt(string $brand, string $title, string $html, string $bodyText): bool
     {
+        // "Sign in with Google" and "Continue with Facebook" buttons name a brand as the way to
+        // log in, not as the site. Almost every shop, forum and app has them, so they are set
+        // aside before looking for a page that pretends to BE the brand.
+        $withoutSocialButtons = $this->withoutSocialLoginControls($html);
+        if ($withoutSocialButtons !== $html) {
+            $html = $withoutSocialButtons;
+            $bodyText = Str::limit(trim(strip_tags(preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html) ?? $html)), 5000, '');
+        }
+
         $b = preg_quote($brand, '/');
 
         $identity = $title;
@@ -1605,29 +1716,10 @@ class AnalysisEngine
      */
     private function detectBrandExactMatch(string $text, ?callable $confirm = null): array
     {
-        $knownBrands = [
-            'dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
-            'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd',
-            // Crypto/wallets — added after testing revealed a real Trezor
-            // phishing site slipped through with the original list.
-            'trezor', 'metamask', 'binance', 'coinbase', 'kraken',
-            'crypto.com', 'blockchain.com', 'trust wallet',
-            // Regional banking (Brunei/SEA-relevant)
-            'baiduri', 'hsbc', 'citibank', 'standard chartered',
-            // E-commerce (major SEA phishing targets)
-            'shopee', 'lazada', 'alibaba', 'ebay',
-            // Telco (Brunei-relevant)
-            'progresif',
-            // Tech/social (common credential-phishing targets)
-            'instagram', 'whatsapp', 'linkedin', 'tiktok', 'spotify',
-            'adobe', 'dropbox', 'steam', 'zoom', 'twitter',
-            // Gaming platforms (credential and gift-card phishing targets)
-            'roblox', 'discord', 'epic games', 'riot games', 'garena', 'mobile legends', 'minecraft', 'playstation', 'xbox', 'nintendo',
-            // Shipping (beyond the original 3)
-            'usps', 'royal mail', 'singpost',
-        ];
+        // The names come from config/brands.php (page_brands).
+        $knownBrands = config('brands.page_brands', []);
 
-        $knownBrands = array_values(array_unique(array_merge($knownBrands, array_keys(self::BRUNEI_BRANDS))));
+        $knownBrands = array_values(array_unique(array_merge($knownBrands, array_keys($this->bruneiBrands()))));
 
         $lowerText = strtolower($text);
 
@@ -1650,7 +1742,7 @@ class AnalysisEngine
     {
         $host = strtolower(preg_replace('/^www\./', '', $host));
 
-        if (in_array($brand, self::BRUNEI_GOV_NAMES, true) && $this->isBruneiGovernmentHost($host)) {
+        if (in_array($brand, $this->bruneiGovNames(), true) && $this->isBruneiGovernmentHost($host)) {
             return ['flagged' => false, 'points' => 0, 'reasons' => []];
         }
 
@@ -1663,7 +1755,7 @@ class AnalysisEngine
             }
         }
 
-        $brandName = isset(self::BRUNEI_ACRONYMS[strtoupper($brand)]) ? strtoupper($brand) : ucfirst($brand);
+        $brandName = array_key_exists(strtoupper($brand), $this->bruneiAcronyms()) ? strtoupper($brand) : ucfirst($brand);
         $displayBrand = $surfaceText && $surfaceText !== $brand
             ? strtoupper($surfaceText).'" (a lookalike of "'.$brandName.'")'
             : $brandName;
@@ -1726,14 +1818,9 @@ class AnalysisEngine
                 continue;
             }
 
-            $actionHost = strtolower(preg_replace('/^www\./', '', $actionHost));
-            $normalizedPageHost = strtolower(preg_replace('/^www\./', '', $pageHost));
-
-            $sameOrSubdomain = $actionHost === $normalizedPageHost
-                || str_ends_with($normalizedPageHost, '.'.$actionHost)
-                || str_ends_with($actionHost, '.'.$normalizedPageHost);
-
-            if (! $sameOrSubdomain) {
+            // Same site means the same registered domain: a login on lms.example.edu.bn that posts to
+            // sso.example.edu.bn is one organisation's own sign-in, not a different website.
+            if (! RegistrableDomain::same($actionHost, $pageHost)) {
                 $flaggedExternal = true;
             }
         }
@@ -1799,7 +1886,7 @@ class AnalysisEngine
         $normalizedDomain = $this->normalizeForBrandMatch($domain);
         // A sender on a verified official domain (bibd.com.bn, maybank2u.com.my,
         // blog.google and so on) is not mimicking anything.
-        $isOfficialSender = $this->isOfficialBrandDomain($domain);
+        $isOfficialSender = $this->isOfficialBrandDomain($domain) || ThreatLookup::isPopular($domain);
         foreach ($brands as $brand) {
             if ($isOfficialSender) {
                 break;
@@ -1808,6 +1895,13 @@ class AnalysisEngine
             $isOfficialDomain = str_ends_with($domain, $brand.'.com') || $domain === $brand.'.com';
 
             if ($matchesBrand && ! $isOfficialDomain) {
+                // "bank" is an ordinary word as well as a brand, so on its own it is a mild warning only.
+                if (in_array($brand, self::ORDINARY_WORD_BRANDS, true) && ! $this->addressLooksDisguised($domain, $brand)) {
+                    $reasons[] = "Sender domain contains the common word \"{$brand}\", which is only a mild warning on its own";
+                    $points += 10;
+                    break;
+                }
+
                 $reasons[] = str_contains($domain, $brand)
                     ? "Sender domain mimics the brand \"{$brand}\" without being the official domain"
                     : "Sender domain mimics the brand \"{$brand}\" using character substitution (e.g. a digit in place of a letter), without being the official domain";
@@ -1816,13 +1910,25 @@ class AnalysisEngine
             }
         }
 
-        $hyphenCount = substr_count($domain, '-');
+        // A sender name written to be mistaken for a brand ("gooogle.com", "arnazon.com"), when no brand rule fired above.
+        if (! $isOfficialSender && $points === 0 && ($lookAlike = $this->lookAlikeFinding($domain)) !== null) {
+            $reasons[] = str_replace('The domain', "The sender's domain", $this->lookAlikeReason($lookAlike));
+            $points += $lookAlike['type'] === 'typo' ? 25 : 30;
+        }
+
+        // Hyphens and digit runs are judged on the name the sender registered ("secure-login-1234.com"),
+        // not on mail-server subdomains: bulk senders use names such as "em1234.mail.example.com" or
+        // "mail-us-east-1.example.com" for ordinary newsletters and receipts.
+        $registered = RegistrableDomain::of($domain) ?? $domain;
+
+        $hyphenCount = LookAlike::hyphenCount($registered);
         if ($hyphenCount >= 2) {
             $reasons[] = "Sender domain contains {$hyphenCount} hyphens, which is unusually high";
             $points += 15;
         }
 
-        if (preg_match('/\d{2,}/', $domain)) {
+        // Punycode names ("xn--80ak6aa92e") carry digits as part of the encoding, so they are not counted.
+        if (preg_match('/\d{2,}/', preg_replace('/xn--[a-z0-9\-]+/', '', $registered) ?? $registered)) {
             $reasons[] = 'Sender domain contains an unusual number sequence, common in disposable phishing domains';
             $points += 15;
         }
@@ -1967,6 +2073,8 @@ class AnalysisEngine
         $reasons = [];
         $points = 0;
         $matchedCategories = 0;
+        $specificCategories = 0;
+        $everydayCategories = 0;
         $disguised = false;
         if (! $forPage) {
             [$text, $disguised] = $this->unmaskText($text);
@@ -2248,10 +2356,15 @@ class AnalysisEngine
             $found['secrecy'] = ['points' => 15, 'label' => 'Asks you to keep it secret (scammers say this so no one can warn you)', 'lure' => true];
         }
 
-        foreach ($found as $pattern) {
+        foreach ($found as $key => $pattern) {
             $reasons[] = $pattern['label'];
             $points += $pattern['points'];
             $matchedCategories++;
+            if (in_array($key, self::EVERYDAY_WORDING, true)) {
+                $everydayCategories++;
+            } else {
+                $specificCategories++;
+            }
         }
 
         // Hurry-up wording and a "click here" on their own are everyday newsletter style; without a
@@ -2260,7 +2373,15 @@ class AnalysisEngine
             $points = min($points, 20);
         }
 
-        if ($matchedCategories >= 3) {
+        // Ordinary wording alone, however many tactics it uses, stays below the "suspicious" line. It still adds to
+        // a score next to other evidence (a bad link, a look-alike sender, failed sender checks).
+        if (! $forPage && $found !== [] && $specificCategories === 0) {
+            $points = min($points, self::LONE_SIGNAL_CEILING);
+        }
+
+        // Bonuses for tactics piling up only apply when at least one is scam wording; a password reset or an
+        // invoice reminder uses urgency, a verify request and a link without being a scam.
+        if ($matchedCategories >= 3 && $specificCategories >= 1) {
             $reasons[] = "{$matchedCategories} distinct phishing behavior patterns found together — a coordinated social-engineering pattern, not an isolated keyword";
             $points += 15;
         }
@@ -2272,7 +2393,7 @@ class AnalysisEngine
         $weakAsk = array_filter($found, fn ($p) => $p['weak'] ?? false);
         $lures = array_filter($found, fn ($p) => $p['lure'] ?? false);
         $strongLures = array_diff_key($lures, ['urgency' => true]);
-        if (($strongAsk && $lures) || ($weakAsk && $strongLures)) {
+        if ($specificCategories >= 1 && (($strongAsk && $lures) || ($weakAsk && $strongLures))) {
             $reasons[] = 'Asks you to act (pay, share a code or details, or contact someone) while using a pressure tactic: the core pattern of a scam';
             $points += 15;
         }
@@ -2282,7 +2403,31 @@ class AnalysisEngine
             'points' => min(90, $points),
             'reasons' => $reasons,
             'matched_categories' => $matchedCategories,
+            'specific_categories' => $specificCategories,
+            'everyday_categories' => $everydayCategories,
         ];
+    }
+
+    /**
+     * How many kinds of evidence the wording is worth. Wording that real companies use every day (urgency,
+     * an account notice, a request to verify, an invoice, "click here") counts as one kind however many of
+     * those tactics a message uses (they never corroborate each other); each scam-specific tactic (a prize, a code request, a fee, a fake
+     * officer) counts as its own kind.
+     */
+    private function wordingKinds(array $content): int
+    {
+        $everyday = (int) ($content['everyday_categories'] ?? 0);
+
+        $specific = (int) ($content['specific_categories'] ?? 0);
+        $kinds = $specific + ($everyday > 0 ? 1 : 0);
+
+        // A scam-specific tactic that scores 25 or more (a code request, a fake "call to cancel" order, a
+        // crypto or advance-fee lure) is clear enough to stand on its own.
+        if ($specific >= 1 && (int) ($content['points'] ?? 0) >= 25) {
+            $kinds++;
+        }
+
+        return max(1, $kinds);
     }
 
     /**
@@ -2325,22 +2470,20 @@ class AnalysisEngine
 
     private function detectBrandInText(string $text): array
     {
-        $knownBrands = ['dhl', 'fedex', 'ups', 'paypal', 'google', 'facebook', 'apple',
-            'microsoft', 'outlook', 'amazon', 'netflix', 'maybank', 'bibd',
-            'coinbase', 'binance', 'metamask', 'bradesco', 'livelo', 'correios', 'whatsapp',
-            'roblox', 'discord', 'steam', 'epic games', 'riot games', 'garena', 'mobile legends', 'minecraft', 'playstation', 'xbox', 'nintendo'];
-        $knownBrands = array_merge($knownBrands, ['standard chartered'], array_keys(self::BRUNEI_BRANDS));
+        // The names come from config/brands.php (text_brands).
+        $knownBrands = config('brands.text_brands', []);
+        $knownBrands = array_merge($knownBrands, ['standard chartered'], array_keys($this->bruneiBrands()));
 
         $lowerText = strtolower($text);
 
         // Brunei names first: a local scam often also mentions WhatsApp or Google ("contact our
         // agent on WhatsApp"), and the local bank or agency is the one being impersonated.
-        foreach ([...array_keys(self::BRUNEI_BRANDS), ...self::BRUNEI_GOV_NAMES] as $brand) {
+        foreach ([...array_keys($this->bruneiBrands()), ...$this->bruneiGovNames()] as $brand) {
             if (preg_match('/\b'.preg_quote($brand, '/').'\b/', $lowerText)) {
                 return ['brand' => $brand, 'surface' => $brand];
             }
         }
-        foreach (array_keys(self::BRUNEI_ACRONYMS) as $acronym) {
+        foreach (array_keys($this->bruneiAcronyms()) as $acronym) {
             if (preg_match('/\b'.$acronym.'\b/', $text)) {
                 return ['brand' => strtolower($acronym), 'surface' => strtolower($acronym)];
             }
@@ -2437,36 +2580,14 @@ class AnalysisEngine
         [$localPart, $domain] = explode('@', $senderEmail, 2);
         $domain = strtolower($domain);
         $localPart = strtolower($localPart);
-        $brandName = isset(self::BRUNEI_ACRONYMS[strtoupper($brand)]) ? strtoupper($brand) : ucfirst($brand);
+        $brandName = array_key_exists(strtoupper($brand), $this->bruneiAcronyms()) ? strtoupper($brand) : ucfirst($brand);
         $displayBrand = $surfaceText && $surfaceText !== $brand
             ? strtoupper($surfaceText).'" (a lookalike of "'.$brandName
             : $brandName;
 
-        $brandDomains = [
-            'dhl' => ['dhl.com'],
-            'fedex' => ['fedex.com'],
-            'ups' => ['ups.com'],
-            'paypal' => ['paypal.com'],
-            'google' => ['google.com', 'gmail.com'],
-            'facebook' => ['facebook.com', 'fb.com'],
-            'apple' => ['apple.com', 'icloud.com'],
-            'microsoft' => ['microsoft.com', 'outlook.com', 'live.com', 'hotmail.com'],
-            'outlook' => ['outlook.com', 'live.com', 'hotmail.com', 'microsoft.com'],
-            'amazon' => ['amazon.com'],
-            'netflix' => ['netflix.com'],
-            'maybank' => ['maybank2u.com.my', 'maybank.com'],
-            'bibd' => ['bibd.com.bn'],
-            'coinbase' => ['coinbase.com'],
-            'binance' => ['binance.com'],
-            'metamask' => ['metamask.io'],
-            'bradesco' => ['bradesco.com.br', 'banco.bradesco'],
-            'livelo' => ['livelo.com.br'],
-            'correios' => ['correios.com.br'],
-            'whatsapp' => ['whatsapp.com', 'whatsapp.net'],
-        ];
-        $brandDomains = array_merge($brandDomains, $this->brandDomainMap());
+        $brandDomains = $this->brandDomainMap();
 
-        if (in_array($brand, self::BRUNEI_GOV_NAMES, true) && $this->isBruneiGovernmentHost($domain)) {
+        if (in_array($brand, $this->bruneiGovNames(), true) && $this->isBruneiGovernmentHost($domain)) {
             return ['flagged' => false, 'points' => 0, 'reasons' => []];
         }
 
@@ -2900,10 +3021,10 @@ class AnalysisEngine
         ];
     }
 
-    public function analyze(string $type, ?string $url = null, ?string $email = null, ?string $phone = null, ?string $screenshotPath = null, ?int $reportId = null, ?string $emailSubject = null, ?string $emailBody = null, ?string $filePath = null, ?string $fileName = null): array
+    public function analyze(string $type, ?string $url = null, ?string $email = null, ?string $phone = null, ?string $screenshotPath = null, ?int $reportId = null, ?string $emailSubject = null, ?string $emailBody = null, ?string $filePath = null, ?string $fileName = null, ?string $emailHeaders = null): array
     {
         return match ($type) {
-            'email' => $this->analyzeEmail($email ?? '', $reportId, $emailSubject, $emailBody),
+            'email' => $this->analyzeEmail($email ?? '', $reportId, $emailSubject, $emailBody, $emailHeaders),
             'phone' => $this->analyzePhone($phone ?? '', $reportId),
             'screenshot' => $this->analyzeScreenshot($screenshotPath ?? '', $reportId),
             'file' => $this->analyzeFile($filePath ?? '', $fileName, $reportId),
@@ -2994,7 +3115,136 @@ class AnalysisEngine
         return $result;
     }
 
-    private function analyzeEmail(string $email, ?int $reportId = null, ?string $subject = null, ?string $body = null): array
+    /**
+     * Did this email really come from the domain it claims? Reads the pasted email headers (see EmailHeaders):
+     * SPF, DKIM and DMARC are checks the visitor's own mailbox provider ran when the email arrived, and the
+     * Reply-To line shows where an answer would go.
+     *
+     * Careful about false alarms, because real mail fails these checks now and then (a mailing list, a forward,
+     * a company that set its records up wrongly). So:
+     *  - one failed check is a small signal; DMARC failing, or several failing together, is a larger one;
+     *  - a failure counts most when the From domain is a well-known one (on the official list or among the
+     *    most visited sites), because those domains publish strict records, so a failure there means somebody
+     *    else is using the name;
+     *  - a Reply-To on a different domain is only a small signal, and only for a sender on the official list:
+     *    bulk-mail and invoicing services (Brevo, Mailchimp, SendGrid) are popular sites too, and they set the
+     *    customer's own address as Reply-To on purpose;
+     *  - passing never lowers the score: scammers authenticate their own domains too.
+     * Headers alone can add at most 50 points, so they cannot make a phishing verdict by themselves.
+     */
+    public function checkEmailAuthentication(string $rawHeaders, string $enteredSender = ''): array
+    {
+        $headers = EmailHeaders::parse($rawHeaders);
+
+        if (! $headers->hasHeaders()) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'reasons' => ['No email headers could be read from what was pasted, so the sender could not be verified'],
+                'unavailable' => true,
+            ];
+        }
+
+        $fromDomain = $headers->fromDomain();
+        $fromRegistrable = RegistrableDomain::of($fromDomain);
+        $isWellKnown = $fromDomain !== null && ($this->isOfficialBrandDomain($fromDomain) || ThreatLookup::isPopular($fromDomain));
+        $isOfficialSender = $fromDomain !== null && $this->isOfficialBrandDomain($fromDomain);
+        $isFreeMailSender = $fromRegistrable !== null && in_array($fromRegistrable, EmailHeaders::FREE_MAIL, true);
+
+        $reasons = [];
+        $points = 0;
+
+        $enteredDomain = strtolower((string) substr(strrchr($enteredSender, '@') ?: '', 1));
+
+        if ($fromDomain !== null && $enteredDomain !== '' && ! RegistrableDomain::same($fromDomain, $enteredDomain)) {
+            $reasons[] = "The From address in the headers ({$fromDomain}) is a different domain from the sender you entered ({$enteredDomain})";
+        }
+
+        $auth = $headers->authentication();
+
+        if ($auth['found']) {
+            $failing = array_values(array_filter([
+                $auth['dmarc'] === 'fail' ? 'DMARC' : null,
+                in_array($auth['spf'], ['fail', 'softfail'], true) ? 'SPF' : null,
+                $auth['dkim'] === 'fail' ? 'DKIM' : null,
+            ]));
+
+            if ($failing !== []) {
+                $hardSpfFail = $auth['spf'] === 'fail';
+
+                if ($auth['dmarc'] === 'fail') {
+                    $authPoints = 20;
+                } elseif (in_array('SPF', $failing, true) && in_array('DKIM', $failing, true)) {
+                    $authPoints = 20;
+                } elseif ($hardSpfFail) {
+                    $authPoints = 10;
+                } else {
+                    $authPoints = 5;
+                }
+
+                $authPoints = min(30, $authPoints + 5 * (count($failing) - 1));
+
+                $imitated = $isWellKnown && $authPoints >= 20;
+
+                if ($imitated) {
+                    // A well-known domain that fails its own checks is being imitated.
+                    $authPoints = $auth['dmarc'] === 'fail' ? 40 : max($authPoints, 25);
+                }
+
+                $points += $authPoints;
+                $names = implode(', ', $failing);
+                $where = $fromDomain !== null ? " for {$fromDomain}" : '';
+                $reasons[] = "The email failed sender verification ({$names}){$where}, so it may not really have come from that domain";
+
+                if ($imitated) {
+                    $reasons[] = 'That is a well-known domain, which normally passes these checks, so someone else may be using its name';
+                }
+            } else {
+                $passed = array_values(array_filter([
+                    $auth['spf'] === 'pass' ? 'SPF' : null,
+                    $auth['dkim'] === 'pass' ? 'DKIM' : null,
+                    $auth['dmarc'] === 'pass' ? 'DMARC' : null,
+                ]));
+
+                $reasons[] = $passed !== []
+                    ? 'The email passed sender verification ('.implode(', ', $passed).'). That shows which domain sent it, but scammers can set this up for their own domains too, so it does not prove the email is safe'
+                    : 'The headers show no failed sender verification';
+            }
+        }
+
+        // Where an answer would go.
+        $replyDomains = array_values(array_filter(
+            $headers->replyToDomains(),
+            fn (string $domain): bool => $fromRegistrable !== null && ! RegistrableDomain::same($domain, $fromRegistrable)
+        ));
+
+        if ($replyDomains !== [] && $isOfficialSender && ! $isFreeMailSender) {
+            $freeMail = array_values(array_filter($replyDomains, fn (string $d): bool => in_array(RegistrableDomain::of($d), EmailHeaders::FREE_MAIL, true)));
+            $unknown = array_values(array_filter($replyDomains, fn (string $d): bool => ! $this->isOfficialBrandDomain($d) && ! ThreatLookup::isPopular($d)));
+
+            if ($freeMail !== []) {
+                $points += 10;
+                $reasons[] = "Replies go to a free mailbox ({$freeMail[0]}) instead of {$fromDomain}'s own domain. Real companies usually answer from their own domain, though some services pass on a customer's address, so this is a small warning";
+            } elseif ($unknown !== []) {
+                $points += 10;
+                $reasons[] = "Replies go to a different, little-known domain ({$unknown[0]}) instead of {$fromDomain}";
+            }
+        }
+
+        if (! $auth['found']) {
+            $reasons[] = 'These headers have no sender verification results (SPF, DKIM or DMARC). Some mail apps remove them, so copy the full original headers if you can';
+
+            if ($points === 0) {
+                return ['flagged' => false, 'points' => 0, 'reasons' => $reasons, 'unavailable' => true];
+            }
+        }
+
+        $points = min(50, $points);
+
+        return ['flagged' => $points > 0, 'points' => $points, 'reasons' => $reasons];
+    }
+
+    private function analyzeEmail(string $email, ?int $reportId = null, ?string $subject = null, ?string $body = null, ?string $emailHeaders = null): array
     {
         $emailResult = $this->checkEmailDomain($email);
         $domain = $emailResult['domain'];
@@ -3020,11 +3270,21 @@ class AnalysisEngine
             ? $this->checkBrandSenderMismatch($brandDetection['brand'], $brandDetection['surface'], $email)
             : $this->brandOnlyMentioned($brandDetection['brand']);
 
+        // Only when the visitor pasted the email's headers. Without them nothing is added or shown.
+        $headerResult = trim((string) $emailHeaders) !== '' ? $this->checkEmailAuthentication((string) $emailHeaders, $email) : null;
+
         $rulePoints = $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
-            + $domainHistoryResult['points'];
+            + $domainHistoryResult['points'] + ($headerResult['points'] ?? 0);
         $aiResult = $hasContentText ? $this->checkAiText($combinedText, $rulePoints) : null;
 
-        $totalPoints = min(100, $rulePoints + ($aiResult['points'] ?? 0));
+        $totalPoints = $this->requireCorroboration(min(100, $rulePoints + ($aiResult['points'] ?? 0)), [
+            $emailResult['points'] + $ageResult['points'],
+            $domainHistoryResult['points'],
+            $contentResult['points'],
+            $brandResult['points'],
+            $headerResult['points'] ?? 0,
+            $aiResult['points'] ?? 0,
+        ], $this->wordingKinds($contentResult) - 1 + (($headerResult['points'] ?? 0) >= 30 ? 1 : 0));
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
         $checks = [
@@ -3032,6 +3292,10 @@ class AnalysisEngine
             $this->buildCheck('Domain Age', $ageResult, $ageResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS'),
             $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS'),
         ];
+
+        if ($headerResult !== null) {
+            $checks[] = $this->buildCheck('Email Authentication', $headerResult, $headerResult['points'] >= 30 ? 'HIGH RISK' : 'SUSPICIOUS');
+        }
 
         if ($hasContentText) {
             $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
@@ -3537,6 +3801,43 @@ class AnalysisEngine
         }
     }
 
+    /** A single kind of evidence only stands alone when it is at least this strong (the same scale as the check points). */
+    /** Tactics that ordinary mail uses too (password resets, invoices, newsletters): they never corroborate each other. */
+    private const EVERYDAY_WORDING = ['urgency', 'credential_request', 'financial_request', 'call_to_action'];
+
+    private const STRONG_ON_ITS_OWN = 35;
+
+    /** The most a result can score when its only evidence is one weak kind: just under the "suspicious" line. */
+    private const LONE_SIGNAL_CEILING = 24;
+
+    /**
+     * One weak kind of evidence on its own is not enough to call a message suspicious. A real password-reset
+     * email asks you to log in, a real parcel notice mentions a fee, a real offer says "limited time": each
+     * is one sign, and scams are the messages where several different signs appear together (a wrong sender,
+     * pressure wording, a link that does not match, a failed sender check). So when only one kind of evidence
+     * scored, and it is not strong by itself, the result stays below the suspicious line.
+     *
+     * This is a general rule, not a list of exceptions, so it also covers emails nobody has seen yet. It only
+     * applies to text checks (emails and messages), where each kind of evidence is counted separately.
+     *
+     * The wording check can find several different scam tactics in one text (pressure and a request to keep it
+     * secret, say). Each tactic beyond the first counts as another kind of evidence, since the wording check
+     * already treats them as a pattern that "appears together".
+     *
+     * @param  array<int, int|float>  $categoryPoints  the points of each kind of evidence, such as sender, wording, brand
+     * @param  int  $extraKinds  further kinds of evidence inside one category (scam tactics beyond the first, or several failed sender checks)
+     */
+    private function requireCorroboration(int $total, array $categoryPoints, int $extraKinds = 0): int
+    {
+        $scored = array_filter($categoryPoints, fn ($points): bool => $points > 0);
+
+        if (count($scored) + $extraKinds === 1 && max($scored) < self::STRONG_ON_ITS_OWN) {
+            return min($total, self::LONE_SIGNAL_CEILING);
+        }
+
+        return $total;
+    }
+
     /**
      * Rules-only score for a message's text: the same text steps a screenshot scan runs (wording,
      * brand vs link, a pressure message with a link, attachments, and 0.6 x the link's address
@@ -3584,7 +3885,13 @@ class AnalysisEngine
             $reasons = array_merge($reasons, $syntax['reasons']);
         }
 
-        $score = min(100, $points);
+        $score = $this->requireCorroboration(min(100, $points), [
+            $content['flagged'] ? $content['points'] : 0,
+            $attachment['flagged'] ? $attachment['points'] : 0,
+            isset($mismatch) && $mismatch['flagged'] ? $mismatch['points'] : 0,
+            $pressure['flagged'] ? $pressure['points'] : 0,
+            $url ? round($syntax['points'] * 0.6) : 0,
+        ], $this->wordingKinds($content) - 1);
         $hasEvidence = $url || $brand['brand'] || $content['flagged'] || $attachment['flagged'];
         $verdict = ! $hasEvidence ? 'review' : ($score >= 60 ? 'phishing' : ($score >= 25 ? 'suspicious' : 'clean'));
 
@@ -3609,7 +3916,9 @@ class AnalysisEngine
             ? $this->checkBrandSenderMismatch($brand['brand'], $brand['surface'], $sender)
             : $this->brandOnlyMentioned($brand['brand']);
 
-        $score = min(100, $domain['points'] + $content['points'] + $brandResult['points']);
+        $score = $this->requireCorroboration(min(100, $domain['points'] + $content['points'] + $brandResult['points']), [
+            $domain['points'], $content['points'], $brandResult['points'],
+        ], $this->wordingKinds($content) - 1);
         $reasons = array_merge($domain['reasons'], $content['reasons'], $brandResult['points'] > 0 ? $brandResult['reasons'] : []);
 
         return ['score' => $score, 'reasons' => $reasons];

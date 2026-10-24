@@ -120,6 +120,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reported-numbers', [ReportedNumbersController::class, 'index'])->name('reported-numbers.index');
     Route::post('/reported-numbers/hide', [ReportedNumbersController::class, 'hide'])->middleware('throttle:60,1')->name('reported-numbers.hide');
     Route::post('/reported-numbers/show', [ReportedNumbersController::class, 'show'])->middleware('throttle:60,1')->name('reported-numbers.show');
+    Route::post('/reported-numbers/known', [ReportedNumbersController::class, 'storeKnown'])->middleware('throttle:30,1')->name('reported-numbers.known.store');
+    Route::delete('/reported-numbers/known/{knownScamNumber}', [ReportedNumbersController::class, 'destroyKnown'])->middleware('throttle:30,1')->name('reported-numbers.known.destroy');
 
     // Administrators can mark the file behind a scan as safe (or take the mark off again), and see every safe file.
     Route::post('/scan/{report}/trust-file', [TrustedFileController::class, 'store'])->middleware('throttle:30,1')->name('scan.trust-file');

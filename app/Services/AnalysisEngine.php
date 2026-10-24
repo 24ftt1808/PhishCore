@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HiddenNumber;
+use App\Models\KnownScamNumber;
 use App\Models\NumberReport;
 use App\Models\Report;
 use App\Services\Concerns\ScansFiles;
@@ -1965,7 +1966,7 @@ class AnalysisEngine
                 return [
                     'flagged' => true,
                     'points' => 35,
-                    'reasons' => ["Number is not a valid, assignable number under its country's numbering plan"],
+                    'reasons' => ["This number cannot exist under its country's numbering plan, so it may have been typed wrongly. Check it again. If it really called or messaged you, the caller ID may be fake (spoofed), which scammers do"],
                 ];
             }
 
@@ -2092,6 +2093,9 @@ class AnalysisEngine
             '/\b(never|do not|don\'t|dont|jangan|usah|tidak (?:boleh|perlu)|supaya tidak|not to)\s+(?:\S+\s+){0,2}?(share|give|send|disclose|reveal|forward|kongsi|berkongsi|beri|berikan|bagi|hantar|dedahkan)\s+(?:\S+\s+){0,4}?(otp|tac|pin|password|passcode|kata laluan|code|codes|kod|card|kad|bank|banking|perbankan|details|maklumat|personal|ic|this code)\b[^.!?\n]*/u',
             '/\b(will never|would never|never|tidak akan|tidak pernah|takkan|tak akan)\s+(?:\S+\s+){0,2}?(ask|request|call|meminta|minta|bertanya|menghubungi|menelefon)\b[^.!?\n]*/u',
             '/\b(not|tidak|tak|bukan)\s+(guaranteed|dijamin)\b/u',
+            // A code being delivered ("Your verification code is 482913") is what every sign-in and sign-up email does.
+            // Asking someone to hand a code over is a different thing and is still caught (see secret_ask).
+            '/\b(?:verification|security|login|sign-?in|confirmation|one[- ]time|otp|tac)\s*(?:code|password|pin)?\s*(?:is|are|:)\s*\d{4,8}\b/u',
             // Public warnings ("police warn the public about job scams on Telegram...") describe a scam.
             '/[^.!?\n]*\b(warns?|warned|warning) (the public|people|everyone|orang ramai|customers|members of the public)\b[^.!?\n]*/u',
             '/[^.!?\n]*\b(beware of|be careful of|berhati-hati dengan|waspada (dengan|terhadap)|(diingatkan|dinasihatkan) supaya|scam alert|amaran penipuan)\b[^.!?\n]*/u',
@@ -3273,8 +3277,10 @@ class AnalysisEngine
         // Only when the visitor pasted the email's headers. Without them nothing is added or shown.
         $headerResult = trim((string) $emailHeaders) !== '' ? $this->checkEmailAuthentication((string) $emailHeaders, $email) : null;
 
+        $linkResult = $hasContentText ? $this->checkEmailLinks($combinedText, $domain) : ['flagged' => false, 'points' => 0, 'reasons' => [], 'url' => null];
+
         $rulePoints = $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
-            + $domainHistoryResult['points'] + ($headerResult['points'] ?? 0);
+            + $domainHistoryResult['points'] + ($headerResult['points'] ?? 0) + $linkResult['points'];
         $aiResult = $hasContentText ? $this->checkAiText($combinedText, $rulePoints) : null;
 
         $totalPoints = $this->requireCorroboration(min(100, $rulePoints + ($aiResult['points'] ?? 0)), [
@@ -3284,6 +3290,7 @@ class AnalysisEngine
             $brandResult['points'],
             $headerResult['points'] ?? 0,
             $aiResult['points'] ?? 0,
+            $linkResult['points'],
         ], $this->wordingKinds($contentResult) - 1 + (($headerResult['points'] ?? 0) >= 30 ? 1 : 0));
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
@@ -3301,6 +3308,9 @@ class AnalysisEngine
             $checks[] = $this->buildCheck('Message Content / Behavior Patterns', $contentResult, $contentResult['matched_categories'] >= 3 ? 'HIGH RISK' : 'SUSPICIOUS');
             if ($brandDetection['brand']) {
                 $checks[] = $this->buildCheck('Brand / Sender Correlation', $brandResult, 'HIGH RISK');
+            }
+            if ($linkResult['url'] !== null) {
+                $checks[] = $this->buildCheck('Links in the Email', $linkResult, $linkResult['points'] >= 25 ? 'HIGH RISK' : 'SUSPICIOUS');
             }
             if ($aiResult !== null) {
                 $checks[] = $this->buildCheck('AI Message Review', $aiResult, $aiResult['verdict'] === 'scam' ? 'HIGH RISK' : 'SUSPICIOUS');
@@ -3322,6 +3332,62 @@ class AnalysisEngine
             'checks' => $checks,
             // Only used to offer a page preview of the link in the message. It does not change the score.
             'extracted_url' => $hasContentText ? $this->pickLinkForPreview($combinedText) : null,
+        ];
+    }
+
+    /**
+     * Checks the links written in an email with the same address rules a link scan uses, and counts the worst
+     * one at 0.6, as a message scan does. A weak warning on a link to the sender's own site is left out: a company's
+     * email links to its own pages. Only full links are read ("https://..."),
+     * since an email carries its real addresses, and a bare "file.pdf" or "www" text is not evidence.
+     *
+     * @return array{flagged: bool, points: int, reasons: array<int, string>, url: ?string}
+     */
+    private function checkEmailLinks(string $text, ?string $senderDomain): array
+    {
+        $none = ['flagged' => false, 'points' => 0, 'reasons' => [], 'url' => null];
+        $own = $senderDomain !== null && $senderDomain !== '' ? RegistrableDomain::of($senderDomain) : null;
+
+        $links = array_values(array_unique(array_filter(
+            $this->extractAllUrlsFromText($text),
+            fn ($link) => filter_var($link, FILTER_VALIDATE_URL)
+        )));
+
+        $worst = null;
+
+        foreach (array_slice($links, 0, 8) as $link) {
+            $host = (string) parse_url($link, PHP_URL_HOST);
+
+            if ($host === '') {
+                continue;
+            }
+
+            $syntax = $this->checkUrlSyntax($link);
+
+            // A link to the sender's own site is normal, and a weak warning there only repeats what the sender
+            // check already said. A strong one (a look-alike name, a listed phishing site) still counts: scams
+            // often send from the same address they link to.
+            if ($own !== null && RegistrableDomain::of($host) === $own && $syntax['points'] < 25) {
+                continue;
+            }
+
+            if ($worst === null || $syntax['points'] > $worst['syntax']['points']) {
+                $worst = ['link' => $link, 'syntax' => $syntax];
+            }
+        }
+
+        if ($worst === null || $worst['syntax']['points'] <= 0) {
+            return $none;
+        }
+
+        $host = (string) parse_url($worst['link'], PHP_URL_HOST);
+        $points = (int) round($worst['syntax']['points'] * 0.6);
+
+        return [
+            'flagged' => $points > 0,
+            'points' => $points,
+            'reasons' => array_merge(["A link in the email goes to \"{$host}\":"], $worst['syntax']['reasons']),
+            'url' => $worst['link'],
         ];
     }
 
@@ -3560,6 +3626,30 @@ class AnalysisEngine
 
         if ($isHidden) {
             $matchingReports = collect();
+        }
+
+        // A number an administrator added because a trusted source (the police, BDCB, a news report) named it.
+        // A hidden number is treated as having no reports, this one included.
+        if (! $isHidden) {
+            try {
+                $known = KnownScamNumber::where('phone', $normalizedInput)->first();
+            } catch (\Throwable) {
+                $known = null;
+            }
+
+            if ($known !== null) {
+                $kind = NumberReport::CATEGORIES[$known->category] ?? NumberReport::CATEGORIES['other'];
+
+                return [
+                    'flagged' => true,
+                    'points' => 60,
+                    'reasons' => array_values(array_filter([
+                        "{$known->source} has named this number as a scam ({$kind}).",
+                        $known->note ? 'Note: '.$known->note : null,
+                        'Added to PhishCore on '.$known->created_at->format('j F Y').'. Phone numbers can be given to someone else later, so check the date.',
+                    ])),
+                ];
+            }
         }
 
         if ($matchingReports->isEmpty() && $explicitReports->isEmpty()) {
@@ -3916,10 +4006,12 @@ class AnalysisEngine
             ? $this->checkBrandSenderMismatch($brand['brand'], $brand['surface'], $sender)
             : $this->brandOnlyMentioned($brand['brand']);
 
-        $score = $this->requireCorroboration(min(100, $domain['points'] + $content['points'] + $brandResult['points']), [
-            $domain['points'], $content['points'], $brandResult['points'],
+        $links = $this->checkEmailLinks($text, $domain['domain'] ?? null);
+
+        $score = $this->requireCorroboration(min(100, $domain['points'] + $content['points'] + $brandResult['points'] + $links['points']), [
+            $domain['points'], $content['points'], $brandResult['points'], $links['points'],
         ], $this->wordingKinds($content) - 1);
-        $reasons = array_merge($domain['reasons'], $content['reasons'], $brandResult['points'] > 0 ? $brandResult['reasons'] : []);
+        $reasons = array_merge($domain['reasons'], $content['reasons'], $brandResult['points'] > 0 ? $brandResult['reasons'] : [], $links['reasons']);
 
         return ['score' => $score, 'reasons' => $reasons];
     }

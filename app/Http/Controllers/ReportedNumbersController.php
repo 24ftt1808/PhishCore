@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\HiddenNumber;
+use App\Models\KnownScamNumber;
 use App\Models\NumberReport;
+use App\Support\PhoneCountries;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ReportedNumbersController extends Controller
@@ -55,7 +58,56 @@ class ReportedNumbersController extends Controller
             ],
             'search' => $search,
             'canHide' => auth()->user()->role === 'admin',
+            'known' => KnownScamNumber::query()->with('addedByUser:id,name')->latest()->get(),
+            'categories' => NumberReport::CATEGORIES,
+            'countries' => PhoneCountries::all(),
+            'defaultCountry' => PhoneCountries::DEFAULT_REGION,
         ]);
+    }
+
+    /** Add a number a trusted source named as a scam. Administrators only, because a scan then calls it a scam on its own. */
+    public function storeKnown(Request $request): RedirectResponse
+    {
+        $this->authorizeKnown();
+
+        $data = $request->validate([
+            'phone' => ['required', 'string', 'max:40'],
+            'phone_country' => ['nullable', 'string', Rule::in(PhoneCountries::codes())],
+            'category' => ['required', 'string', Rule::in(array_keys(NumberReport::CATEGORIES))],
+            'source' => ['required', 'string', 'max:120'],
+            'note' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $normalised = PhoneCountries::normalise($data['phone'], $data['phone_country'] ?? null);
+
+        if (! str_starts_with($normalised, '+')) {
+            return back()->withErrors(['phone' => 'That does not look like a phone number. Check it and try again.'])->withInput();
+        }
+
+        $phone = NumberReport::key($normalised);
+
+        KnownScamNumber::updateOrCreate(
+            ['phone' => $phone],
+            ['category' => $data['category'], 'source' => trim($data['source']), 'note' => $data['note'] ?? null, 'added_by' => $request->user()->id],
+        );
+
+        return back()->with('status', "{$phone} is now a known scam number. Scans will warn about it.");
+    }
+
+    /** Take a number off the known list. */
+    public function destroyKnown(KnownScamNumber $knownScamNumber): RedirectResponse
+    {
+        $this->authorizeKnown();
+
+        $phone = $knownScamNumber->phone;
+        $knownScamNumber->delete();
+
+        return back()->with('status', "{$phone} is no longer on the known scam numbers.");
+    }
+
+    private function authorizeKnown(): void
+    {
+        abort_unless(auth()->user()->role === 'admin', 403, 'Only administrators can add or remove known scam numbers.');
     }
 
     /** Take a number off the public lists. Administrators only, because it changes what scans warn about. */

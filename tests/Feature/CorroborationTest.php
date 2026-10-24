@@ -42,3 +42,21 @@ test('a lone weak signal is held below the suspicious line, but a strong one is 
         ->and($weak->invoke($this->engine, 30, ['content' => 30], 1))->toBe(30)
         ->and($weak->invoke($this->engine, 40, ['content' => 40]))->toBe(40);
 });
+
+test('an email that delivers a one-time code is not a request for a code', function (string $body) {
+    $result = $this->engine->scoreEmailRules('no-reply@accounts.example.com', 'Your code', $body);
+
+    expect($result['score'])->toBeLessThan(25);
+})->with([
+    'Your verification code is 482913. It is valid for 5 minutes.',
+    'Your one-time password is 123456. Never share your OTP with anyone.',
+    'Security code: 998877. Enter it on the sign-in page to continue.',
+]);
+
+test('asking for the code to be handed over is still flagged', function (string $text) {
+    expect($this->engine->scoreMessageRules($text)['score'])->toBeGreaterThanOrEqual(25);
+})->with([
+    'Your OTP is 123456. Reply with the code so we can unblock your account urgently.',
+    'Your verification code is 482913. Please send me the code to confirm it is you.',
+    'Hi, I sent my verification code to your number by mistake. Please send it back to me urgently.',
+]);

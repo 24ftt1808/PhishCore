@@ -118,8 +118,8 @@
             $typeMax = max(1, collect($trends['byType'])->max('count'));
             $domainMax = max(1, collect($trends['topDomains'])->max('count') ?? 1);
         @endphp
-        <div class="grid lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-            <div class="glass-panel rounded-2xl p-5 md:p-6 lg:col-span-2 flex flex-col">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+            <div class="glass-panel rounded-2xl p-5 md:p-6 lg:col-span-2 flex flex-col min-w-0">
                 <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
                         <h2 class="text-white font-semibold">Flagged reports per day</h2>
@@ -144,7 +144,7 @@
                 </table>
             </div>
 
-            <div class="grid gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-1">
+            <div class="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-1 min-w-0">
                 <div class="glass-panel rounded-2xl p-5 md:p-6">
                     <h2 class="text-white font-semibold mb-4">By scan type</h2>
                     <div class="space-y-3">

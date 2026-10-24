@@ -35,6 +35,74 @@
         @endforeach
     </div>
 
+    {{-- Known scam numbers: numbers a trusted source (police, BDCB, news) named as scams. Administrators add and remove them. --}}
+    <div class="h-in h-card p-4 sm:p-5 mb-5" style="--d:.08s">
+        <h2 class="text-base font-semibold text-white mb-1">Known scam numbers</h2>
+        <p class="text-slate-300 text-xs sm:text-sm mb-4">Numbers named as scams by a trusted source, such as the Royal Brunei Police Force, BDCB or a news report. A scan of one of these numbers is flagged as a scam straight away and says who named it.@unless ($canHide) Only administrators can add or remove them.@endunless</p>
+
+        @if ($canHide)
+            <form method="POST" action="{{ route('reported-numbers.known.store') }}" class="grid gap-3 sm:grid-cols-6 mb-4">
+                @csrf
+                <select name="phone_country" aria-label="Country of the number" class="h-field px-3 py-2.5 text-sm sm:col-span-2 truncate">
+                    @foreach ($countries as $country)
+                        <option value="{{ $country['code'] }}" @selected(old('phone_country', $defaultCountry) === $country['code'])>{{ $country['code'] }} {{ $country['name'] }} (+{{ $country['dial'] }})</option>
+                    @endforeach
+                </select>
+                <input type="text" name="phone" value="{{ old('phone') }}" placeholder="Phone number" autocomplete="off" required maxlength="40" class="h-field px-4 py-2.5 text-sm sm:col-span-4 min-w-0">
+                <select name="category" aria-label="Kind of scam" class="h-field px-3 py-2.5 text-sm sm:col-span-2">
+                    @foreach ($categories as $key => $label)
+                        <option value="{{ $key }}" @selected(old('category', 'other') === $key)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <input type="text" name="source" value="{{ old('source') }}" placeholder="Who named it (for example Royal Brunei Police Force)" required maxlength="120" class="h-field px-4 py-2.5 text-sm sm:col-span-4 min-w-0">
+                <input type="text" name="note" value="{{ old('note') }}" placeholder="Optional note (where you read it, the date of the warning)" maxlength="200" class="h-field px-4 py-2.5 text-sm sm:col-span-5 min-w-0">
+                <button type="submit" class="h-btn h-btn-main sm:col-span-1">Add</button>
+            </form>
+            @foreach (['phone', 'phone_country', 'category', 'source', 'note'] as $field)
+                @error($field)
+                    <p class="mb-3 text-xs text-rose-300" role="alert">{{ $message }}</p>
+                @enderror
+            @endforeach
+        @endif
+
+        @if ($known->isEmpty())
+            <p class="text-sm text-slate-400">No known scam numbers yet.</p>
+        @else
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm min-w-[560px]">
+                    <thead>
+                        <tr class="border-b border-slate-500/25 text-left text-xs font-medium tracking-wide text-slate-300">
+                            <th class="px-3 py-2">NUMBER</th>
+                            <th class="px-3 py-2">KIND OF SCAM</th>
+                            <th class="px-3 py-2">NAMED BY</th>
+                            <th class="px-3 py-2">ADDED</th>
+                            @if ($canHide)<th class="px-3 py-2 text-right"></th>@endif
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-500/20">
+                        @foreach ($known as $row)
+                            <tr class="h-row">
+                                <td class="px-3 py-2.5 font-mono text-slate-100">{{ $row->phone }}</td>
+                                <td class="px-3 py-2.5 text-slate-300">{{ $categories[$row->category] ?? $categories['other'] }}</td>
+                                <td class="px-3 py-2.5 text-slate-300">{{ $row->source }}@if ($row->note)<span class="block text-[11px] text-slate-400">{{ $row->note }}</span>@endif</td>
+                                <td class="px-3 py-2.5 text-slate-300" title="{{ $row->created_at->format('j F Y \a\t g:i A') }}">{{ $row->created_at->diffForHumans() }}@if ($row->addedByUser)<span class="block text-[11px] text-slate-400">by {{ $row->addedByUser->name }}</span>@endif</td>
+                                @if ($canHide)
+                                    <td class="px-3 py-2.5 text-right">
+                                        <form method="POST" action="{{ route('reported-numbers.known.destroy', $row) }}" onsubmit="return confirm('Remove {{ $row->phone }} from the known scam numbers?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="h-btn h-btn-danger">Remove</button>
+                                        </form>
+                                    </td>
+                                @endif
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
     <form method="GET" action="{{ route('reported-numbers.index') }}" class="h-in h-card p-4 mb-5 flex gap-2" style="--d:.1s">
         <input type="text" name="search" value="{{ $search }}" placeholder="Search a number" autocomplete="off" class="h-field flex-1 min-w-0 px-4 py-2.5 text-sm">
         <button type="submit" class="h-btn h-btn-main">Search</button>

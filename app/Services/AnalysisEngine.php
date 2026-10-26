@@ -9,6 +9,8 @@ use App\Models\Report;
 use App\Services\Concerns\ScansFiles;
 use App\Support\EmailHeaders;
 use App\Support\LookAlike;
+use App\Support\PageInspector;
+use App\Support\Rdap;
 use App\Support\RegistrableDomain;
 use App\Support\SafeUrl;
 use App\Support\ThreatLookup;
@@ -247,6 +249,8 @@ class AnalysisEngine
             'points' => $points,
             'reasons' => $reasons,
             'brand_rule_points' => $brandRulePoints,
+            // shown on the result page when the check passes (see buildCheck); never used for scoring
+            'detail' => $reasons === [] ? 'None of the common tricks were found in how the link is written, such as a number in place of a name, a look-alike brand name or too many hyphens.' : null,
         ];
     }
 
@@ -384,6 +388,11 @@ class AnalysisEngine
 
     /**
      * Accepts either a full URL (http://example.com) or a bare domain/host (example.com).
+     *
+     * The age belongs to the registrable domain ("example.com" for "login.shop.example.com"), so that is what is
+     * looked up. A page on a shared platform ("someone.github.io") has no age of its own and gets an honest
+     * "not applicable" answer instead of the platform's date. The date comes from the domain registry (RDAP) first,
+     * then WHOIS, then VirusTotal, and is cached because a registration date never changes.
      */
     public function checkDomainAge(string $urlOrHost): array
     {
@@ -391,29 +400,44 @@ class AnalysisEngine
             ? (parse_url($urlOrHost, PHP_URL_HOST) ?? $urlOrHost)
             : $urlOrHost;
 
-        $host = preg_replace('/^www\./', '', $host);
+        $host = strtolower(trim((string) preg_replace('/^www\./i', '', (string) $host), '[]. '));
+
+        $unavailable = fn (string $reason) => [
+            'flagged' => false,
+            'points' => 0,
+            'domain_age_days' => null,
+            'reasons' => [$reason],
+            'unavailable' => true,
+        ];
+
+        if ($host === '') {
+            return $unavailable('Could not retrieve WHOIS data');
+        }
+
+        if (preg_match('/^\d{1,3}(\.\d{1,3}){3}$/', $host) || str_contains($host, ':')) {
+            return $unavailable('This address is made of numbers, so it has no registration date to look up');
+        }
+
+        if (($platform = RegistrableDomain::sharedPlatform($host)) !== null) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'neutral' => true,
+                'domain_age_days' => null,
+                'reasons' => ["This page sits on a shared platform ({$platform}), so the registration date belongs to the platform and says nothing about this page. It is not used in the score."],
+            ];
+        }
+
+        $domain = RegistrableDomain::of($host) ?? $host;
 
         try {
-            // Confirmed via the installed package's own Factory.php source
-            // (createLoader() returns SocketLoader by default) — its
-            // constructor defaults to a 60-second timeout, which can
-            // dominate a scan's total runtime if a WHOIS server is slow
-            // or unresponsive. Bound it to 8s like our other checks.
-            $loader = new SocketLoader(8);
-            $whois = Factory::get()->createWhois($loader);
-            $info = $whois->loadDomainInfo($host);
+            $found = $this->lookupRegistrationDate($domain);
 
-            if (! $info || ! $info->creationDate) {
-                return [
-                    'flagged' => false,
-                    'points' => 0,
-                    'domain_age_days' => null,
-                    'reasons' => ['WHOIS data unavailable for this domain'],
-                    'unavailable' => true,
-                ];
+            if ($found['created'] === null) {
+                return $unavailable('WHOIS data unavailable for this domain');
             }
 
-            $createdAt = Carbon::createFromTimestamp($info->creationDate);
+            $createdAt = Carbon::createFromTimestamp($found['created']);
             $ageDays = (int) round($createdAt->diffInDays(now()));
 
             $points = 0;
@@ -430,21 +454,99 @@ class AnalysisEngine
                 $reasons[] = "Domain is relatively new ({$ageDays} days old)";
             }
 
+            // shown on the result page when the check passes (see buildCheck); never used for scoring
+            $detail = null;
+            if ($reasons === []) {
+                $howOld = $ageDays >= 730 ? intdiv($ageDays, 365).' years' : ($ageDays >= 365 ? 'a year' : intdiv($ageDays, 30).' months');
+                $source = ['rdap' => 'the domain registry', 'whois' => 'a WHOIS record', 'virustotal' => 'VirusTotal'][$found['source']] ?? 'a public record';
+                $detail = 'The website was created on '.$createdAt->format('j M Y').', about '.$howOld.' ago, according to '.$source.'.';
+                if ($domain !== $host) {
+                    $detail .= " That is the age of {$domain}, the main domain of this address.";
+                }
+            }
+
             return [
                 'flagged' => $points > 0,
                 'points' => $points,
                 'domain_age_days' => $ageDays,
                 'reasons' => $reasons,
+                'detail' => $detail,
+                'source' => $found['source'],
             ];
         } catch (\Throwable $e) {
-            return [
-                'flagged' => false,
-                'points' => 0,
-                'domain_age_days' => null,
-                'reasons' => ['Could not retrieve WHOIS data'],
-                'unavailable' => true,
-            ];
+            return $unavailable('Could not retrieve WHOIS data');
         }
+    }
+
+    /**
+     * When was this registrable domain registered, and which source said so?
+     * Tries the registry (RDAP), then WHOIS, then VirusTotal; the first usable date wins.
+     * A date is kept for a week; "not found" is only kept for half an hour so a short outage heals itself.
+     *
+     * @return array{created: int|null, source: string|null}
+     */
+    private function lookupRegistrationDate(string $domain): array
+    {
+        $key = 'domain-age:'.$domain;
+        $cached = Cache::get($key);
+
+        if (is_array($cached) && array_key_exists('created', $cached)) {
+            return $cached;
+        }
+
+        // A registration date before the web existed, or one in the future, is bad data, not an answer.
+        $usable = fn ($time) => is_int($time) && $time > 473385600 && $time <= time() + 86400;
+
+        $sources = [
+            'rdap' => fn () => Rdap::registrationDate($domain),
+            'whois' => fn () => $this->whoisCreationDate($domain),
+            'virustotal' => fn () => $this->virusTotalCreationDate($domain),
+        ];
+
+        $result = ['created' => null, 'source' => null];
+
+        foreach ($sources as $name => $ask) {
+            try {
+                $time = $ask();
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($usable($time)) {
+                $result = ['created' => $time, 'source' => $name];
+                break;
+            }
+        }
+
+        Cache::put($key, $result, $result['created'] === null ? now()->addMinutes(30) : now()->addDays(7));
+
+        return $result;
+    }
+
+    /** The registration date from a WHOIS server. Protected so a test can stand in for the network. */
+    protected function whoisCreationDate(string $domain): ?int
+    {
+        // Bound the socket to 8s: the package default is 60s, which can dominate a scan's runtime.
+        $info = Factory::get()->createWhois(new SocketLoader(8))->loadDomainInfo($domain);
+
+        return $info && $info->creationDate ? (int) $info->creationDate : null;
+    }
+
+    /** VirusTotal keeps a creation date for most domains it has seen. Null without a key or a date. */
+    private function virusTotalCreationDate(string $domain): ?int
+    {
+        $apiKey = config('services.virustotal.key');
+        if (! $apiKey) {
+            return null;
+        }
+
+        $response = Http::withHeaders(['x-apikey' => $apiKey])
+            ->timeout(8)
+            ->get('https://www.virustotal.com/api/v3/domains/'.$domain);
+
+        $date = $response->successful() ? $response->json('data.attributes.creation_date') : null;
+
+        return is_numeric($date) ? (int) $date : null;
     }
 
     public function checkSslCertificate(string $url): array
@@ -475,7 +577,12 @@ class AnalysisEngine
             // TLS handshake without downloading the page body.
             Http::withOptions(SafeUrl::redirectOptions())->timeout(10)->head($url);
 
-            return ['flagged' => false, 'points' => 0, 'reasons' => []];
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'reasons' => [],
+                'detail' => 'The website uses a secure connection (HTTPS) and its security certificate was accepted.',
+            ];
         } catch (ConnectionException $e) {
             $message = $e->getMessage();
 
@@ -527,6 +634,10 @@ class AnalysisEngine
         $feeds = $this->checkThreatFeeds($url);
 
         if (! $feeds['flagged']) {
+            if (! $google['flagged'] && ! ($google['unavailable'] ?? false) && ($google['reasons'] ?? []) === []) {
+                $google['detail'] = 'This address is not on Google Safe Browsing or on the community phishing lists we keep (OpenPhish, URLhaus and PhishTank).';
+            }
+
             return $google;
         }
 
@@ -1008,7 +1119,13 @@ class AnalysisEngine
             }
         }
 
-        return ['flagged' => false, 'points' => 0, 'reasons' => [], 'platform' => null];
+        return [
+            'flagged' => false,
+            'points' => 0,
+            'reasons' => [],
+            'platform' => null,
+            'detail' => 'This website is not on a free website builder or hosting platform.',
+        ];
     }
 
     /**
@@ -1181,13 +1298,22 @@ class AnalysisEngine
             return $empty;
         }
 
+        // Some sites put a security check ("Just a moment...") in front of the page for anything that is not a
+        // browser. That page says nothing about the site, so it must not count as a clean read.
+        $challenge = PageInspector::challenge($response->body(), $response->header('cf-mitigated'));
+        if ($challenge !== null) {
+            $empty['reasons'][] = "The website answered with a security check from {$challenge} instead of its page, so its content could not be read";
+
+            return $empty;
+        }
+
         if (! $response->successful()) {
             $empty['reasons'][] = "Page returned HTTP {$response->status()} — content could not be analyzed";
 
             return $empty;
         }
 
-        $html = $response->body();
+        $html = PageInspector::toUtf8($response->body(), $response->header('Content-Type'));
         $serverHeader = $response->header('Server');
 
         // Cap how much HTML we process — phishing pages are almost always
@@ -1203,8 +1329,13 @@ class AnalysisEngine
 
         // Strip script/style blocks before converting to plain text so their
         // contents (JS code, CSS rules) don't pollute keyword/brand matching.
-        $bodyText = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
-        $bodyText = trim(strip_tags($bodyText));
+        // The readable text comes from a real HTML parser (no scripts, styles, noscript fallbacks or hidden helpers);
+        // the old tag-stripping is only the fallback for markup the parser cannot read.
+        $bodyText = PageInspector::visibleText($html);
+        if ($bodyText === '') {
+            $bodyText = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+            $bodyText = trim(strip_tags($bodyText));
+        }
         $bodyText = Str::limit($bodyText, 5000, '');
 
         $combinedText = trim($title.' '.$bodyText);
@@ -1284,6 +1415,20 @@ class AnalysisEngine
         if ($obfuscationResult['flagged']) {
             $reasons = array_merge($reasons, $obfuscationResult['reasons']);
             $points += $obfuscationResult['points'];
+        }
+
+        // A page that JavaScript builds arrives as an empty shell, so "no login form found" would only mean the
+        // form had not been drawn yet. Say so instead of passing it. Anything actually found above still counts.
+        if (empty($reasons) && PageInspector::needsJavaScript($html)) {
+            return [
+                'flagged' => false,
+                'points' => 0,
+                'neutral' => true,
+                'reasons' => ['This page is drawn by JavaScript, so only an empty shell could be read and a login form on it would not show up here. Nothing suspicious was found in the part that could be read.'],
+                'page_title' => $title,
+                'page_text' => $bodyText,
+                'has_sensitive_field' => false,
+            ];
         }
 
         if (empty($reasons)) {
@@ -1939,6 +2084,7 @@ class AnalysisEngine
             'points' => $points,
             'reasons' => $reasons,
             'domain' => $domain,
+            'detail' => $reasons === [] ? "Nothing unusual in the sender's address: no look-alike brand name, odd hyphens or strange number sequence." : null,
         ];
     }
 
@@ -3020,7 +3166,8 @@ class AnalysisEngine
             'status' => $result['flagged'] ? $flaggedStatus : $passStatus,
             'message' => ! empty($result['reasons'])
                 ? $this->joinReasons($result['reasons'])
-                : 'No issues detected for this check.',
+                // a passing check can say what it found ('detail'); otherwise the plain "nothing found" line
+                : (($result['detail'] ?? null) ?: 'No issues detected for this check.'),
             'points' => $result['points'],
         ];
     }

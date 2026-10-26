@@ -161,7 +161,8 @@ test('with the AI check off, the email scan has no AI check at all', function ()
     $result = app(AnalysisEngine::class)->analyze('email', null, 'someone@example.com', null, null, null, 'Hello', 'See you at the meeting tomorrow.');
 
     expect(collect($result['checks'])->firstWhere('name', 'AI Message Review'))->toBeNull();
-    Http::assertNothingSent();
+    // The website-age lookup may ask a domain registry; the point is that nothing goes to the AI service.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'generativelanguage.googleapis.com'));
 });
 
 function aiPageCheck(string $host, array $content, int $otherPoints): ?array

@@ -75,6 +75,23 @@ final class RegistrableDomain
         return implode('.', array_slice($labels, -2));
     }
 
+    /**
+     * The shared platform a host is a page on ("github.io" for "someone.github.io"), or null.
+     * Such a site has no age of its own: the registration date belongs to the platform.
+     */
+    public static function sharedPlatform(?string $host): ?string
+    {
+        $host = strtolower(trim((string) $host, " .\t"));
+
+        foreach (self::FREE_HOSTING_SUFFIXES as $suffix) {
+            if (str_ends_with($host, '.'.$suffix)) {
+                return $suffix;
+            }
+        }
+
+        return null;
+    }
+
     /** True when both hosts belong to the same registrable domain. */
     public static function same(?string $a, ?string $b): bool
     {

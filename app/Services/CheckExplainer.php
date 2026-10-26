@@ -181,8 +181,12 @@ class CheckExplainer
         'Brand referenced:' => 'Organisation mentioned:',
         'Not a valid email address format' => 'This is not a valid email address',
         'No prior reports found for' => 'No one has reported',
-        'on PhishCore' => 'to PhishCore before',
+        // Only the "No prior reports found for ... on PhishCore" sentences are reworded. Other sentences that
+        // mention PhishCore (for example "...is on PhishCore's official-domain list") already read well.
+        '" on PhishCore' => '" to PhishCore before',
+        'this number on PhishCore' => 'this number to PhishCore before',
         '(Informational only — this does not change the risk score.)' => '(For information only. This does not affect the score.)',
+        'Number is a VoIP/internet-based line' => 'Number is an internet phone line',
         'VoIP/internet-based line' => 'internet phone line',
         'smishing' => 'scam text message',
         'HTTP ' => 'web server code ',

@@ -88,6 +88,10 @@
     .ck { width: 49.2%; vertical-align: top; padding: 11pt 12pt 10pt 12pt; background-color: rgba(20, 34, 66, .66); border: 1pt solid rgba(148, 163, 184, .2); border-radius: 9pt; }
     .gap { width: 1.6%; }
     .ck-title { font-size: 9.2pt; font-weight: bold; color: #ffffff; line-height: 1.3; }
+    .ck-head { margin-top: 6pt; font-size: 9.8pt; font-weight: bold; color: #ffffff; line-height: 1.3; }
+    .ck-fact { margin-top: 2.5pt; font-size: 7.6pt; color: #e2e8f0; line-height: 1.4; }
+    .ck-fact .lab { color: #94a3b8; }
+    .ck-lbl { color: #94a3b8; font-weight: bold; }
     .ck-msg { margin-top: 6pt; font-size: 8.1pt; color: #e2e8f0; line-height: 1.42; }
     .ck-mean { margin-top: 6pt; font-size: 7pt; color: #94a3b8; line-height: 1.42; }
     .ck-mean b { color: #7dd3fc; font-weight: normal; }
@@ -279,7 +283,24 @@
                                 <td style="vertical-align: middle; text-align: right; width: 62pt;"><span class="pill" style="color: {{ $check['text'] }}; background-color: rgba({{ $check['rgb'] }}, .1); border: 1pt solid rgba({{ $check['rgb'] }}, .3);">{{ $check['label'] }}</span></td>
                             </tr>
                         </table>
-                        <div class="ck-msg" style="{{ $face($check['message']) }}">{!! $wrap($check['message']) !!}</div>
+                        @if ($group['key'] === 'warn')
+                            @if ($check['headline'])
+                                <div class="ck-head" style="{{ $face($check['headline']) }}">{!! $wrap($check['headline']) !!}</div>
+                            @endif
+                            @if ($check['body'] !== '')
+                                <div class="ck-msg" style="{{ $check['headline'] ? 'margin-top: 3pt; ' : '' }}{{ $face($check['body']) }}">{!! $wrap($check['body']) !!}</div>
+                            @endif
+                            @foreach ($check['facts'] as $fact)
+                                <div class="ck-fact" style="{{ $face($fact['value']) }}"><span class="lab">{{ $fact['label'] }}:</span> {!! $wrap($fact['value']) !!}</div>
+                            @endforeach
+                        @else
+                            @if ($check['looked'])
+                                <div class="ck-msg"><span class="ck-lbl">Looked at:</span> {{ $check['looked'] }}</div>
+                            @endif
+                            @if ($check['found'] !== '')
+                                <div class="ck-msg" style="margin-top: 3pt; {{ $face($check['found']) }}"><span class="ck-lbl">{{ $group['key'] === 'ok' ? 'Found:' : 'Result:' }}</span> {!! $wrap($check['found']) !!}</div>
+                            @endif
+                        @endif
                         @if ($group['key'] === 'warn' && $check['meaning'])
                             <div class="ck-mean"><b>What does this check mean?</b> {{ $check['meaning'] }}</div>
                         @endif

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Report;
 use App\Services\CheckExplainer;
+use App\Support\CheckPresenter;
 use App\Services\ScanAdvice;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -60,8 +61,8 @@ class ScanPdfController extends Controller
 
     /** The three groups under "What we checked" (same titles, notes and colours as the result page). */
     private const GROUPS = [
-        'warn' => ['title' => 'Warnings', 'note' => null, 'rgb' => '251,191,36'],
-        'ok' => ['title' => 'No issues found', 'note' => 'Each of these checks found nothing wrong on its own. The overall result is based on all checks together.', 'rgb' => '52,211,153'],
+        'warn' => ['title' => 'Needs attention', 'note' => null, 'rgb' => '251,191,36'],
+        'ok' => ['title' => 'Passed', 'note' => 'Each of these checks found nothing wrong on its own. The overall result is based on all checks together.', 'rgb' => '52,211,153'],
         'info' => ['title' => 'Unavailable or for information', 'note' => '"Unavailable" means the check could not get an answer, for example because the website is offline. It is neither good nor bad, and it does not affect the score.', 'rgb' => '148,163,184'],
     ];
 
@@ -159,8 +160,20 @@ class ScanPdfController extends Controller
             $name = (string) ($check['name'] ?? 'Check');
             $status = (string) ($check['status'] ?? 'SAFE');
             [$text, $rgb] = self::STATUS_COLORS[$status] ?? self::STATUS_COLORS['UNKNOWN'];
+            $group = CheckExplainer::group($status);
+            $plain = trim(CheckExplainer::plain((string) ($check['message'] ?? '')));
+
+            // The same layout as the result page: a headline, the rest of the sentence and the evidence for a
+            // warning; "looked at" and "found" for a passed or unavailable check.
+            $shown = $group === 'warn' ? CheckPresenter::present(['name' => $name, 'message' => $plain]) : null;
+            $generic = in_array(rtrim($plain, '.'), ['', 'No problems were found'], true);
 
             return [
+                'headline' => $shown['headline'] ?? null,
+                'body' => $shown['body'] ?? $plain,
+                'facts' => $shown['facts'] ?? [],
+                'looked' => $group === 'warn' ? null : CheckPresenter::lookedAt($name),
+                'found' => $group === 'ok' && $generic ? '' : $plain,
                 'name' => $name,
                 'title' => CheckExplainer::title($name),
                 'technical' => CheckExplainer::hasFriendlyTitle($name) ? $name : null,

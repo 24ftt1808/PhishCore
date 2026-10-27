@@ -72,6 +72,15 @@ return [
         'visibility' => env('URLSCAN_VISIBILITY', 'unlisted'),
         'daily_cap' => (int) env('PAGE_PREVIEW_DAILY_CAP', 200),
         'keep_days' => (int) env('PAGE_PREVIEW_KEEP_DAYS', 7),
+        // Also read the page as it looked once loaded in the sandbox and show a short note under the picture.
+        // Display only: never changes the score. Uses no extra scan allowance, only a download of the loaded page.
+        'read_page' => (bool) env('PAGE_PREVIEW_READ_PAGE', true),
+    ],
+
+    // Run a link scan's independent network checks at the same time (separate PHP processes) instead of one by one.
+    // Faster, but each check starts its own PHP process, so it uses more memory for a moment. Off unless SCAN_PARALLEL=true.
+    'scan' => [
+        'parallel' => (bool) env('SCAN_PARALLEL', false),
     ],
 
     'ocr_space' => [

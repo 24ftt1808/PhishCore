@@ -15,8 +15,10 @@ use App\Support\RegistrableDomain;
 use App\Support\SafeUrl;
 use App\Support\ThreatLookup;
 use Carbon\Carbon;
+use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -221,6 +223,16 @@ class AnalysisEngine
             }
         }
 
+        // A well-known name used as the start of an address that belongs to another website, together with a word
+        // scams use to sound official ("outlook.webaccess-alert.com"). Only when no brand-word rule above has
+        // already fired, and counted as a brand-word rule, so a clean, long-established site is calmed down the same way.
+        if (! $isOfficialBrandSite && ! preg_grep('/brand name|mimic|imitates/', $reasons)
+            && ($asSubdomain = $this->brandUsedAsSubdomain($host)) !== null) {
+            $reasons[] = "The brand name \"{$asSubdomain['brand']}\" is used at the start of an address that belongs to a different website, and the address also contains a word scams use to sound official (\"{$asSubdomain['word']}\")";
+            $points += 25;
+            $brandRulePoints = 25;
+        }
+
         // A name written to be mistaken for a known brand ("gooogle", "arnazon", a Cyrillic "а" in "аpple").
         // Only when no brand-word rule above has already fired, so one fake is not counted twice.
         if (! $isOfficialBrandSite && ! preg_grep('/brand name|mimic|imitates|looks like|alphabets/', $reasons)
@@ -256,6 +268,49 @@ class AnalysisEngine
 
     /** "Brands" that are ordinary words too, so a domain containing one is not necessarily imitating anyone. */
     private const ORDINARY_WORD_BRANDS = ['bank'];
+
+    /** Words scams put in an address to sound official. */
+    private const OFFICIAL_SOUNDING_WORDS = '/(secure|security|login|logon|signin|verify|verification|update|support|alert|confirm|unlock|billing|refund|claim|wallet|account|webaccess|helpdesk|notice|recover|validate)/';
+
+    /**
+     * A name from brands.subdomain_brands used as a whole label in front of the registered domain of another website
+     * ("outlook.webaccess-alert.com"), when the rest of the address also carries a word scams use to sound official.
+     * Without that second sign it is left alone: companies run their own mail pages at "outlook.theircompany.com".
+     * Sites listed in brands.known_lookalikes are skipped. Returns the name and the word, or null.
+     *
+     * @return array{brand: string, word: string}|null
+     */
+    private function brandUsedAsSubdomain(string $host): ?array
+    {
+        $registrable = RegistrableDomain::of($host);
+
+        if ($registrable === null || ! str_ends_with($host, '.'.$registrable)) {
+            return null;
+        }
+
+        if (in_array($registrable, array_map('strtolower', config('brands.known_lookalikes', [])), true)) {
+            return null;
+        }
+
+        $labels = explode('.', substr($host, 0, -(strlen($registrable) + 1)));
+        $names = array_map('strtolower', config('brands.subdomain_brands', []));
+
+        foreach ($labels as $i => $label) {
+            if (! in_array($label, $names, true)) {
+                continue;
+            }
+
+            $others = $labels;
+            unset($others[$i]);
+            $rest = implode('.', array_merge($others, [$registrable]));
+
+            if (preg_match(self::OFFICIAL_SOUNDING_WORDS, $rest, $found) === 1) {
+                return ['brand' => $label, 'word' => $found[1]];
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Whether an address has a second sign of a disguise besides containing a word: the word written
@@ -382,7 +437,7 @@ class AnalysisEngine
             'points' => 0,
             'neutral' => true,
             'brand_rule_points' => 0,
-            'reasons' => ["A well-known brand name appears in this address, but the website is about {$years} years old and none of {$virusTotal['total']} security companies flag it, so it is treated as an established site and not a copy."],
+            'reasons' => ["A well-known brand name appears in this address, but this address was registered about {$years} years ago and none of {$virusTotal['total']} security companies flag it, so it is treated as an established site and not a copy."],
         ];
     }
 
@@ -459,7 +514,7 @@ class AnalysisEngine
             if ($reasons === []) {
                 $howOld = $ageDays >= 730 ? intdiv($ageDays, 365).' years' : ($ageDays >= 365 ? 'a year' : intdiv($ageDays, 30).' months');
                 $source = ['rdap' => 'the domain registry', 'whois' => 'a WHOIS record', 'virustotal' => 'VirusTotal'][$found['source']] ?? 'a public record';
-                $detail = 'The website was created on '.$createdAt->format('j M Y').', about '.$howOld.' ago, according to '.$source.'.';
+                $detail = 'The web address was registered on '.$createdAt->format('j M Y').', about '.$howOld.' ago, according to '.$source.'.';
                 if ($domain !== $host) {
                     $detail .= " That is the age of {$domain}, the main domain of this address.";
                 }
@@ -1313,9 +1368,22 @@ class AnalysisEngine
             return $empty;
         }
 
-        $html = PageInspector::toUtf8($response->body(), $response->header('Content-Type'));
-        $serverHeader = $response->header('Server');
+        return $this->inspectPageHtml(
+            PageInspector::toUtf8($response->body(), $response->header('Content-Type')),
+            (string) $host,
+            $response->header('Server') ?: null
+        );
+    }
 
+    /**
+     * Reads the HTML of a page for warning signs: login and card forms, lure wording, brand imitation, form
+     * destinations, redirect tricks and scrambled scripts. Nothing here fetches anything.
+     *
+     * $rendered is true when the HTML is what a browser showed AFTER the scripts ran (the sandbox's copy of a page).
+     * Such a page is not an empty shell waiting for JavaScript, so that special answer is skipped.
+     */
+    public function inspectPageHtml(string $html, string $host, ?string $serverHeader = null, bool $rendered = false): array
+    {
         // Cap how much HTML we process — phishing pages are almost always
         // small, and this bounds worst-case processing time on a huge page.
         $html = substr($html, 0, 200000);
@@ -1419,7 +1487,7 @@ class AnalysisEngine
 
         // A page that JavaScript builds arrives as an empty shell, so "no login form found" would only mean the
         // form had not been drawn yet. Say so instead of passing it. Anything actually found above still counts.
-        if (empty($reasons) && PageInspector::needsJavaScript($html)) {
+        if (empty($reasons) && ! $rendered && PageInspector::needsJavaScript($html)) {
             return [
                 'flagged' => false,
                 'points' => 0,
@@ -3183,20 +3251,69 @@ class AnalysisEngine
         };
     }
 
+    /**
+     * Runs checks that do not depend on each other, and returns their results under the same keys.
+     *
+     * By default they run one after the other, exactly as before. With SCAN_PARALLEL=true they run at the same
+     * time in separate PHP processes (Laravel's Concurrency), so a scan takes about as long as its slowest check
+     * instead of all of them added up. If running them side by side fails for any reason, they are simply run one
+     * after the other, so a scan never fails because of this.
+     *
+     * @param  array<string, Closure>  $tasks
+     * @return array<string, mixed>
+     */
+    private function runIndependently(array $tasks): array
+    {
+        $oneByOne = fn (): array => array_map(fn (Closure $task) => $task(), $tasks);
+
+        if (! config('services.scan.parallel', false) || count($tasks) < 2) {
+            return $oneByOne();
+        }
+
+        try {
+            $results = Concurrency::run($tasks);
+
+            // Every task must have answered with its own result; anything else cannot be trusted.
+            if (array_keys($results) === array_keys($tasks) && count(array_filter($results, 'is_array')) === count($tasks)) {
+                return $results;
+            }
+
+            Log::warning('Scan checks gave unexpected results when run in parallel; running one by one');
+        } catch (\Throwable $e) {
+            Log::warning('Scan checks could not run in parallel; running one by one', ['reason' => $e::class]);
+        }
+
+        return $oneByOne();
+    }
+
     private function analyzeUrl(string $url, ?int $reportId = null): array
     {
         $syntaxResult = $this->checkUrlSyntax($url);
         $host = parse_url($url, PHP_URL_HOST);
         $domainHistoryResult = $this->checkPreviousDomainReports($host, $reportId);
-        $ageResult = $this->checkDomainAge($url);
-        $sslResult = $this->checkSslCertificate($url);
-        $blacklistResult = $this->checkBlacklist($url);
-        $vtResult = $this->checkVirusTotal($url);
-        $ipResult = $this->checkIpReputation($url);
-        $redirectResult = $this->checkRedirectChain($url);
-        $contentResult = $this->checkPageContent($url);
         $hostingResult = $this->checkFreeHostingPlatform($url);
-        $availabilityResult = $this->checkSiteAvailability($url);
+
+        // These eight each go out to the network and none needs another's answer, so they can run side by side
+        // (see runIndependently). Same checks, same order, same results either way.
+        [
+            'age' => $ageResult,
+            'ssl' => $sslResult,
+            'blacklist' => $blacklistResult,
+            'vt' => $vtResult,
+            'ip' => $ipResult,
+            'redirect' => $redirectResult,
+            'content' => $contentResult,
+            'availability' => $availabilityResult,
+        ] = $this->runIndependently([
+            'age' => fn () => $this->checkDomainAge($url),
+            'ssl' => fn () => $this->checkSslCertificate($url),
+            'blacklist' => fn () => $this->checkBlacklist($url),
+            'vt' => fn () => $this->checkVirusTotal($url),
+            'ip' => fn () => $this->checkIpReputation($url),
+            'redirect' => fn () => $this->checkRedirectChain($url),
+            'content' => fn () => $this->checkPageContent($url),
+            'availability' => fn () => $this->checkSiteAvailability($url),
+        ]);
 
         // An old site that no security company flags is not treated as a copy just because a brand name is in its address.
         $syntaxResult = $this->softenBrandWordForEstablishedSite(

@@ -41,7 +41,8 @@
 @endphp
 
 @php
-    $headline = match ($analysis->verdict) {
+    $shownVerdict = $shownVerdict ?? $analysis->verdict;
+    $headline = match ($shownVerdict) {
         'phishing' => 'Phishing detected',
         'suspicious' => 'This looks suspicious',
         'review' => 'Needs a manual review',
@@ -59,7 +60,8 @@
                 ? 'This is not a guarantee of safety. A brand-new scam file may not be known yet. Only install apps from the Play Store or App Store, and do not open files from people you do not know.'
                 : 'This is not a guarantee of safety. Be careful with anything that asks for money, passwords or codes.'))
         : null;
-    $verdictIcon = match ($analysis->verdict) {
+    $aiDisagrees = $shownVerdict === 'review' && $analysis->verdict !== 'review';
+    $verdictIcon = match ($shownVerdict) {
         'clean' => 'M9 12.75l2.25 2.25 4.5-4.5M21 12c0 4.556-3.6 8.318-8.25 8.965-4.65-.647-8.25-4.409-8.25-8.965V6.75l8.25-3.75 8.25 3.75V12z',
         'review' => 'M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z',
         default => 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
@@ -71,7 +73,7 @@
     $heroFacts = array_values(array_filter([
         ['Checks with warnings', $checkList->where('points', '>', 0)->count() . ' of ' . $checkList->count(), $checkList->where('points', '>', 0)->isNotEmpty() ? $style['text'] : 'text-white'],
         $heroVtTotal > 0 ? ['Security companies', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) . ' of ' . $heroVtTotal . ' flagged', (($heroVt['malicious'] ?? 0) + ($heroVt['suspicious'] ?? 0)) > 0 ? 'text-red-300' : 'text-emerald-300'] : null,
-        $analysis->domain_age_days !== null ? ['Website age', number_format($analysis->domain_age_days) . ' days', $analysis->domain_age_days < 30 ? 'text-orange-300' : 'text-white'] : null,
+        $analysis->domain_age_days !== null ? ['Domain age', number_format($analysis->domain_age_days) . ' days', $analysis->domain_age_days < 30 ? 'text-orange-300' : 'text-white'] : null,
         $analysis->duration_ms !== null ? ['Time taken', round($analysis->duration_ms / 1000, 1) . 's', 'text-white'] : null,
     ]));
 @endphp
@@ -96,6 +98,10 @@
 
             @if ($cleanCaveat)
                 <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $cleanCaveat }}</p>
+            @endif
+
+            @if ($aiDisagrees)
+                <p data-ai-disagrees class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ \App\Support\VerdictWording::CAVEAT }}</p>
             @endif
 
             @if ($topReason && ($topReason['points'] ?? 0) > 0)
@@ -379,6 +385,7 @@
              x-data="{
                 src: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? $report->previewPicture() : null),
                 state: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? 'ready' : 'idle'),
+                note: @js(app(\App\Services\PagePreview::class)->exists($report->previewPicture()) ? $report->preview_note : null),
                 message: '',
                 tips: @js([
                     'Real banks and government offices never ask for your password or OTP by SMS, WhatsApp or email.',
@@ -449,7 +456,7 @@
                             });
                             if (res.status === 429) { this.fail('Please wait a minute before trying again.'); return; }
                             const data = await res.json();
-                            if (data.status === 'ready') { this.src = data.url; this.state = 'ready'; return; }
+                            if (data.status === 'ready') { this.src = data.url; this.note = data.note || null; this.state = 'ready'; return; }
                             if (data.status !== 'pending') { this.fail(data.message); return; }
                             await new Promise(r => setTimeout(r, 4000));
                         }
@@ -528,7 +535,7 @@
                      :class="shown ? 'cursor-zoom-in' : 'blur-xl'"
                      class="w-full max-h-[500px] object-contain block transition"
                      x-on:click="openViewer()"
-                     x-on:error="state = 'idle'; src = null">
+                     x-on:error="state = 'idle'; src = null; note = null">
                 <button type="button" x-show="! shown" x-on:click="shown = true"
                         class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white bg-black/40" style="display: none;">
                     Click to show the picture
@@ -538,6 +545,20 @@
                     class="mt-3 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15">
                 Enlarge picture
             </button>
+            {{-- What the page looked like once it had loaded in the sandbox. Display only: it never changes the score. Alpine's x-text escapes everything. --}}
+            <template x-if="note">
+                <div class="mt-4 rounded-lg border px-4 py-3"
+                     :class="{ 'border-amber-400/30 bg-amber-400/10': note.tone === 'warn', 'border-sky-400/25 bg-sky-400/10': note.tone === 'info', 'border-emerald-400/25 bg-emerald-400/10': note.tone === 'ok' }">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">After the page loaded</p>
+                    <p class="text-sm font-semibold text-white" x-text="note.headline"></p>
+                    <ul class="mt-1.5 space-y-1 text-sm text-slate-300 list-disc pl-5">
+                        <template x-for="(line, i) in note.lines" :key="i">
+                            <li x-text="line"></li>
+                        </template>
+                    </ul>
+                    <p class="text-xs text-slate-400 mt-2">Read from the page after it loaded in the sandbox. It is for information only and is not part of the score.</p>
+                </div>
+            </template>
             <p class="text-xs text-slate-400 mt-2">The picture is blurred until you click it, because the page may be harmful. It was taken when you asked for it, and the page may have changed since.</p>
         </div>
 

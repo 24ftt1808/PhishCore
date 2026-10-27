@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
+use App\Services\AnalysisEngine;
 use App\Services\PagePreview;
+use App\Support\PageNote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * The result page calls this every few seconds after "Show page preview" is clicked.
@@ -25,7 +29,7 @@ class PagePreviewController extends Controller
         abort_unless($report->status === 'completed' && $report->previewLink() !== null, 404);
 
         if ($preview->exists($report->previewPicture())) {
-            return response()->json(['status' => 'ready', 'url' => $report->previewPicture()]);
+            return response()->json(['status' => 'ready', 'url' => $report->previewPicture(), 'note' => $report->preview_note]);
         }
 
         $lock = Cache::lock('page-preview:report:'.$report->id, 40);
@@ -63,9 +67,10 @@ class PagePreviewController extends Controller
         if ($checked['status'] === 'ready') {
             Cache::forget($jobKey);
             $address = $preview->publicUrl($checked['path']);
-            $report->forceFill([$report->previewColumn() => $address])->save();
+            $note = $this->readLoadedPage($report, $preview, (string) $job['uuid'], $checked['page_host'] ?? null);
+            $report->forceFill([$report->previewColumn() => $address, 'preview_note' => $note])->save();
 
-            return response()->json(['status' => 'ready', 'url' => $address]);
+            return response()->json(['status' => 'ready', 'url' => $address, 'note' => $note]);
         }
 
         if ($checked['status'] === 'pending' && now()->getTimestamp() - (int) $job['started'] < self::MAX_WAIT_SECONDS) {
@@ -75,6 +80,67 @@ class PagePreviewController extends Controller
         Cache::forget($jobKey);
 
         return $this->failure('unavailable');
+    }
+
+    /**
+     * Reads the page as it looked once it had loaded in the sandbox and writes the short note shown under the picture.
+     * Display only: the score, the verdict and the saved checks are never touched. Any problem means "no note",
+     * so the picture itself is never held back by this.
+     */
+    private function readLoadedPage(Report $report, PagePreview $preview, string $uuid, ?string $finalHost): ?array
+    {
+        try {
+            $html = $preview->pageHtml($uuid);
+            $linkHost = strtolower((string) parse_url((string) $report->previewLink(), PHP_URL_HOST));
+
+            if ($html === null || $linkHost === '') {
+                return null;
+            }
+
+            // The loaded page may be on another site than the link (a redirect): judge it against where it really is.
+            $moved = $finalHost !== null && $finalHost !== $linkHost && $finalHost !== 'www.'.$linkHost && 'www.'.$finalHost !== $linkHost;
+            $result = app(AnalysisEngine::class)->inspectPageHtml($html, $finalHost ?? $linkHost, null, true);
+
+            return PageNote::build($result, $this->earlierReading($report), $moved ? $finalHost : null, $this->scanFoundPageConcern($report));
+        } catch (Throwable $e) {
+            Log::warning('Page preview: the loaded page could not be read', ['reason' => $e::class]);
+
+            return null;
+        }
+    }
+
+    /** True when the scan's own page checks (page content, AI page review) raised a concern about this page. */
+    private function scanFoundPageConcern(Report $report): bool
+    {
+        $flags = (array) ($report->analyses()->latest('id')->first()?->flags ?? []);
+
+        foreach ($flags as $check) {
+            if (is_array($check)
+                && in_array($check['name'] ?? null, ['Page Content Analysis', 'AI Page Review'], true)
+                && (int) ($check['points'] ?? 0) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** How the scan itself related to this page, so the note can say when it is the first look at it. */
+    private function earlierReading(Report $report): ?string
+    {
+        if ($report->type !== 'url') {
+            return 'unopened';
+        }
+
+        $flags = (array) ($report->analyses()->latest('id')->first()?->flags ?? []);
+
+        foreach ($flags as $check) {
+            if (($check['name'] ?? null) === 'Page Content Analysis') {
+                return in_array($check['status'] ?? '', ['INFO', 'UNKNOWN'], true) ? 'unread' : null;
+            }
+        }
+
+        return null;
     }
 
     private function failure(string $status): JsonResponse

@@ -33,7 +33,7 @@
         <p>To do their job, some outside services receive part of what you submit:</p>
         <ul>
             <li><strong class="text-white">Google Safe Browsing and VirusTotal</strong> receive the links you scan. VirusTotal also receives the fingerprint of a file you upload, but never the file itself.</li>
-            <li><strong class="text-white">urlscan.io</strong> receives a link only when the optional page preview is switched on and you click "Show page preview", so that a picture of the page can be taken. The scan is unlisted, which keeps it out of urlscan's public search. Our copy of the picture is kept for a few days and then deleted.</li>
+            <li><strong class="text-white">urlscan.io</strong> receives a link only when the optional page preview is switched on and you click "Show page preview", so that a picture of the page can be taken. The scan is unlisted, which keeps it out of urlscan's public search. We also read a copy of the page as it looked after loading, to show a short note under the picture; no further data is sent for this. Our copy of the picture and the note are kept for a few days and then deleted.</li>
             <li><strong class="text-white">An OCR service</strong> receives screenshots so the text in them can be read.</li>
             <li><strong class="text-white">AI providers</strong> (Google Gemini for the optional AI text check, and Groq for the chat adviser) receive the message text or chat messages when those features are switched on.</li>
             <li><strong class="text-white">Domain lookup and IP information services</strong> receive the domain or address being checked.</li>

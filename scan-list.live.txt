@@ -1,0 +1,58 @@
+# LIVE phishing links taken from the free public phishunt.io feed (CC0) on 27 Oct 2026.
+# Not checked by hand: the feed lists "active suspicious" sites, so a few entries may not be phishing, and many are
+# already offline by the time you run this. The report's "Scams still online" line is the figure to use.
+# Run with --heuristics-only so Google Safe Browsing, VirusTotal and PhishCore's saved phishing lists
+# (which already know these links) are switched off, then PhishCore's own rules are what get measured:
+#   php artisan scan:batch scan-list.live.txt --heuristics-only
+# Keep this set apart from the simulated Brunei lookalikes in your report. Never open these links in a normal browser.
+# The one phishunt entry that was used while tuning the engine was left out, so this set is unseen by the rules.
+scam|live-phishunt|https://googlecoin.net
+scam|live-phishunt|http://autho-facebook-appp.weebly.com
+scam|live-phishunt|http://lock-icloud.com/identity/login
+scam|live-phishunt|https://exoduss-web3-wallet.pages.dev/
+scam|live-phishunt|https://usps-for-business-website-2-1.vercel.app
+scam|live-phishunt|https://roblox.com.ss/games/2753915549/Blox-Fruits
+scam|live-phishunt|https://facebook-esp.blogspot.com
+scam|live-phishunt|http://register-facebook.blogspot.com
+scam|live-phishunt|https://binance-red-packet.vercel.app
+scam|live-phishunt|https://office365.internal-alerts.com/i/d5b9af0d256f14c03ab8396a78d3687bf
+scam|live-phishunt|https://security.email-microsoft.com/diyc_smavt1av3ltaq
+scam|live-phishunt|https://instagram-fe.vercel.app
+scam|live-phishunt|http://openseaproks007.vercel.app
+scam|live-phishunt|http://login-facebook-facebook.blogspot.com
+scam|live-phishunt|http://leia-santander.vercel.app
+scam|live-phishunt|https://instagramchatsview999.blogspot.com
+scam|live-phishunt|http://recreate-instagrampage.vercel.app
+scam|live-phishunt|https://google28.m4ntapaset.ink
+scam|live-phishunt|https://netflix.gafiatechnologies.com
+scam|live-phishunt|https://netflix.vpnuse.eu.org
+scam|live-phishunt|https://metamaskrewards.com
+scam|live-phishunt|http://facebooktechnicalsupportnumber123.blogspot.com
+scam|live-phishunt|http://metamaskwallett.blogspot.com
+scam|live-phishunt|http://barcelona-facebook.blogspot.com
+scam|live-phishunt|http://login-facebookaccount.blogspot.com
+scam|live-phishunt|http://instagram-test.vercel.app
+scam|live-phishunt|https://facebook-login.vercel.app
+scam|live-phishunt|http://reactivar-microsoft-live.iceiy.com
+scam|live-phishunt|http://netflixbymanoj.vercel.app
+scam|live-phishunt|https://metamaskchromeextensionn.blogspot.com
+scam|live-phishunt|http://ebay-seller-center-managedpayments.vercel.app
+scam|live-phishunt|http://metamask-wallet.vercel.app
+scam|live-phishunt|https://netflix.surf
+scam|live-phishunt|https://mirror-google.com
+scam|live-phishunt|https://netflixquebec.blogspot.com
+scam|live-phishunt|https://googlelogos.com
+scam|live-phishunt|http://paypal-logiin.blogspot.com/
+scam|live-phishunt|https://hot-binance.com.cn
+scam|live-phishunt|https://outlook.webaccess-alert.com/s/63bzgfsvbwsfcdx7y9/584dd8/90eab167-7429-489f-99f6-ce86e8d0d81a
+scam|live-phishunt|http://metamask-launchpad.vercel.app
+scam|live-phishunt|https://facebookpagemanagement.com
+scam|live-phishunt|https://admin.santandercitas.com
+scam|live-phishunt|https://netflixvoid.org
+scam|live-phishunt|https://meet-googlee7823629056.pages.dev
+scam|live-phishunt|https://netflixandchiffres.com
+scam|live-phishunt|https://binanceii.com
+scam|live-phishunt|https://binancenn.com
+scam|live-phishunt|https://instagram-cam.vercel.app
+scam|live-phishunt|http://spotify-client-beta.vercel.app
+scam|live-phishunt|http://amazon-harshdeep.vercel.app

@@ -52,6 +52,13 @@ test('pages in other character sets come out as UTF-8', function () {
 test('a page on a shared platform is told apart from a domain of its own', function () {
     expect(RegistrableDomain::sharedPlatform('someone.github.io'))->toBe('github.io')
         ->and(RegistrableDomain::sharedPlatform('A.B.Netlify.app.'))->toBe('netlify.app')
+        ->and(RegistrableDomain::sharedPlatform('chatgpt0005.eu.org'))->toBe('eu.org')
+        ->and(RegistrableDomain::sharedPlatform('mysite.duckdns.org'))->toBe('duckdns.org')
+        ->and(RegistrableDomain::sharedPlatform('support-center-apple.wasmer.app'))->toBe('wasmer.app')
+        ->and(RegistrableDomain::of('login.support-center-apple.wasmer.app'))->toBe('support-center-apple.wasmer.app')
+        ->and(RegistrableDomain::of('chatgpt0005.eu.org'))->toBe('chatgpt0005.eu.org')
+        ->and(RegistrableDomain::of('login.chatgpt0005.eu.org'))->toBe('chatgpt0005.eu.org')
+        ->and(RegistrableDomain::sharedPlatform('eu.org'))->toBeNull()
         ->and(RegistrableDomain::sharedPlatform('github.io'))->toBeNull()
         ->and(RegistrableDomain::sharedPlatform('example.com'))->toBeNull()
         ->and(RegistrableDomain::sharedPlatform(null))->toBeNull();

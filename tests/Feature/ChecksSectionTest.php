@@ -118,9 +118,9 @@ test('passed checks are one compact row each: what was found, and what was looke
 test('an unavailable check shows what happened in plain words', function () {
     $text = checksText(renderChecks(sampleChecks()));
 
-    expect($text)->toContain('Website age')
+    expect($text)->toContain('Domain age')
         ->toContain('Unavailable')
-        ->toContain('Unavailable. We could not find out when this website was created.');
+        ->toContain('Unavailable. We could not find out when this web address was registered.');
 });
 
 test('every check is explained by an info button that opens its own panel, and the old dropdown is gone', function () {

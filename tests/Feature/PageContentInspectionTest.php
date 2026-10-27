@@ -84,3 +84,24 @@ test('text hidden in the head, scripts and noscript is not read as page text', f
 
     expect($result['page_text'])->toBe('Welcome to our shop.');
 });
+test('the same empty page read as a loaded page is not called a JavaScript shell', function () use ($shell) {
+    $result = $this->engine->inspectPageHtml($shell, 'shell.example', null, true);
+
+    expect($result['neutral'] ?? false)->toBeFalse()
+        ->and($result['reasons'][0])->toContain('No login forms');
+
+    // Read as a plain fetch it still is one.
+    expect($this->engine->inspectPageHtml($shell, 'shell.example')['neutral'])->toBeTrue();
+});
+
+test('reading page HTML directly gives the same answer as fetching the page', function () {
+    $html = '<html><head><title>Sign in</title></head><body><form><input type="password" name="p"></form></body></html>';
+    Http::fake(['*' => Http::response($html, 200)]);
+
+    $fetched = $this->engine->checkPageContent('https://school.example/');
+    $direct = $this->engine->inspectPageHtml($html, 'school.example');
+
+    expect($direct['points'])->toBe($fetched['points'])
+        ->and($direct['has_sensitive_field'])->toBe($fetched['has_sensitive_field'])
+        ->and($direct['flagged'])->toBe($fetched['flagged']);
+});

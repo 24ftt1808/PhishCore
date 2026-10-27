@@ -22,6 +22,12 @@ final class RegistrableDomain
         '000webhostapp.com', 'firebaseapp.com', 'web.app',
         'herokuapp.com', 'vercel.app', 'repl.co', 'r2.dev',
         'sites.google.com', 'wordpress.com', 'square.site',
+        // Free subdomains and dynamic-DNS services: anyone can get a name here, so the age of the service
+        // (eu.org dates from 1995) says nothing about the page.
+        'eu.org', 'duckdns.org', 'no-ip.org', 'ddns.net', 'hopto.org', 'zapto.org',
+        'serveo.net', 'ngrok.io', 'ngrok-free.app', 'trycloudflare.com', 'workers.dev',
+        'onrender.com', 'fly.dev', 'railway.app', 'surge.sh', 'webflow.io', 'infinityfreeapp.com',
+        'wasmer.app', 'replit.app', 'replit.dev', 'pythonanywhere.com', 'streamlit.app', 'deno.dev',
     ];
 
     /** Second-level labels that sit in front of a two-letter country domain (com.bn, co.uk, edu.my ...). */

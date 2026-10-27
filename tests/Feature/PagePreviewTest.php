@@ -62,7 +62,14 @@ function urlscanFinished(): array
         'urlscan.io/api/v1/scan/' => Http::response(['uuid' => PREVIEW_UUID, 'visibility' => 'unlisted'], 200),
         'urlscan.io/api/v1/result/*' => Http::response(['task' => ['uuid' => PREVIEW_UUID]], 200),
         'urlscan.io/screenshots/*' => Http::response(previewPng(), 200, ['Content-Type' => 'image/png']),
+        'urlscan.io/dom/*' => Http::response(loadedPage(), 200, ['Content-Type' => 'text/html']),
     ];
+}
+
+/** The page as it looked once it had loaded in the sandbox. */
+function loadedPage(string $body = '<p>A calm page about gardening.</p>', string $head = '<title>Garden club</title>'): string
+{
+    return '<html><head>'.$head.'</head><body>'.$body.'</body></html>';
 }
 
 beforeEach(function () {
@@ -524,4 +531,279 @@ test('the engine picks the most suspicious full link in an email and ignores mes
 
     expect($method->invoke($engine, 'Hello, no link here at all.'))->toBeNull()
         ->and($method->invoke($engine, 'Visit https://www.google.com or http://bibd-secure-login.com/verify now'))->toBe('http://bibd-secure-login.com/verify');
+});
+
+// --- the note about the loaded page (display only) ---
+
+/** Click once to start the scan, click again to finish it; returns the second reply. */
+function previewTwice($test, User $owner, Report $scan)
+{
+    $test->actingAs($owner)->postJson(route('scan.preview', $scan))->assertJsonPath('status', 'pending');
+
+    return $test->actingAs($owner)->postJson(route('scan.preview', $scan));
+}
+
+test('when the picture is ready the loaded page is read, and a note is saved and returned', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), [
+        'urlscan.io/dom/*' => Http::response(loadedPage('<form><input type="password" name="p"></form>', '<title>Sign in</title>'), 200),
+    ]));
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+
+    $reply = previewTwice($this, $owner, $scan);
+
+    $reply->assertOk()
+        ->assertJsonPath('status', 'ready')
+        ->assertJsonPath('note.tone', 'info')
+        ->assertJsonPath('note.headline', 'The loaded page has a login or card form');
+    expect($scan->fresh()->preview_note['tone'])->toBe('info');
+});
+
+test('a clean loaded page gives a calm note and sends nothing else', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+
+    $reply = previewTwice($this, $owner, $scan);
+
+    $reply->assertJsonPath('note.tone', 'ok')->assertJsonPath('note.headline', 'No login form or warning signs on the loaded page');
+    Http::assertSentCount(4); // start, result, picture, loaded page
+});
+
+test('a quiet loaded page is not called all clear when the scan itself found a concern on the page', function (string $name) {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+    $scan->analyses()->first()->update(['flags' => [
+        ['name' => $name, 'status' => 'SUSPICIOUS', 'message' => 'Looks suspicious.', 'points' => 8],
+    ]]);
+
+    $reply = previewTwice($this, $owner, $scan);
+
+    $reply->assertJsonPath('note.tone', 'info')->assertJsonPath('note.headline', 'No login form found on the loaded page');
+    expect(implode(' ', $reply->json('note.lines')))->toContain('does not make the page safe');
+})->with(['Page Content Analysis', 'AI Page Review']);
+
+test('a page check that found nothing leaves the calm note as it was', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+    $scan->analyses()->first()->update(['flags' => [
+        ['name' => 'Page Content Analysis', 'status' => 'SAFE', 'message' => 'Nothing found.', 'points' => 0],
+        ['name' => 'AI Page Review', 'status' => 'SAFE', 'message' => 'Nothing found.', 'points' => 0],
+    ]]);
+
+    previewTwice($this, $owner, $scan)->assertJsonPath('note.tone', 'ok');
+});
+
+test('the note never changes the score, the verdict or the saved checks', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), [
+        'urlscan.io/dom/*' => Http::response(loadedPage('<form><input type="password" name="p"></form><p>Urgent: verify your account now or it will be suspended. Enter your card number and PIN.</p>'), 200),
+    ]));
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+    $before = $scan->analyses()->first()->only(['verdict', 'risk_score', 'flags']);
+
+    previewTwice($this, $owner, $scan)->assertJsonPath('status', 'ready');
+
+    expect($scan->analyses()->first()->only(['verdict', 'risk_score', 'flags']))->toBe($before)
+        ->and($scan->analyses()->count())->toBe(1);
+});
+
+test('the request for the loaded page carries the key and the scan id, and nothing else is sent for it', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+
+    previewTwice($this, $owner, previewScan($owner));
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://urlscan.io/dom/'.PREVIEW_UUID.'/'
+        && $request->method() === 'GET'
+        && $request->header('API-Key') === ['test-key']);
+});
+
+test('the note says when the scan itself could not read the page', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+    $scan->analyses()->first()->update(['flags' => [
+        ['name' => 'Page Content Analysis', 'status' => 'INFO', 'message' => 'This page is drawn by JavaScript.', 'points' => 0],
+    ]]);
+
+    $lines = previewTwice($this, $owner, $scan)->json('note.lines');
+
+    expect(implode(' ', $lines))->toContain('could not read this page properly');
+});
+
+test('the note says nothing about the scan when the scan read the page fine', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+    $scan->analyses()->first()->update(['flags' => [
+        ['name' => 'Page Content Analysis', 'status' => 'SAFE', 'message' => 'Nothing found.', 'points' => 0],
+    ]]);
+
+    $lines = previewTwice($this, $owner, $scan)->json('note.lines');
+
+    expect(implode(' ', $lines))->not->toContain('The scan itself');
+});
+
+test('a link found in an email is described as not opened by the scan', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner, ['type' => 'email', 'url' => null, 'preview_url' => 'http://bn-parcel-track.com/app']);
+
+    $lines = previewTwice($this, $owner, $scan)->json('note.lines');
+
+    expect(implode(' ', $lines))->toContain('did not open this link');
+});
+
+test('where the link ended up is mentioned, and the loaded page is judged on that site', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), [
+        'urlscan.io/api/v1/result/*' => Http::response(['page' => ['domain' => 'landing.example']], 200),
+]));
+    $owner = User::factory()->create();
+
+    $lines = previewTwice($this, $owner, previewScan($owner))->json('note.lines');
+
+    expect($lines)->toContain('The link led to landing.example.');
+});
+
+test('a final address that is not a plain host name is ignored', function (mixed $domain) {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), [
+        'urlscan.io/api/v1/result/*' => Http::response(['page' => ['domain' => $domain]], 200),
+]));
+    $owner = User::factory()->create();
+
+    $lines = previewTwice($this, $owner, previewScan($owner))->json('note.lines');
+
+    expect(implode(' ', $lines))->not->toContain('The link led to');
+})->with([
+    'script' => ['<script>alert(1)</script>'],
+    'spaces' => ['evil.example and more'],
+    'no dot' => ['localhost'],
+    'number' => [12345],
+    'empty' => [''],
+]);
+
+test('the same site with or without www is not reported as a move', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), [
+        'urlscan.io/api/v1/result/*' => Http::response(['page' => ['domain' => 'www.fake-bibd-login.example']], 200),
+]));
+    $owner = User::factory()->create();
+
+    $lines = previewTwice($this, $owner, previewScan($owner))->json('note.lines');
+
+    expect(implode(' ', $lines))->not->toContain('The link led to');
+});
+
+test('when no copy of the loaded page exists the picture still comes and there is no note', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), ['urlscan.io/dom/*' => Http::response('', 404)]));
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+
+    $reply = previewTwice($this, $owner, $scan);
+
+    $reply->assertOk()->assertJsonPath('status', 'ready')->assertJsonPath('note', null);
+    expect($scan->fresh()->preview_note)->toBeNull()->and($scan->fresh()->screenshot_path)->toStartWith('/storage/previews/');
+});
+
+test('a failure fetching the loaded page never holds back the picture', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), ['urlscan.io/dom/*' => fn () => throw new ConnectionException('timed out')]));
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+
+    previewTwice($this, $owner, $scan)->assertOk()->assertJsonPath('status', 'ready')->assertJsonPath('note', null);
+
+    expect($scan->fresh()->screenshot_path)->not->toBeNull();
+});
+
+test('an unreadable loaded page never holds back the picture either', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), ['urlscan.io/dom/*' => Http::response("\0\0\xff\xfe not html at all", 200)]));
+    $owner = User::factory()->create();
+
+    previewTwice($this, $owner, previewScan($owner))->assertOk()->assertJsonPath('status', 'ready');
+});
+
+test('a very large loaded page is not read', function () {
+    previewOn();
+    Http::fake(array_merge(urlscanFinished(), ['urlscan.io/dom/*' => Http::response(str_repeat('a', PagePreview::MAX_PAGE_BYTES + 1), 200)]));
+    $owner = User::factory()->create();
+
+    previewTwice($this, $owner, previewScan($owner))->assertJsonPath('status', 'ready')->assertJsonPath('note', null);
+});
+
+test('reading the loaded page can be switched off, and then no request is made for it', function () {
+    previewOn(['read_page' => false]);
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+
+    previewTwice($this, $owner, previewScan($owner))->assertJsonPath('status', 'ready')->assertJsonPath('note', null);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'urlscan.io/dom/'));
+});
+
+test('the saved note is shown again on a later visit, and the later click returns it too', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+
+    previewTwice($this, $owner, $scan);
+
+    $this->actingAs($owner)->get(route('scan.show', $scan))->assertOk()
+        ->assertSee('After the page loaded')
+        ->assertSee('No login form or warning signs on the loaded page', false);
+    $this->actingAs($owner)->postJson(route('scan.preview', $scan))->assertJsonPath('note.tone', 'ok');
+});
+
+test('a note without its picture is not shown', function () {
+    previewOn();
+    Http::fake();
+    $owner = User::factory()->create();
+    $scan = previewScan($owner, ['preview_note' => ['tone' => 'ok', 'headline' => 'Leftover headline', 'lines' => []]]);
+
+    $this->actingAs($owner)->get(route('scan.show', $scan))->assertOk()->assertDontSee('Leftover headline', false);
+});
+
+test('a public share link never shows the note', function () {
+    previewOn();
+    Http::fake(urlscanFinished());
+    $owner = User::factory()->create();
+    $scan = previewScan($owner);
+    previewTwice($this, $owner, $scan);
+    $scan->forceFill(['share_token' => Str::random(40)])->save();
+
+    $this->get(route('scan.shared', $scan->share_token))->assertOk()
+        ->assertDontSee('After the page loaded')
+        ->assertDontSee('No login form or warning signs on the loaded page', false);
+});
+
+test('pruning a picture also clears its note', function () {
+    previewOn();
+    $owner = User::factory()->create();
+    $old = 'previews/'.Str::random(40).'.png';
+    Storage::disk('public')->put($old, previewPng());
+    touch(Storage::disk('public')->path($old), now()->subDays(10)->getTimestamp());
+    $note = ['tone' => 'ok', 'headline' => 'x', 'lines' => []];
+    $urlScan = previewScan($owner, ['screenshot_path' => '/storage/'.$old, 'preview_note' => $note]);
+    $emailScan = previewScan($owner, ['type' => 'email', 'url' => null, 'preview_url' => 'http://bn-parcel-track.com/app', 'preview_path' => '/storage/'.$old, 'preview_note' => $note]);
+
+    $this->artisan('previews:prune')->assertSuccessful();
+
+    expect($urlScan->fresh()->preview_note)->toBeNull()->and($emailScan->fresh()->preview_note)->toBeNull();
 });

@@ -27,6 +27,7 @@ class Report extends Model
         'screenshot_path',
         'preview_url',
         'preview_path',
+        'preview_note',
         'file_name',
         'file_sha256',
         'sender_email',
@@ -34,6 +35,10 @@ class Report extends Model
         'description',
         'status',
         'reused_from_report_id',
+    ];
+
+    protected $casts = [
+        'preview_note' => 'array',
     ];
 
     /**

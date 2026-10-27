@@ -237,6 +237,19 @@ return [
     'ordinary_word_brands' => ['outlook'],
 
     /**
+     * Names that, written as the start of an address that belongs to another website ("outlook.example.com"),
+     * are a common disguise (see AnalysisEngine::brandUsedAsSubdomain). A company can run its own mail page at
+     * "outlook.theircompany.com", so the name alone proves nothing: it counts only together with a word scams use to
+     * sound official in the same address. A brand's own pages are never judged as a copy: a site on an official
+     * domain (official_domains above) or high in the popular-sites ranking is skipped before this list is read.
+     * Add a name only when it is a whole label real scams use, not an everyday word.
+     */
+    'subdomain_brands' => [
+        'outlook', 'office365', 'o365', 'onedrive', 'icloud', 'gmail', 'dhl', 'fedex', 'usps', 'ups',
+        'adobe', 'ebay', 'hsbc', 'kraken', 'tiktok', 'shopee', 'lazada',
+    ],
+
+    /**
      * Real websites whose name happens to look like, or contain, a brand's (see App\Support\LookAlike). The look-alike
      * and brand-word checks skip these registered domains. Add one only after opening the site and confirming it is
      * genuine, for example a payment app that differs from a brand by one letter.

@@ -16,12 +16,25 @@ use Throwable;
 final class ThreatLookup
 {
     /**
+     * False only when 'threatfeeds.lists_in_use' is switched off. scan:batch --heuristics-only does that, so a test
+     * on links taken from these same public lists measures PhishCore's own rules and not its memory of the list.
+     */
+    public static function listsInUse(): bool
+    {
+        return (bool) config('threatfeeds.lists_in_use', true);
+    }
+
+    /**
      * The list that reports exactly this address, or null.
      *
      * @return array{source: string, name: string}|null
      */
     public static function exactMatch(string $url): ?array
     {
+        if (! self::listsInUse()) {
+            return null;
+        }
+
         try {
             $row = ThreatUrl::query()->where('url_hash', sha1(ThreatFeeds::normalizeUrl($url)))->first();
 
@@ -38,6 +51,10 @@ final class ThreatLookup
      */
     public static function domainMatch(string $host): ?array
     {
+        if (! self::listsInUse()) {
+            return null;
+        }
+
         $registrable = RegistrableDomain::of($host);
 
         if ($registrable === null) {

@@ -65,7 +65,7 @@ test('a passed check in the pdf says what it looked at and what it found', funct
 test('an unavailable check in the pdf shows its result', function () {
     $info = collect(pdfChecksFor(pdfSampleFlags())['info']['checks'])->keyBy('name');
 
-    expect($info['Domain Age']['looked'])->toContain('How long ago the website was created')
+    expect($info['Domain Age']['looked'])->toContain('When the web address was registered')
         ->and($info['Domain Age']['found'])->toContain('could not find out');
 });
 

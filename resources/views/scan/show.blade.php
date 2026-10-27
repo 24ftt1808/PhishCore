@@ -12,13 +12,15 @@
             'clean' => ['bg' => 'bg-emerald-500/10', 'border' => 'border-emerald-500/20', 'text' => 'text-emerald-400', 'ring' => '#34d399', 'rgb' => '52,211,153', 'label' => 'APPEARS SAFE', 'threat' => 'LOW THREAT', 'threatBg' => 'bg-emerald-500/20 text-emerald-300'],
             'review' => ['bg' => 'bg-sky-500/10', 'border' => 'border-sky-500/20', 'text' => 'text-sky-400', 'ring' => '#38bdf8', 'rgb' => '56,189,248', 'label' => 'NEEDS MANUAL REVIEW', 'threat' => 'UNVERIFIED', 'threatBg' => 'bg-sky-500/20 text-sky-300'],
         ];
-        $style = $verdictStyles[$analysis->verdict] ?? $verdictStyles['clean'];
+        // A clean link scan that the AI page review flagged is shown as "needs a manual review" (wording only).
+        $shownVerdict = \App\Support\VerdictWording::shown($analysis->verdict, $report->type, $analysis->flags ?? []);
+        $style = $verdictStyles[$shownVerdict] ?? $verdictStyles['clean'];
 
         $severityLabel = match (true) {
-            $analysis->verdict === 'phishing' && $analysis->risk_score >= 80 => 'CRITICAL',
-            $analysis->verdict === 'phishing' => 'HIGH',
-            $analysis->verdict === 'suspicious' => 'MEDIUM',
-            $analysis->verdict === 'review' => 'UNVERIFIED',
+            $shownVerdict === 'phishing' && $analysis->risk_score >= 80 => 'CRITICAL',
+            $shownVerdict === 'phishing' => 'HIGH',
+            $shownVerdict === 'suspicious' => 'MEDIUM',
+            $shownVerdict === 'review' => 'UNVERIFIED',
             default => 'LOW',
         };
 
@@ -62,6 +64,7 @@
             'analysis' => $analysis,
             'ctiLookup' => $ctiLookup,
             'style' => $style,
+            'shownVerdict' => $shownVerdict,
             'severityLabel' => $severityLabel,
             'statusColors' => $statusColors,
             'typeIcons' => $typeIcons,

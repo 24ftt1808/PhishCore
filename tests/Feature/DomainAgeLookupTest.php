@@ -75,6 +75,25 @@ test('a page on a shared platform gets a neutral answer and no lookup', function
     Http::assertNothingSent();
 });
 
+test('a free-subdomain service is never taken for an old, established site', function (string $host, string $platform) {
+    Http::preventStrayRequests();
+    Http::fake();
+
+    $result = engineWithWhois(strtotime('1995-08-09'))->checkDomainAge("https://{$host}/blog/page");
+
+    expect($result['neutral'])->toBeTrue()
+        ->and($result['domain_age_days'])->toBeNull()
+        ->and($result['reasons'][0])->toContain($platform);
+    Http::assertNothingSent();
+})->with([
+    ['chatgpt0005.eu.org', 'eu.org'],
+    ['mysite.duckdns.org', 'duckdns.org'],
+    ['abc123.ngrok-free.app', 'ngrok-free.app'],
+    ['shop.onrender.com', 'onrender.com'],
+    ['support-center-apple.wasmer.app', 'wasmer.app'],
+    ['demo.streamlit.app', 'streamlit.app'],
+]);
+
 test('an address made of numbers has no registration date', function () {
     Http::preventStrayRequests();
     Http::fake();

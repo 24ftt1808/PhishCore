@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Report;
 use App\Services\CheckExplainer;
-use App\Support\CheckPresenter;
 use App\Services\ScanAdvice;
+use App\Support\CheckPresenter;
+use App\Support\VerdictWording;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -108,7 +109,12 @@ class ScanPdfController extends Controller
         $analysis = $report->analyses->first();
         abort_if($analysis === null, 404, 'This scan has no completed analysis to export.');
 
-        $verdict = self::VERDICTS[$analysis->verdict] ?? self::VERDICTS['clean'];
+        // A clean link scan that the AI page review flagged is shown as "needs a manual review" (wording only).
+        $shownVerdict = VerdictWording::shown($analysis->verdict, $report->type, (array) ($analysis->flags ?? []));
+        $verdict = self::VERDICTS[$shownVerdict] ?? self::VERDICTS['clean'];
+        if ($shownVerdict === 'review' && $analysis->verdict !== 'review') {
+            $verdict['caveat'] = VerdictWording::CAVEAT;
+        }
 
         // A message or file scan only looks at wording, sender, numbers and fingerprints, so
         // "nothing found" is not the same as "safe". Links keep the original wording. This is
@@ -128,10 +134,10 @@ class ScanPdfController extends Controller
         $score = max(0, min(100, (int) $analysis->risk_score));
 
         $severity = match (true) {
-            $analysis->verdict === 'phishing' && $score >= 80 => 'CRITICAL',
-            $analysis->verdict === 'phishing' => 'HIGH',
-            $analysis->verdict === 'suspicious' => 'MEDIUM',
-            $analysis->verdict === 'review' => 'UNVERIFIED',
+            $shownVerdict === 'phishing' && $score >= 80 => 'CRITICAL',
+            $shownVerdict === 'phishing' => 'HIGH',
+            $shownVerdict === 'suspicious' => 'MEDIUM',
+            $shownVerdict === 'review' => 'UNVERIFIED',
             default => 'LOW',
         };
 
@@ -252,7 +258,7 @@ class ScanPdfController extends Controller
         $facts = array_values(array_filter([
             ['Checks with warnings', $warnCount.' of '.$cards->count(), $warnCount > 0 ? $verdict['hex'] : '#ffffff'],
             $vt ? ['Security companies', $vt['flagged'].' of '.$vt['total'].' flagged', $vt['flagged'] > 0 ? '#fca5a5' : '#6ee7b7'] : null,
-            $analysis->domain_age_days !== null ? ['Website age', number_format($analysis->domain_age_days).' days', $analysis->domain_age_days < 30 ? '#fdba74' : '#ffffff'] : null,
+            $analysis->domain_age_days !== null ? ['Domain age', number_format($analysis->domain_age_days).' days', $analysis->domain_age_days < 30 ? '#fdba74' : '#ffffff'] : null,
             $analysis->duration_ms !== null ? ['Time taken', round($analysis->duration_ms / 1000, 1).'s', '#ffffff'] : null,
         ]));
 

@@ -11,7 +11,7 @@ class ScanBatch extends Command
     protected $signature = 'scan:batch
         {file : Text file with one entry per line: "legit|https://example.com" or "scam|https://bad.example". An optional group name goes in the middle: "scam|brunei|https://bad.example"}
         {--delay=0 : Seconds to wait between scans (VirusTotal free keys allow about 4 lookups a minute)}
-        {--heuristics-only : Switch off the Google Safe Browsing and VirusTotal lookups so only PhishCore\'s own checks decide}
+        {--heuristics-only : Switch off the Google Safe Browsing, VirusTotal, saved phishing-list and AI lookups so only PhishCore\'s own checks decide}
         {--csv= : Where to save the results (default: storage/app/scan-batch-<timestamp>.csv)}
         {--report= : Where to save the Markdown report (default: storage/app/scan-batch-<timestamp>.md)}';
 
@@ -56,11 +56,16 @@ class ScanBatch extends Command
             // from public phishing feeds, so leaving them on measures how well
             // those services remember the feed, not how well PhishCore's own
             // checks work. The engine reports both as "unavailable" without a key.
+            // The phishing lists PhishCore keeps itself (OpenPhish and the like) are switched off too: links
+            // taken from those same public lists would otherwise be "caught" only because they are on the list.
             config([
                 'services.google_safe_browsing.key' => null,
                 'services.virustotal.key' => null,
+                'threatfeeds.lists_in_use' => false,
+                // The optional AI page review is a lookup too (Gemini), so it is switched off as well.
+                'services.ai_text.enabled' => false,
             ]);
-            $this->warn('Heuristics-only run: Google Safe Browsing and VirusTotal are switched off.');
+            $this->warn('Heuristics-only run: Google Safe Browsing, VirusTotal, the saved phishing lists and the AI review are switched off.');
         }
 
         $delay = max(0, (int) $this->option('delay'));

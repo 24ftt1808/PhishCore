@@ -14,7 +14,7 @@ class CheckExplainer
     /** Short, clear heading for each check. */
     private const TITLES = [
         'SSL Certificate' => 'Secure connection',
-        'Domain Age' => 'Website age',
+        'Domain Age' => 'Domain age',
         'URL Structure' => 'Link appearance',
         'Blacklist Database' => 'Known threat lists',
         'VirusTotal / CTI Check' => 'Security vendor results',
@@ -51,7 +51,7 @@ class CheckExplainer
     /** A short explanation of what each check looks at and why it matters. */
     private const MEANINGS = [
         'SSL Certificate' => 'Genuine websites use a secure connection (HTTPS, shown as a padlock in the browser) so that what you type stays private. Many scam sites also use one, so a padlock alone does not mean a website is safe.',
-        'Domain Age' => 'Scam websites are usually created shortly before an attack and abandoned within days. A new website is therefore a warning sign, while a long-established one is generally more trustworthy.',
+        'Domain Age' => 'Scam websites usually get a new web address shortly before an attack and abandon it within days. A newly registered address is therefore a warning sign, while one registered long ago is generally more trustworthy. An old address is not proof of safety, because scammers also use old or hacked ones.',
         'URL Structure' => 'We examine the link itself for common tricks: numbers in place of a name, misspellings of well-known brands, or an unusual number of hyphens.',
         'Blacklist Database' => 'We check the link against Google Safe Browsing and community phishing lists (such as OpenPhish and URLhaus), lists of websites already known to be dangerous. New scam websites often take time to appear on it.',
         'VirusTotal / CTI Check' => 'VirusTotal checks the link with dozens of security companies at once. One or two flags may be a false alarm; several flags is a serious warning.',
@@ -134,10 +134,10 @@ class CheckExplainer
         'Could not verify a valid, trusted SSL certificate for this domain' => "We could not confirm that this website's security certificate is genuine",
         'Could not connect to verify SSL (unrelated to certificate validity)' => 'We could not connect to the website to check its security certificate',
         'Could not verify SSL certificate due to an unexpected error' => "We could not check the website's security certificate",
-        'WHOIS data unavailable for this domain' => 'We could not find out when this website was created',
-        'Could not retrieve WHOIS data' => 'We could not find out when this website was created',
-        'Domain was registered only' => 'The website was created only',
-        'Domain was registered' => 'The website was created',
+        'WHOIS data unavailable for this domain' => 'We could not find out when this web address was registered',
+        'Could not retrieve WHOIS data' => 'We could not find out when this web address was registered',
+        'Domain was registered only' => 'The address was registered only',
+        'Domain was registered' => 'The address was registered',
         'Domain is relatively new' => 'The website is fairly new',
         'a strong phishing indicator' => 'a strong sign of a scam website',
         'recently registered domains are higher risk' => 'newly created websites carry a higher risk',

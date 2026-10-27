@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Report;
+use App\Support\PageInspector;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -24,6 +25,11 @@ class PagePreview
     public const RESULT_URL = 'https://urlscan.io/api/v1/result/';
 
     public const SCREENSHOT_URL = 'https://urlscan.io/screenshots/';
+
+    public const DOM_URL = 'https://urlscan.io/dom/';
+
+    /** A loaded page larger than this is not read: real pages are far smaller. */
+    public const MAX_PAGE_BYTES = 5000000;
 
     public const DIRECTORY = 'previews';
 
@@ -75,7 +81,7 @@ class PagePreview
     /**
      * Has urlscan.io finished? When it has, the screenshot is downloaded and stored.
      *
-     * @return array{status: 'pending'|'ready'|'unavailable', path?: string}
+     * @return array{status: 'pending'|'ready'|'unavailable', path?: string, page_host?: string|null}
      */
     public function check(string $uuid): array
     {
@@ -125,7 +131,52 @@ class PagePreview
             return $this->unavailable('not_saved');
         }
 
-        return ['status' => 'ready', 'path' => $path];
+        return ['status' => 'ready', 'path' => $path, 'page_host' => $this->hostOf($result->json('page.domain'))];
+    }
+
+    /**
+     * The page as it looked once it had loaded in the sandbox (after its scripts ran), or null when it cannot be had.
+     * This is best effort and display only: any problem returns null and the preview carries on without it.
+     * Nothing here is ever shown as HTML: the caller only reads it for warning signs.
+     */
+    public function pageHtml(string $uuid): ?string
+    {
+        if (! config('services.page_preview.read_page', true) || ! $this->isUuid($uuid)) {
+            return null;
+        }
+
+        try {
+            $response = Http::withHeaders(['API-Key' => (string) config('services.page_preview.key')])
+                ->timeout(10)
+                ->get(self::DOM_URL.$uuid.'/');
+        } catch (Throwable) {
+            Log::info('Page preview: the loaded page could not be fetched', ['reason' => 'request_failed']);
+
+            return null;
+        }
+
+        // 404 means urlscan.io did not keep a copy of the page; anything else that is not a success is just as unusable.
+        if (! $response->successful()) {
+            Log::info('Page preview: no copy of the loaded page', ['reason' => 'http_'.$response->status()]);
+
+            return null;
+        }
+
+        $body = $response->body();
+
+        if ($body === '' || strlen($body) > self::MAX_PAGE_BYTES) {
+            return null;
+        }
+
+        return PageInspector::toUtf8($body, $response->header('Content-Type'));
+    }
+
+    /** A plain host name or null: urlscan.io reports where the link ended up, and that text is never trusted. */
+    private function hostOf(mixed $value): ?string
+    {
+        $host = is_string($value) ? strtolower(trim($value)) : '';
+
+        return preg_match('/^(?=.{1,253}$)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $host) ? $host : null;
     }
 
     /** Never "public": a scanned link must not show up in urlscan.io's public search. */
@@ -240,8 +291,8 @@ class PagePreview
             }
 
             $disk->delete($file);
-            Report::where('type', 'url')->where('screenshot_path', 'like', '%/storage/'.$file)->update(['screenshot_path' => null]);
-            Report::where('preview_path', 'like', '%/storage/'.$file)->update(['preview_path' => null]);
+            Report::where('type', 'url')->where('screenshot_path', 'like', '%/storage/'.$file)->update(['screenshot_path' => null, 'preview_note' => null]);
+            Report::where('preview_path', 'like', '%/storage/'.$file)->update(['preview_path' => null, 'preview_note' => null]);
             $deleted++;
         }
 

@@ -148,7 +148,7 @@ class CheckPresenter
     {
         $lines = [
             'SSL Certificate' => 'Whether the connection is encrypted and the certificate is genuine',
-            'Domain Age' => 'How long ago the website was created',
+            'Domain Age' => 'When the web address was registered',
             'URL Structure' => 'Tricks in how the link is written, such as fake brand names or odd hyphens',
             'Blacklist Database' => 'Google Safe Browsing and community lists of known phishing sites',
             'VirusTotal / CTI Check' => 'What dozens of security companies say about this link',

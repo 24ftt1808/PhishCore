@@ -10,7 +10,7 @@ it('gives every known check a plain question and falls back to the technical nam
 });
 
 it('explains checks, including the ones with variable names', function () {
-    expect(CheckExplainer::meaning('Domain Age'))->toContain('new website');
+    expect(CheckExplainer::meaning('Domain Age'))->toContain('newly registered');
     expect(CheckExplainer::meaning('Previous Reports (Domain)'))->not->toBeNull();
     expect(CheckExplainer::meaning('Phone Reputation (AbstractAPI)'))->not->toBeNull();
     expect(CheckExplainer::meaning('AI Page Review'))->toContain('AI');

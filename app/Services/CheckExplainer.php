@@ -72,7 +72,7 @@ class CheckExplainer
         'Phone Number Analysis' => 'We check whether the number is valid, what type of line it is, and which country it belongs to.',
         'Phone Reputation' => 'An external service reports whether this number has been linked to spam or fraud.',
         'Link in Pressure Message' => 'A message that pressures you to act quickly and links to an unrecognised website is one of the most common scam patterns.',
-        'Attachment' => 'Some file types can install harmful software as soon as they are opened. A screenshot only shows a file\'s name, not what is inside it, so this check judges the name and type only. To check inside an APK or PDF, upload the file itself in Scan File.',
+        'Attachment' => 'Some file types can install harmful software as soon as they are opened. A screenshot only shows a file\'s name, not what is inside it, so this check judges the name and type only. To check inside a PDF, upload the file itself in Scan File.',
         'Screenshot Text Extraction' => 'We read the text in your image so it can be checked in the same way as a typed message. This card is for information and does not affect the score.',
         'File Type' => 'We look inside the file to see what it really is, because scam apps are often renamed to look like a document or a picture.',
         'VirusTotal File Fingerprint' => 'We make a fingerprint of the file and ask VirusTotal, a service run by dozens of security companies, whether it already knows that file. The file itself is never sent. A file it has never seen is not proof that the file is safe.',

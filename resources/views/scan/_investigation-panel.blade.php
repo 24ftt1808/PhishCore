@@ -5,8 +5,8 @@
        $invStatusStyles = [
         'active' => ['badge' => 'text-sky-400', 'label' => 'ACTIVE'],
         'completed' => ['badge' => 'text-emerald-400', 'label' => 'COMPLETED'],
-        'takedown_requested' => ['badge' => 'text-orange-400', 'label' => 'TAKEDOWN REQUESTED'],
-        'takedown_confirmed' => ['badge' => 'text-emerald-400', 'label' => 'TAKEDOWN CONFIRMED'],
+        'takedown_requested' => ['badge' => 'text-orange-400', 'label' => 'REPORTED TO BRUCERT'],
+        'takedown_confirmed' => ['badge' => 'text-emerald-400', 'label' => 'TAKEDOWN CONFIRMED BY BRUCERT'],
     ];
 
     $invDotColors = [
@@ -89,7 +89,7 @@
             <div class="flex items-center gap-3">
                 <div>
                     <h2 class="text-lg font-bold text-white">Investigation</h2>
-                    <p class="text-sm text-slate-300">Track takedown progress for this report.</p>
+                    <p class="text-sm text-slate-300">Track this report. BruCERT handles the takedown.</p>
                 </div>
             </div>
             @if ($investigation)
@@ -183,6 +183,54 @@
                     </div>
                 </div>
             @endif
+
+            @php
+                // The email to BruCERT. The item is written "defanged" (hxxp, [.]) so nobody opens it by accident.
+                $brucertEmail = (string) config('brucert.email');
+                $flagged = $analysis ?? $report->analyses->first();
+                $verdictWord = $flagged?->verdict === 'phishing' ? 'phishing' : 'suspicious';
+                $proofLink = ($report->type === 'url' && $report->status === 'completed' && $flagged && in_array($flagged->verdict, ['suspicious', 'phishing'], true))
+                    ? route('reports.public.show', $report)
+                    : null;
+                $reportedItem = (string) match ($report->type) {
+                    'email' => $report->sender_email,
+                    'phone' => $report->phone_number,
+                    'file' => 'Uploaded PDF file (SHA-256 '.$report->file_sha256.')',
+                    'screenshot' => 'A screenshot submitted to PhishCore',
+                    default => $report->url,
+                };
+                $defanged = str_replace(['http://', 'https://', '.'], ['hxxp://', 'hxxps://', '[.]'], $reportedItem);
+                $mailSubject = 'PhishCore report for takedown: '.$defanged;
+                $mailBody = "Hello BruCERT,\n\nPhishCore flagged the following as {$verdictWord}.\n\n"
+                    ."Item: {$defanged}\n"
+                    .'Type: '.$report->type."\n"
+                    .'First scanned: '.$report->created_at->format('j F Y, g:i A')."\n"
+                    .'PhishCore report number: '.$report->id."\n"
+                    .'Evidence: '.($proofLink ?? 'No public evidence page for this type of report.')."\n\n"
+                    ."The item is written in a safe form (hxxp, [.]) so it cannot be opened by accident.\n"
+                    ."Please review it for takedown.\n\nThank you,\nPhishCore team\nphishcorebn@gmail.com";
+                $mailto = 'mailto:'.$brucertEmail.'?subject='.rawurlencode($mailSubject).'&body='.rawurlencode($mailBody);
+            @endphp
+            <div class="r-well p-4 mb-5" data-brucert-card>
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-semibold text-white">Report to BruCERT</h3>
+                        <p class="text-xs text-slate-300 mt-1 leading-relaxed">BruCERT handles takedowns, not PhishCore. Email them this report, then set the status below to &ldquo;Reported to BruCERT&rdquo;.</p>
+                    </div>
+                    <a href="{{ $mailto }}" data-brucert-mail
+                       class="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 hover:opacity-90 text-white text-sm font-semibold transition whitespace-nowrap">Email BruCERT</a>
+                </div>
+                @if ($proofLink)
+                    <label class="block text-xs text-slate-300 mt-4 mb-1.5">EVIDENCE LINK (PUBLIC, NO LOGIN NEEDED)</label>
+                    <input type="text" readonly value="{{ $proofLink }}" onclick="this.select()" data-brucert-proof
+                           class="r-well w-full px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none">
+                @else
+                    <p class="text-xs text-slate-400 mt-3">Only website reports have a public evidence page, so this email has no evidence link.</p>
+                @endif
+                @if ($brucertEmail === '')
+                    <p class="text-xs text-slate-400 mt-3">No BruCERT address is set yet. Add BRUCERT_EMAIL to the .env file, or type the address in your email app.</p>
+                @endif
+            </div>
 
             <form method="POST" action="{{ route('investigations.update', $investigation) }}" class="flex flex-wrap items-end gap-3">
                 @csrf

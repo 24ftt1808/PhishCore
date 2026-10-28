@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\HiddenNumber;
+use App\Models\Investigation;
 use App\Models\NumberReport;
 use App\Models\Report;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -25,6 +27,9 @@ class PublicReportsController extends Controller
             'suspicious' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'suspicious'))->count(),
             'phishing' => $statsBase()->whereHas('analyses', fn ($q) => $q->where('verdict', 'phishing'))->count(),
             'latest' => $statsBase()->whereHas('analyses', fn ($q) => $q->whereIn('verdict', ['suspicious', 'phishing']))->latest()->first()?->created_at,
+            // Takedowns are handled by BruCERT: how many reports were passed to them, and how many they took down.
+            'reported_to_brucert' => Investigation::whereIn('status', ['takedown_requested', 'takedown_confirmed'])->count(),
+            'taken_down' => Investigation::where('status', 'takedown_confirmed')->count(),
         ];
 
         $trends = $this->buildTrends();
@@ -32,6 +37,17 @@ class PublicReportsController extends Controller
         $query = Report::with(['analyses', 'user'])
             ->where('status', 'completed')
             ->whereHas('analyses', fn ($q) => $q->whereIn('verdict', ['suspicious', 'phishing']));
+
+        // A link that was scanned several times is listed once, with its latest flagged scan. Emails, phone
+        // numbers, screenshots and files are not grouped.
+        $latestPerLink = Report::query()
+            ->selectRaw('MAX(reports.id)')
+            ->where('type', 'url')
+            ->where('status', 'completed')
+            ->whereNotNull('url')
+            ->whereHas('analyses', fn ($q) => $q->whereIn('verdict', ['suspicious', 'phishing']))
+            ->groupBy('url');
+        $query->where(fn ($q) => $q->where('type', '!=', 'url')->orWhereNull('url')->orWhereIn('reports.id', $latestPerLink));
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -64,6 +80,42 @@ class PublicReportsController extends Controller
             'reports' => $reports,
             'filters' => $request->only(['search', 'status', 'date_from', 'date_to', 'rows']),
         ]);
+    }
+
+    /**
+     * The public proof page for one flagged website report: the same read-only result page a share link
+     * opens (verdict and the checks behind it, no submitter, no investigation tools), but reached from the
+     * public list, so no link has to be shared first. Only website reports that the list itself shows are
+     * available: emails, phone numbers, screenshots and files are never opened here, because their
+     * evidence can hold private details.
+     */
+    public function show(Report $report): Response
+    {
+        $report->load(['analyses', 'ctiLookups']);
+        $analysis = $report->analyses->first();
+
+        $headers = [
+            'X-Robots-Tag' => 'noindex, nofollow',
+            'Referrer-Policy' => 'no-referrer',
+            'Cache-Control' => 'private, no-store',
+        ];
+
+        $isPublic = $report->type === 'url'
+            && $report->status === 'completed'
+            && $analysis
+            && in_array($analysis->verdict, ['suspicious', 'phishing'], true);
+
+        if (! $isPublic) {
+            return response(view('scan.shared-unavailable', ['publicProof' => true]), 404)->withHeaders($headers);
+        }
+
+        return response(view('scan.show', [
+            'report' => $report,
+            'analysis' => $analysis,
+            'ctiLookup' => $report->ctiLookups->first(),
+            'shared' => true,
+            'publicProof' => true,
+        ]))->withHeaders($headers);
     }
 
     /**

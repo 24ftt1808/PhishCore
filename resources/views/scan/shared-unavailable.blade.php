@@ -124,7 +124,7 @@
         <div class="logo"><img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore"></div>
         <div class="badge"><i></i> Shared result</div>
         <h1>This link is <span>no longer available</span></h1>
-        <p class="lead">The owner may have turned sharing off, or the link was typed incorrectly. Ask them for a new link, or run a fresh scan yourself.</p>
+        <p class="lead">@if ($publicProof ?? false)This report is not available. It may not exist, or it is not a website report that PhishCore shows publicly. You can run a fresh scan yourself.@else The owner may have turned sharing off, or the link was typed incorrectly. Ask them for a new link, or run a fresh scan yourself.@endif</p>
         <div class="actions">
             <a class="btn btn-main" href="{{ route('scan.index') }}">Scan a link yourself</a>
             <a class="btn btn-ghost" href="{{ route('reports.public') }}">Public Reports</a>

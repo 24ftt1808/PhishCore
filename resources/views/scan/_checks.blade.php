@@ -89,7 +89,7 @@
         $rows[] = $take;
         $left -= $take;
     }
-    $spanFor = [1 => 'lg:col-span-6', 2 => 'lg:col-span-3', 3 => 'lg:col-span-2'];
+    $spanFor = [1 => 'xl:col-span-6', 2 => 'xl:col-span-3', 3 => 'xl:col-span-2'];
     $lgSpans = [];
     foreach ($rows as $size) {
         for ($k = 0; $k < $size; $k++) {
@@ -145,8 +145,10 @@
     .ck-pop { position: absolute; z-index: 40; left: .75rem; right: .75rem; top: 3.4rem; max-width: 24rem; padding: .85rem 1rem; border-radius: .8rem; background: #0b1530; border: 1px solid rgba(125, 211, 252, .35); box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .75); animation: ck-pop .14s ease-out; }
     .ck-pop[hidden] { display: none; }
     .ck-row .ck-pop { top: calc(100% + .35rem); left: 2.75rem; }
-    /* the ⓘ follows the last word of the name, even when a long name wraps */
-    .ck-row .ck-info { vertical-align: middle; margin: -.25rem 0 -.25rem .2rem; }
+    /* the ⓘ follows the last word of the name, even when a long name wraps (rows and cards alike) */
+    .ck-card .ck-info { vertical-align: middle; margin: -.25rem 0 -.25rem .2rem; }
+    /* a bigger tap target for the ⓘ on touch screens, without changing the layout */
+    @media (pointer: coarse) { .ck-card .ck-info { width: 2.25rem; height: 2.25rem; margin: -.5rem -.25rem -.5rem .1rem; } }
     @keyframes ck-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { .ck-pop { animation: none; } .ck-info { transition: none; } }
 </style>
@@ -187,14 +189,14 @@
     <div class="space-y-4">
         @if ($featured)
             @php $p = $present($featured); $t = $tones[$featured['tone']]; [$infoBtn, $infoPop] = $explain($featured, 'ck-info-featured'); @endphp
-            <div class="ck-card r-card r-in p-5 sm:p-6 grid gap-6 items-start {{ $p['facts'] ? 'lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]' : '' }}"
+            <div class="ck-card r-card r-in p-5 sm:p-6 grid gap-6 items-start {{ $p['facts'] ? 'xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]' : '' }}"
                  style="--d: .1s; border-color: rgba(248, 113, 113, .4);">
                 <div class="flex flex-col gap-3 min-w-0">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-start gap-3">
                         <span class="w-8 h-8 shrink-0 rounded-[9px] flex items-center justify-center {{ $t['tile'] }}">{!! $icon($featured['name'], 'w-[18px] h-[18px]') !!}</span>
-                        <span class="text-[15px] font-bold text-white min-w-0">{{ $featured['title'] }}</span>
-                        {!! $infoBtn !!}
-                        <span class="ml-auto shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border {{ $t['badge'] }}">{{ $featured['label'] }}</span>
+                        @php $tw = explode(' ', $featured['title']); $tl = array_pop($tw); @endphp
+                        <span class="flex-1 min-w-0 text-[15px] leading-8"><span class="font-bold text-white">{{ $tw ? implode(' ', $tw).' ' : '' }}<span class="whitespace-nowrap">{{ $tl }}{!! $infoBtn !!}</span></span></span>
+                        <span class="shrink-0 mt-1 text-xs font-bold px-2.5 py-1 rounded-full border {{ $t['badge'] }}">{{ $featured['label'] }}</span>
                     </div>
                     @if ($p['headline'])
                         <h4 class="text-xl font-extrabold leading-snug tracking-tight text-white">{{ $p['headline'] }}</h4>
@@ -207,7 +209,7 @@
                 @if ($p['facts'])
                     <dl class="r-well px-4 divide-y divide-white/10 min-w-0">
                         @foreach ($p['facts'] as $fact)
-                            <div class="grid grid-cols-[120px_minmax(0,1fr)] gap-3 py-2.5 items-baseline">
+                            <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] sm:grid-cols-[120px_minmax(0,1fr)] gap-3 py-2.5 items-baseline">
                                 <dt class="text-[13px] text-slate-400">{{ $fact['label'] }}</dt>
                                 <dd class="m-0 min-w-0 font-bold {{ $fact['mono'] ? 'font-mono text-[13px] break-all' : 'text-sm' }} {{ $fact['danger'] ? 'text-red-300' : 'text-white' }}">{{ $fact['value'] }}</dd>
                             </div>
@@ -220,15 +222,15 @@
         @endif
 
         @if ($rest->isNotEmpty())
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
                 @foreach ($rest as $c)
                     @php $p = $present($c); $t = $tones[$c['tone']]; [$infoBtn, $infoPop] = $explain($c, 'ck-info-'.$loop->index); @endphp
                     <div class="ck-card r-card r-lift r-in p-4 flex flex-col gap-2.5 min-w-0 {{ $lgSpans[$loop->index] }} {{ $smSpan($loop->index) }}" style="--d: {{ min($loop->index, 8) * 0.06 + 0.15 }}s">
-                        <div class="flex items-center gap-2.5">
+                        <div class="flex items-start gap-2.5">
                             <span class="w-7 h-7 shrink-0 rounded-lg flex items-center justify-center {{ $t['tile'] }}">{!! $icon($c['name']) !!}</span>
-                            <span class="text-sm font-bold text-white min-w-0">{{ $c['title'] }}</span>
-                            {!! $infoBtn !!}
-                            <span class="ml-auto shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border {{ $t['badge'] }}">{{ $c['label'] }}</span>
+                            @php $tw = explode(' ', $c['title']); $tl = array_pop($tw); @endphp
+                            <span class="flex-1 min-w-0 text-sm leading-7"><span class="font-bold text-white">{{ $tw ? implode(' ', $tw).' ' : '' }}<span class="whitespace-nowrap">{{ $tl }}{!! $infoBtn !!}</span></span></span>
+                            <span class="shrink-0 mt-0.5 text-xs font-bold px-2.5 py-1 rounded-full border {{ $t['badge'] }}">{{ $c['label'] }}</span>
                         </div>
                         @if ($p['headline'])
                             <h4 class="text-base font-extrabold leading-snug text-white">{{ $p['headline'] }}</h4>

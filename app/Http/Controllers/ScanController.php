@@ -70,7 +70,9 @@ class ScanController extends Controller
             return $limited;
         }
 
-        $request->validate($this->rulesFor($type));
+        $request->validate($this->rulesFor($type), [
+            'file.extensions' => 'Only PDF files can be scanned. App (APK) files are not accepted.',
+        ]);
 
         // A local-style number is read as belonging to the country picked on
         // the form; one that already starts with "+" keeps its own country.
@@ -299,8 +301,9 @@ class ScanController extends Controller
                 'phone_country' => ['nullable', 'string', Rule::in(PhoneCountries::codes())],
             ],
             'screenshot' => ['screenshot' => ['required', 'image', 'max:5120']], // 5MB max
-            // The type of the file is judged by its contents during the scan; the name is only a first filter.
-            'file' => ['file' => ['required', 'file', 'max:20480', 'extensions:apk,pdf']], // 20MB max
+            // Only PDF files are accepted. The type of the file is still judged by its contents during the scan, so an app
+            // renamed to .pdf is flagged as a disguised file.
+            'file' => ['file' => ['required', 'file', 'max:20480', 'extensions:pdf']], // 20MB max, PDF only (apps are not accepted)
             default => ['url' => ['required', 'url', 'max:2048']],
         };
     }

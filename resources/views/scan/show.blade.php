@@ -82,6 +82,27 @@
     <x-layouts.dashboard>
         @include('scan._result-styles')
 
+        @php
+            // Back goes to the page the person came from (when it is one of our list pages), else Scan History.
+            $backUrl = route('scan.history');
+            $backLabel = 'Scan History';
+            $prevUrl = url()->previous();
+            if (str_starts_with($prevUrl, url('/')) && $prevUrl !== url()->current()) {
+                $prevPath = rtrim((string) parse_url($prevUrl, PHP_URL_PATH), '/') ?: '/';
+                $backPages = ['/scan-history' => 'Scan History', '/public-reports' => 'Public Reports', '/investigations' => 'Investigations', '/reports' => 'Reports', '/scan' => 'Scan', '/dashboard' => 'Dashboard', '/analytics' => 'Analytics', '/safe-files' => 'Safe Files', '/reported-numbers' => 'Reported Numbers'];
+                if (isset($backPages[$prevPath])) {
+                    $backUrl = $prevUrl;
+                    $backLabel = $backPages[$prevPath];
+                }
+            }
+        @endphp
+        <div class="r-in mb-3">
+            <a href="{{ $backUrl }}" data-back-link class="inline-flex items-center gap-2 text-sm font-semibold text-slate-200 hover:text-white rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3.5 py-2.5 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                Back to {{ $backLabel }}
+            </a>
+        </div>
+
         <p class="r-in flex items-center gap-1.5 text-sm text-slate-400 mb-1">
             <a href="{{ route('scan.index') }}" class="hover:text-white transition-colors">Scan</a>
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -111,11 +132,34 @@
 @else
     <x-layouts.public>
         @include('scan._result-styles')
+        @if ($publicProof ?? false)
+            @php
+                $backUrl = route('reports.public');
+                $prevUrl = url()->previous();
+                if (str_starts_with($prevUrl, $backUrl) && ! str_contains($prevUrl, '/public-reports/')) {
+                    $backUrl = $prevUrl;
+                }
+            @endphp
+            <div class="r-in mx-auto max-w-5xl mb-3">
+                <a href="{{ $backUrl }}" data-back-link class="inline-flex items-center gap-2 text-sm font-semibold text-slate-200 hover:text-white rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3.5 py-2.5 transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    Back to Public Reports
+                </a>
+            </div>
+        @endif
         @if ($shared)
-            <div class="r-in mx-auto max-w-5xl px-4 sm:px-0 mb-4">
+            <div class="r-in mx-auto max-w-5xl mb-4">
                 <p class="text-xs text-slate-400 leading-relaxed">
-                    <span class="font-semibold text-slate-300">Shared scan result.</span>
-                    This is an automated analysis from PhishCore and can contain errors. It doesn't show who submitted the scan.
+                    @if ($publicProof ?? false)
+                        <span class="font-semibold text-slate-300">Public report.</span>
+                        @if ($analysis && $analysis->verdict === 'suspicious')
+                            This result is not confirmed: PhishCore found warning signs, but no person has verified them.
+                        @endif
+                        This is an automated analysis from PhishCore and can contain errors.
+                    @else
+                        <span class="font-semibold text-slate-300">Shared scan result.</span>
+                        This is an automated analysis from PhishCore and can contain errors. It doesn't show who submitted the scan.
+                    @endif
                 </p>
             </div>
         @endif

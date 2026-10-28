@@ -25,7 +25,7 @@ class ChatAdvisor
 
     /** What PhishCore offers, so Cora can answer "how do I use this site?" without making features up. */
     public const SITE_GUIDE = "About the PhishCore website (only describe what is listed here; if asked about anything else on the site, say you are not sure):\n"
-        ."- Scan: check a website URL, a sender email, a phone number, a screenshot, or an app (APK) or PDF file. Each scan gives a verdict (clean, suspicious or phishing), a risk score out of 100 and a list of the checks behind it.\n"
+        ."- Scan: check a website URL, a sender email, a phone number, a screenshot, or a PDF file (apps / APK files are not accepted). Each scan gives a verdict (clean, suspicious or phishing), a risk score out of 100 and a list of the checks behind it.\n"
         ."- Scan result page: shows the verdict and checks. The owner can export it as a PDF and make a private share link, and can ask the team to investigate it.\n"
         ."- Dashboard: an overview of detections, this week's activity and recent reports.\n"
         ."- Scan History: every scan the user made before, to review again.\n"

@@ -13,7 +13,7 @@
 
     @include('partials.navbar')
 
-    <main class="relative z-10 max-w-3xl mx-auto px-6 py-14">
+    <main class="relative z-10 max-w-3xl mx-auto px-6 pt-2 pb-14">
         {{ $slot }}
     </main>
 

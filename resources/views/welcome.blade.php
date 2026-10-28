@@ -121,16 +121,16 @@
 <section class="reveal max-w-7xl mx-auto px-6 py-2 md:py-12">
     {{-- Phone: compact stat strip --}}
     <div class="grid grid-cols-3 gap-2.5 md:hidden">
-        <div class="glass-card px-2 py-4 text-center">
+        <a href="#scanner" aria-label="Scans performed: try the scanner" class="glass-card block px-2 py-4 text-center">
             <div class="icon-tile !w-9 !h-9 !rounded-lg mx-auto mb-2.5"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg></div>
             <p class="text-2xl font-bold text-white tabular-nums leading-none" data-count="{{ $totalScans }}">{{ number_format($totalScans) }}</p>
             <p class="mt-1.5 text-[11px] text-slate-300 leading-tight">Scans<br>performed</p>
-        </div>
-        <div class="glass-card px-2 py-4 text-center">
+        </a>
+        <a href="{{ route('reports.public') }}" aria-label="Threats detected: see the public reports" class="glass-card block px-2 py-4 text-center">
             <div class="icon-tile !w-9 !h-9 !rounded-lg mx-auto mb-2.5 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg></div>
             <p class="text-2xl font-bold text-white tabular-nums leading-none" data-count="{{ $threatsDetected }}">{{ number_format($threatsDetected) }}</p>
             <p class="mt-1.5 text-[11px] text-slate-300 leading-tight">Threats<br>detected</p>
-        </div>
+        </a>
         <div class="glass-card px-2 py-4 text-center">
             <div class="icon-tile !w-9 !h-9 !rounded-lg mx-auto mb-2.5 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg></div>
             <p class="text-2xl font-bold text-white tabular-nums leading-none" data-count="{{ $avgScanSeconds }}" data-suffix="s">{{ $avgScanSeconds }}s</p>
@@ -140,7 +140,7 @@
 
     <div class="hidden md:grid md:grid-cols-3 gap-4">
 
-        <div class="glass-card p-6 flex items-center gap-5">
+        <a href="#scanner" aria-label="Scans performed: try the scanner" class="glass-card p-6 flex items-center gap-5">
             <div class="icon-tile !w-12 !h-12 shrink-0">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
             </div>
@@ -149,9 +149,9 @@
                 <p class="mt-2 text-sm text-slate-300">Scans Performed</p>
                 <p class="text-[11px] text-slate-500 mt-0.5">Total scans submitted</p>
             </div>
-        </div>
+        </a>
 
-        <div class="glass-card p-6 flex items-center gap-5">
+        <a href="{{ route('reports.public') }}" aria-label="Threats detected: see the public reports" class="glass-card p-6 flex items-center gap-5">
             <div class="icon-tile !w-12 !h-12 shrink-0 !bg-rose-400/10 !border-rose-300/20 !text-rose-300">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
             </div>
@@ -160,7 +160,7 @@
                 <p class="mt-2 text-sm text-slate-300">Threats Detected</p>
                 <p class="text-[11px] text-slate-500 mt-0.5">Flagged as phishing</p>
             </div>
-        </div>
+        </a>
 
         <div class="glass-card p-6 flex items-center gap-5">
             <div class="icon-tile !w-12 !h-12 shrink-0 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300">
@@ -256,7 +256,7 @@
     <div class="hidden md:max-lg:landscape:grid lg:grid grid-cols-3 gap-5 text-left">
         @php
             $steps = [
-                ['n' => '01', 'title' => 'Submit What You Received', 'desc' => 'Paste a suspicious link, sender email, phone number, upload a screenshot, or upload an app (APK) or PDF into the PhishCore scanner.'],
+                ['n' => '01', 'title' => 'Submit What You Received', 'desc' => 'Paste a suspicious link, sender email, phone number, upload a screenshot, or upload a PDF into the PhishCore scanner.'],
                 ['n' => '02', 'title' => 'Multi-Layer Analysis', 'desc' => 'PhishCore inspects SSL certificates, domain age, URL structure, blacklists, and behavioural patterns simultaneously.'],
                 ['n' => '03', 'title' => 'Clear Risk Score & Report', 'desc' => 'Receive an easy-to-read risk score from 0–100 with a full breakdown of every indicator checked.'],
             ];
@@ -596,7 +596,7 @@
                         @enderror
                     </div>
 
-                    {{-- File (APK or PDF) --}}
+                    {{-- File (PDF) --}}
                     <div x-show="tab === 'file'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
                         <label class="relative flex items-center justify-center gap-3 w-full rounded-2xl border border-dashed px-4 py-5 text-sm cursor-pointer transition"
                                :class="[
@@ -605,8 +605,8 @@
                                ]"
                                @dragenter="docDrag = true" @dragleave="docDrag = false" @drop="docDrag = false">
                             <svg class="w-5 h-5 shrink-0 text-sky-300/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                            <span class="truncate min-w-0" x-text="docDrag ? 'Drop it here' : (docName || 'Upload an APK or PDF (max 20MB)')"></span>
-                            <input type="file" name="file" x-ref="doc" accept=".apk,.pdf,application/pdf,application/vnd.android.package-archive"
+                            <span class="truncate min-w-0" x-text="docDrag ? 'Drop it here' : (docName || 'Upload a PDF (max 20MB)')"></span>
+                            <input type="file" name="file" x-ref="doc" accept=".pdf,application/pdf"
                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                    @change="docName = $event.target.files[0]?.name ?? ''; if (docName) clearOthers('file')">
                             <button type="button" x-show="docName" x-cloak @click.prevent.stop="removeDoc()"

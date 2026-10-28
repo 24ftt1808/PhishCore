@@ -2850,8 +2850,8 @@ class AnalysisEngine
      * a program dressed up as a document with two endings, an archive or an Office file.
      * A PDF is normal in a message, so it adds no points and is shown as information.
      *
-     * Only an APK or a PDF can be checked inside by the file scan, so only those get the hint to
-     * upload the file itself.
+     * Only a PDF can be checked inside by the file scan (apps are not accepted), so only a PDF gets the
+     * hint to upload the file itself.
      *
      * @return array{flagged: bool, points: int, reasons: array<int, string>, neutral?: bool, file_name?: string}
      */
@@ -2860,10 +2860,10 @@ class AnalysisEngine
         $uploadHint = ' The screenshot only shows its name. If you still have the file, save it and upload it in Scan File to check what is inside.';
 
         if (preg_match('/([\w\-]+\.(?:pdf|docx?|xlsx?|jpe?g|png|txt|mp4)\.(?:apk|exe|scr|bat|js|vbs|msi|jar|lnk|hta|cmd|pif))\b/i', $text, $m)) {
-            return ['flagged' => true, 'points' => 30, 'file_name' => $m[1], 'reasons' => ["File name with two endings detected: {$m[1]} — a program made to look like a document or a picture".(str_ends_with(strtolower($m[1]), '.apk') ? '.'.$uploadHint : '')]];
+            return ['flagged' => true, 'points' => 30, 'file_name' => $m[1], 'reasons' => ["File name with two endings detected: {$m[1]} — a program made to look like a document or a picture"]];
         }
         if (preg_match('/([\w\-]+\.apk)\b/i', $text, $m)) {
-            return ['flagged' => true, 'points' => 30, 'file_name' => $m[1], 'reasons' => ["Android app (APK) attachment detected: {$m[1]} — installing an app sent in a message is a common way scams take over phones.".$uploadHint]];
+            return ['flagged' => true, 'points' => 30, 'file_name' => $m[1], 'reasons' => ["Android app (APK) attachment detected: {$m[1]} — installing an app sent in a message is a common way scams take over phones."]];
         }
         if (preg_match('/([\w\-]+\.(?:exe|scr|js|bat|vbs|msi|jar|lnk|hta|ps1|cmd|pif))\b/i', $text, $m)) {
             return ['flagged' => true, 'points' => 25, 'file_name' => $m[1], 'reasons' => ["Executable/script attachment detected: {$m[1]} — high risk file type"]];

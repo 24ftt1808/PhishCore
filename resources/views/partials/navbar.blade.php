@@ -12,16 +12,88 @@
 <div
     x-data="{
         isWelcome: {{ request()->routeIs('welcome') ? 'true' : 'false' }},
-        active: '{{ request()->routeIs('reports.public') ? 'public-reports' : 'home' }}',
+        active: '{{ request()->routeIs('reports.public', 'reports.public.show') ? 'public-reports' : 'home' }}',
         hlKey: null,
         mobileOpen: false,
+        sheetH: 0,
+        lite: false,
         scrolled: false,
         lock: false,
         lockTimer: null,
         hl: { ready: false },
         sections: ['home', 'features', 'how-it-works', 'about', 'contact'],
 
+        /* the menu's glass is drawn as one shape behind the links; it needs the links' height */
+        measure() {
+            this.sheetH = this.$refs.sheet ? this.$refs.sheet.offsetHeight : 0;
+        },
+
         init() {
+            /* weak phones and data-saver mode get the plain morph, without the liquid neck */
+            try {
+                const c = navigator.connection || {};
+                this.lite = !!((navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) || c.saveData);
+            } catch (e) {}
+            /* the glass is one spring value (see .nav-pour in app.css): 0 is the closed button, 1 is the open menu. It bounces a
+               little as it opens, closes without a bounce, and can be turned around in mid-flight. */
+            const root = this.$root;
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+            const OPEN = { response: 0.6, damping: 0.74 };
+            const CLOSE = { response: 0.48, damping: 1 };
+            let x = 0;
+            let v = 0;
+            let raf = 0;
+            let last = 0;
+            let opening = false;
+            const paint = () => {
+                const value = x.toFixed(4);
+                root.style.setProperty('--p', value);
+                root.style.setProperty('--q', value);
+            };
+            const rest = (open) => {
+                x = open ? 1 : 0;
+                v = 0;
+                paint();
+                root.dataset.pour = open ? 'open' : 'rest';
+            };
+            const frame = (now) => {
+                const h = Math.min((now - last) / 1000, 1 / 20) / 4;
+                last = now;
+                const set = opening ? OPEN : CLOSE;
+                const w = (2 * Math.PI) / set.response;
+                const k = w * w;
+                const c = 2 * set.damping * w;
+                const to = opening ? 1 : 0;
+                for (let i = 0; i < 4; i++) {
+                    v += (-k * (x - to) - c * v) * h;
+                    x += v * h;
+                    if (x < 0) { x = 0; v = 0; }
+                }
+                paint();
+                if (Math.abs(x - to) < 0.0008 && Math.abs(v) < 0.01) {
+                    raf = 0;
+                    rest(opening);
+                    return;
+                }
+                raf = requestAnimationFrame(frame);
+            };
+            this.$watch('mobileOpen', (open) => {
+                if (open) this.measure();
+                opening = open;
+                if (reduce.matches) {
+                    if (raf) cancelAnimationFrame(raf);
+                    raf = 0;
+                    rest(open);
+                    return;
+                }
+                root.dataset.pour = 'moving';
+                if (!raf) {
+                    last = performance.now();
+                    raf = requestAnimationFrame(frame);
+                }
+            });
+            window.addEventListener('resize', () => { if (this.mobileOpen) this.measure(); });
+
             let prev = null;
             try {
                 prev = sessionStorage.getItem('navPrev');
@@ -163,10 +235,26 @@
             this.active = current;
         }
     }"
+    data-pour="rest" :data-lite="lite"
     class="pointer-events-none fixed top-4 inset-x-0 mx-auto z-50 w-[calc(100%-3rem)] min-[1180px]:max-w-[77rem]"
 >
+    {{-- The menu's liquid-glass body: the burger's circle and the menu are one gooey shape (see .nav-pour in app.css) --}}
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="nav-goo" x="-5%" y="-10%" width="110%" height="120%" color-interpolation-filters="sRGB">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" result="goo"/>
+                <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+            </filter>
+        </defs>
+    </svg>
+    <div class="nav-pour min-[1180px]:hidden" :data-open="mobileOpen" :data-lite="lite" :style="`--pour-h:${sheetH}px`" aria-hidden="true">
+        <span class="nav-pour-blob"></span>
+        <span class="nav-pour-blob is-sheet"></span>
+    </div>
+
     {{-- THREE ISLANDS: brand | links | auth (phones/tablets: brand | menu button) --}}
-    <div class="flex items-center justify-between gap-3">
+    <div class="relative z-10 flex items-center justify-between gap-3">
 
         {{-- BRAND --}}
         <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)"
@@ -226,7 +314,7 @@
         </div>
 
         {{-- HAMBURGER (own island) --}}
-        <div :class="{ 'nav-glass--scrolled': scrolled }"
+        <div :class="{ 'nav-glass--scrolled': scrolled, 'nav-island--open': mobileOpen }"
              class="pointer-events-auto nav-glass rounded-full p-[9px] flex min-[1180px]:hidden">
             <button type="button" @click="mobileOpen = !mobileOpen" :aria-expanded="mobileOpen.toString()" aria-controls="nav-sheet"
                     class="nav-burger" aria-label="Menu">
@@ -239,15 +327,8 @@
     <div class="nav-scrim min-[1180px]:hidden" :data-open="mobileOpen" @click="mobileOpen = false" aria-hidden="true"></div>
 
     <div class="nav-stage md:max-w-[34rem] md:ml-auto min-[1180px]:hidden">
-    <div id="nav-sheet" class="nav-glass nav-glass--scrolled nav-sheet"
+    <div id="nav-sheet" x-ref="sheet" class="nav-sheet"
          :data-open="mobileOpen" :inert="!mobileOpen" @keydown.escape.window="mobileOpen = false">
-        <span class="nav-sheet-shade" aria-hidden="true"></span>
-        <div class="nav-sheet-fx" aria-hidden="true">
-            <span class="nav-sheet-glow g1"></span>
-            <span class="nav-sheet-glow g2"></span>
-            <span class="nav-sheet-sheen"></span>
-        </div>
-
         <div class="nav-sheet-in">
         <div class="grid gap-1.5 md:grid-cols-2 md:gap-2">
             @foreach ($navLinks as $link)
@@ -280,6 +361,11 @@
     </div>
     </div>
 </div>
+
+{{-- A soft fade behind the floating bar, so page text doesn't show through the gaps between the pills (not on the home page, which has its own hero) --}}
+@unless (request()->routeIs('welcome'))
+    <div class="pointer-events-none fixed top-0 inset-x-0 z-40 h-24 bg-gradient-to-b from-slate-950 via-slate-950/85 to-transparent" aria-hidden="true"></div>
+@endunless
 
 {{-- Spacer: the navbar is fixed, so reserve its height --}}
 <div class="h-20" aria-hidden="true"></div>

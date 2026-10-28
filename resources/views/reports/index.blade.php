@@ -20,8 +20,8 @@
     $invStatusStyles = [
         'active' => ['text' => 'text-sky-300', 'label' => 'ACTIVE'],
         'completed' => ['text' => 'text-emerald-400', 'label' => 'COMPLETED'],
-        'takedown_requested' => ['text' => 'text-orange-400', 'label' => 'REQUESTED'],
-        'takedown_confirmed' => ['text' => 'text-emerald-400', 'label' => 'CONFIRMED'],
+        'takedown_requested' => ['text' => 'text-orange-400', 'label' => 'REPORTED'],
+        'takedown_confirmed' => ['text' => 'text-emerald-400', 'label' => 'TAKEN DOWN'],
     ];
     $currentStatus = $filters['status'] ?? 'all';
 

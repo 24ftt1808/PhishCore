@@ -9,13 +9,13 @@ function attachmentOf(string $text): array
     return $method->invoke(new AnalysisEngine, $text);
 }
 
-test('an APK in a message is flagged and points to the file scan', function () {
+test('an APK in a message is flagged, but is not sent to the file scan because apps are not accepted', function () {
     $result = attachmentOf('Sila install bank-update.apk untuk teruskan');
 
     expect($result['flagged'])->toBeTrue()
         ->and($result['points'])->toBe(30)
         ->and($result['file_name'])->toBe('bank-update.apk')
-        ->and($result['reasons'][0])->toContain('Android app (APK)')->toContain('Scan File');
+        ->and($result['reasons'][0])->toContain('Android app (APK)')->not->toContain('Scan File');
 });
 
 test('a program with a document name in front of it is flagged for its two endings', function () {

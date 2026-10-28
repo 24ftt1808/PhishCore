@@ -2,8 +2,8 @@
     $statusBadge = [
         'active' => ['text' => 'text-sky-300', 'label' => 'ACTIVE'],
         'completed' => ['text' => 'text-emerald-400', 'label' => 'COMPLETED'],
-        'takedown_requested' => ['text' => 'text-orange-400', 'label' => 'TAKEDOWN REQUESTED'],
-        'takedown_confirmed' => ['text' => 'text-emerald-400', 'label' => 'TAKEDOWN CONFIRMED'],
+        'takedown_requested' => ['text' => 'text-orange-400', 'label' => 'REPORTED TO BRUCERT'],
+        'takedown_confirmed' => ['text' => 'text-emerald-400', 'label' => 'TAKEDOWN CONFIRMED BY BRUCERT'],
     ];
     $typeIcons = [
         'url' => 'M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a13.5 13.5 0 010 18M12 3a13.5 13.5 0 000 18',
@@ -17,12 +17,12 @@
     $statCards = [
         ['label' => 'TOTAL CASES', 'short' => 'Total cases', 'value' => $stats['total'], 'status' => 'all', 'rgb' => '167,139,250', 'text' => 'text-white', 'icon' => 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z'],
         ['label' => 'ACTIVE', 'short' => 'Active', 'value' => $stats['active'], 'status' => 'active', 'rgb' => '56,189,248', 'text' => 'text-sky-300', 'icon' => 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z'],
-        ['label' => 'TAKEDOWN REQUESTED', 'short' => 'Requested', 'value' => $stats['takedown_requested'], 'status' => 'takedown_requested', 'rgb' => '251,146,60', 'text' => 'text-orange-400', 'icon' => 'M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5'],
-        ['label' => 'TAKEDOWN CONFIRMED', 'short' => 'Confirmed', 'value' => $stats['takedown_confirmed'], 'status' => 'takedown_confirmed', 'rgb' => '52,211,153', 'text' => 'text-emerald-400', 'icon' => 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
+        ['label' => 'REPORTED TO BRUCERT', 'short' => 'Reported', 'value' => $stats['takedown_requested'], 'status' => 'takedown_requested', 'rgb' => '251,146,60', 'text' => 'text-orange-400', 'icon' => 'M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5'],
+        ['label' => 'TAKEN DOWN (BRUCERT)', 'short' => 'Taken down', 'value' => $stats['takedown_confirmed'], 'status' => 'takedown_confirmed', 'rgb' => '52,211,153', 'text' => 'text-emerald-400', 'icon' => 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
         ['label' => 'COMPLETED', 'short' => 'Completed', 'value' => $stats['completed'], 'status' => 'completed', 'rgb' => '148,163,184', 'text' => 'text-slate-200', 'icon' => 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
     ];
 
-    $statusChips = ['all' => 'All', 'active' => 'Active', 'completed' => 'Completed', 'takedown_requested' => 'Requested', 'takedown_confirmed' => 'Confirmed'];
+    $statusChips = ['all' => 'All', 'active' => 'Active', 'completed' => 'Completed', 'takedown_requested' => 'Reported', 'takedown_confirmed' => 'Taken down'];
     $chipCounts = ['all' => $stats['total'], 'active' => $stats['active'], 'completed' => $stats['completed'], 'takedown_requested' => $stats['takedown_requested'], 'takedown_confirmed' => $stats['takedown_confirmed']];
     $chipDots = ['all' => 'bg-violet-300', 'active' => 'bg-sky-300', 'completed' => 'bg-emerald-400', 'takedown_requested' => 'bg-orange-400', 'takedown_confirmed' => 'bg-emerald-400'];
 @endphp
@@ -78,7 +78,7 @@
 
     <div class="h-in mb-6 md:max-xl:landscape:mb-4">
         <h1 class="text-2xl font-bold text-white mb-1">Investigations</h1>
-        <p class="text-slate-300 text-sm">Track and manage takedown progress across all reported threats.</p>
+        <p class="text-slate-300 text-sm">Track investigations and what has been reported to BruCERT, who handle the takedowns.</p>
     </div>
 
     {{-- STATS (click to filter) --}}

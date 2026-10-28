@@ -7,42 +7,17 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * A small APK asking for the permissions banking trojans ask for. The bytes are built once, because a
- * zip stamps the current time inside, so two builds a couple of seconds apart are different files.
- */
-function trustedFileApkBytes(): string
+/** A small PDF with a link to a look-alike bank page, which the file scan flags. The same bytes every time, so the fingerprint matches. */
+function trustedFilePdfBytes(): string
 {
-    static $bytes = null;
-
-    if ($bytes !== null) {
-        return $bytes;
-    }
-
-    $path = tempnam(sys_get_temp_dir(), 'tfapk');
-    $zip = new ZipArchive;
-    $zip->open($path, ZipArchive::OVERWRITE);
-
-    $manifest = "\x03\x00\x08\x00";
-    foreach (['READ_SMS', 'RECEIVE_SMS', 'BIND_ACCESSIBILITY_SERVICE', 'SYSTEM_ALERT_WINDOW'] as $permission) {
-        $manifest .= implode("\0", str_split('android.permission.'.$permission))."\0\0A";
-    }
-
-    $zip->addFromString('AndroidManifest.xml', $manifest);
-    $zip->addFromString('classes.dex', 'dex');
-    $zip->close();
-
-    $bytes = (string) file_get_contents($path);
-    @unlink($path);
-
-    return $bytes;
+    return "%PDF-1.4\n1 0 obj << /URI (http://bibd-secure-login.com/verify) >>";
 }
 
-/** Scans the risky app as this user and returns the saved report. */
+/** Scans the risky PDF as this user and returns the saved report. */
 function trustedFileScan(User $user): Report
 {
     test()->actingAs($user)->post(route('scan.store'), [
-        'file' => UploadedFile::fake()->createWithContent('real-sms-app.apk', trustedFileApkBytes()),
+        'file' => UploadedFile::fake()->createWithContent('real-statement.pdf', trustedFilePdfBytes()),
     ]);
 
     return Report::latest('id')->firstOrFail();
@@ -63,7 +38,7 @@ test('an administrator can mark a scanned file as safe, and the mark can be remo
 
     $trusted = TrustedFile::firstOrFail();
     expect($trusted->file_sha256)->toBe($report->file_sha256)
-        ->and($trusted->file_name)->toBe('real-sms-app.apk')
+        ->and($trusted->file_name)->toBe('real-statement.pdf')
         ->and($trusted->marked_by)->toBe($admin->id);
 
     $this->actingAs($admin)->delete(route('scan.untrust-file', $report))->assertRedirect();
@@ -74,7 +49,7 @@ test('an administrator can mark a scanned file as safe, and the mark can be remo
 test('a file marked as safe is shown as safe on the next scan, whatever the other checks say', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $first = trustedFileScan($admin);
-    expect($first->analyses->first()->verdict)->toBe('phishing');
+    expect($first->analyses->first()->verdict)->toBeIn(['suspicious', 'phishing']);
 
     $this->actingAs($admin)->post(route('scan.trust-file', $first));
 
@@ -135,7 +110,7 @@ test('administrators see the safe files page, with a remove button, and can remo
     $this->actingAs($admin)->get(route('safe-files.index'))
         ->assertOk()
         ->assertSee('Safe Files')
-        ->assertSee('real-sms-app.apk')
+        ->assertSee('real-statement.pdf')
         ->assertSee('Ada Admin')
         ->assertSee('Remove');
 
@@ -152,7 +127,7 @@ test('team members can see the safe files but cannot remove a mark', function ()
 
     $this->actingAs($member)->get(route('safe-files.index'))
         ->assertOk()
-        ->assertSee('real-sms-app.apk')
+        ->assertSee('real-statement.pdf')
         ->assertDontSee('SAFE MARK');
 
     $this->actingAs($member)->delete(route('safe-files.destroy', TrustedFile::firstOrFail()))->assertForbidden();
@@ -170,16 +145,16 @@ test('guests are sent to log in instead of seeing the safe files page', function
 
 test('the safe files page can be searched by file name or fingerprint', function () {
     $admin = User::factory()->create(['role' => 'admin']);
-    TrustedFile::create(['file_sha256' => str_repeat('a', 64), 'file_name' => 'bank-app.apk', 'marked_by' => $admin->id]);
+    TrustedFile::create(['file_sha256' => str_repeat('a', 64), 'file_name' => 'bank-letter.pdf', 'marked_by' => $admin->id]);
     TrustedFile::create(['file_sha256' => str_repeat('b', 64), 'file_name' => 'invoice.pdf', 'marked_by' => $admin->id]);
 
     $this->actingAs($admin)->get(route('safe-files.index', ['search' => 'bank']))
-        ->assertSee('bank-app.apk')
+        ->assertSee('bank-letter.pdf')
         ->assertDontSee('invoice.pdf');
 
     $this->actingAs($admin)->get(route('safe-files.index', ['search' => str_repeat('b', 10)]))
         ->assertSee('invoice.pdf')
-        ->assertDontSee('bank-app.apk');
+        ->assertDontSee('bank-letter.pdf');
 });
 
 test('the sidebar shows Safe Files to administrators and team members only', function () {

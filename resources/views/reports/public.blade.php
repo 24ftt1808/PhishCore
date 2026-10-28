@@ -43,6 +43,8 @@
             'badge' => $badge,
             'by' => $report->user?->name ? Str::before($report->user->name, ' ') : 'Anonymous',
             'date' => $report->created_at->format('Y-m-d H:i'),
+            // Only website reports open a proof page; emails, numbers, screenshots and files stay plain text.
+            'href' => ($report->type === 'url' && filled($report->url)) ? route('reports.public.show', $report) : null,
         ];
     }
 @endphp
@@ -109,8 +111,16 @@
                     <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">MOST RECENT</p>
                     <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                 </div>
-                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.3rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
+                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.05rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
             </div>
+        </div>
+
+        {{-- BruCERT takedowns: PhishCore reports and tracks, BruCERT takes sites down --}}
+        <div class="glass-card px-5 py-4 mb-6 md:mb-8 grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:flex-wrap sm:items-center sm:gap-x-8" data-brucert-stats>
+            <p class="col-span-2 text-[10px] md:text-[11px] tracking-[0.14em] text-slate-400">BRUCERT TAKEDOWNS</p>
+            <p class="text-sm text-slate-300"><span class="block sm:inline text-2xl sm:text-xl font-bold text-white tabular-nums sm:mr-1.5" data-brucert-reported>{{ $stats['reported_to_brucert'] }}</span>reported to BruCERT</p>
+            <p class="text-sm text-slate-300"><span class="block sm:inline text-2xl sm:text-xl font-bold text-white tabular-nums sm:mr-1.5" data-brucert-taken-down>{{ $stats['taken_down'] }}</span>confirmed taken down</p>
+            <p class="col-span-2 text-xs text-slate-500 md:ml-auto">BruCERT handles takedowns. PhishCore finds, records and reports threats.</p>
         </div>
 
         {{-- Trends --}}
@@ -232,11 +242,11 @@
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
-                <div>
+                <div class="min-w-0">
                     <label class="block text-[10px] tracking-[0.14em] text-slate-500 mb-1.5">DATE FROM</label>
                     <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="field !py-2.5">
                 </div>
-                <div>
+                <div class="min-w-0">
                     <label class="block text-[10px] tracking-[0.14em] text-slate-500 mb-1.5">DATE TO</label>
                     <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="field !py-2.5">
                 </div>
@@ -265,11 +275,16 @@
                     </thead>
                     <tbody class="divide-y divide-white/[0.06]">
                         @foreach ($rows as $r)
-                            <tr class="hover:bg-white/[0.035] transition-colors">
+                            <tr class="hover:bg-white/[0.035] transition-colors @if ($r['href']) cursor-pointer @endif" @if ($r['href']) data-href="{{ $r['href'] }}" onclick="window.location.href = this.dataset.href" @endif>
                                 <td class="px-4 xl:px-6 py-4 max-w-[16rem] lg:max-w-md">
                                     <p title="{{ $r['label'] }}" class="text-slate-200 truncate flex items-center gap-3">
                                         <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
-                                        <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
+                                        @if ($r['href'])
+                                            <a href="{{ $r['href'] }}" class="truncate font-mono text-[13px] hover:text-sky-300 transition-colors" aria-label="View the evidence for this report">{{ $r['label'] }}</a>
+                                            <svg class="w-3.5 h-3.5 text-sky-300/70 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                        @else
+                                            <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
+                                        @endif
                                     </p>
                                 </td>
                                 <td class="px-4 xl:px-6 py-4">
@@ -288,10 +303,17 @@
             {{-- Mobile cards --}}
             <div class="md:hidden space-y-3">
                 @foreach ($rows as $r)
-                    <div class="glass-card p-4">
+                    @if ($r['href'])
+                        <a href="{{ $r['href'] }}" class="glass-card block p-4" aria-label="View the evidence for this report">
+                    @else
+                        <div class="glass-card p-4">
+                    @endif
                         <p title="{{ $r['label'] }}" class="text-slate-200 flex items-center gap-2.5 mb-3">
                             <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
                             <span class="truncate font-mono text-[13px]">{{ $r['label'] }}</span>
+                            @if ($r['href'])
+                                <svg class="w-4 h-4 text-sky-300/70 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            @endif
                         </p>
                         <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                             <span class="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide px-2.5 py-1 rounded-full border {{ $r['badge']['cls'] }}">
@@ -299,7 +321,11 @@
                             </span>
                             <span class="text-xs text-slate-400 text-right">{{ $r['by'] }} &middot; {{ $r['date'] }}</span>
                         </div>
-                    </div>
+                    @if ($r['href'])
+                        </a>
+                    @else
+                        </div>
+                    @endif
                 @endforeach
             </div>
         @else
@@ -318,8 +344,9 @@
             </div>
         @endif
 
-        <div class="mt-5">
-            {{ $reports->links() }}
+        {{-- fewer page numbers, and the text and the buttons wrap instead of squeezing on small tablets --}}
+        <div class="mt-5 [&_nav>div.hidden]:flex-wrap [&_nav>div.hidden]:gap-3">
+            {{ $reports->onEachSide(1)->links() }}
         </div>
 
     </section>

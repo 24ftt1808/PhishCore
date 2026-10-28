@@ -70,6 +70,12 @@ Route::get('/public-reports/feed.{format}', PublicFeedController::class)
     ->middleware('throttle:30,1')
     ->name('reports.feed');
 
+// The proof page for one flagged website report on the public list (404 for anything else).
+Route::get('/public-reports/{report}', [PublicReportsController::class, 'show'])
+    ->whereNumber('report')
+    ->middleware('throttle:60,1')
+    ->name('reports.public.show');
+
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

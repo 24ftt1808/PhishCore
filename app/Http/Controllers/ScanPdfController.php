@@ -56,8 +56,8 @@ class ScanPdfController extends Controller
     private const INVESTIGATION_LABELS = [
         'active' => 'Active',
         'completed' => 'Completed',
-        'takedown_requested' => 'Takedown requested',
-        'takedown_confirmed' => 'Takedown confirmed',
+        'takedown_requested' => 'Reported to BruCERT',
+        'takedown_confirmed' => 'Takedown confirmed by BruCERT',
     ];
 
     /** The three groups under "What we checked" (same titles, notes and colours as the result page). */

@@ -30,9 +30,8 @@
         ['Blacklists', ['url', 'screenshot'], 'Checks Google Safe Browsing and other threat databases for known phishing pages.'],
         ['Sender domain analysis', ['email'], 'Checks whether the sender\'s email domain copies a known brand or looks unusual.'],
         ['Phone number heuristics', ['phone'], 'Checks the number is valid and what kind of line it is, whether other PhishCore users have reported it, and a reputation lookup when available.'],
-        ['File type', ['file'], 'Checks that the file really is what its name says, because scam apps often pretend to be documents or pictures.'],
+        ['File type', ['file'], 'Checks that the file really is what its name says, because scam files often pretend to be documents or pictures.'],
         ['File fingerprint', ['file'], 'Looks up the file\'s fingerprint, not the file itself, in VirusTotal\'s database of known bad files.'],
-        ['App permissions', ['file'], 'For Android apps (APK), lists what the app asks to do, such as read your text messages or control your screen.'],
         ['PDF links and actions', ['file'], 'Finds links inside a PDF and checks them, and flags PDFs that try to start programs or run scripts.'],
         ['PDF wording', ['file'], 'Reads the words in a PDF and looks for scam wording, such as urgent demands and requests for codes or bank details. Nothing is sent to an AI service.'],
         ['Previous reports for this file', ['file'], 'Checks whether PhishCore has already found this exact file to be phishing in recent scans by other people.'],
@@ -350,9 +349,9 @@
                             @enderror
                         </div>
 
-                        {{-- File (APK or PDF) --}}
+                        {{-- File (PDF) --}}
                         <div x-show="tab === 'file'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-1.5" x-transition:enter-end="opacity-100 translate-y-0">
-                            <label class="block text-xs tracking-wide text-slate-300 mb-2">UPLOAD AN APP OR PDF</label>
+                            <label class="block text-xs tracking-wide text-slate-300 mb-2">UPLOAD A PDF</label>
                             <label class="relative flex flex-col items-center justify-center gap-2 w-full rounded-2xl border border-dashed px-4 py-9 text-sm cursor-pointer transition"
                                    :class="[
                                        docDrag ? 'border-sky-300/70 bg-sky-400/[0.08] text-sky-100' : (docName ? 'border-emerald-300/40 bg-emerald-400/[0.05] text-slate-100' : 'border-white/20 bg-black/20 text-slate-300 hover:border-sky-300/50 hover:bg-black/30'),
@@ -361,9 +360,9 @@
                                    @dragenter="docDrag = true" @dragleave="docDrag = false" @drop="docDrag = false">
                                 <svg x-show="!docName" class="w-7 h-7 text-sky-300/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                                 <svg x-show="docName" x-cloak class="w-7 h-7 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                <span class="sc-dz-text" x-text="docDrag ? 'Drop it here' : (docName || 'Drop an APK or PDF, or click to upload')"></span>
-                                <span x-show="!docName" class="text-xs text-slate-400">APK or PDF, max 20MB</span>
-                                <input type="file" name="file" x-ref="doc" accept=".apk,.pdf,application/pdf,application/vnd.android.package-archive"
+                                <span class="sc-dz-text" x-text="docDrag ? 'Drop it here' : (docName || 'Drop a PDF, or click to upload')"></span>
+                                <span x-show="!docName" class="text-xs text-slate-400">PDF only, max 20MB</span>
+                                <input type="file" name="file" x-ref="doc" accept=".pdf,application/pdf"
                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                        @change="docName = $event.target.files[0]?.name ?? ''; if (docName) clearOthers('file')">
                                 <button type="button" x-show="docName" x-cloak @click.prevent.stop="removeDoc()"

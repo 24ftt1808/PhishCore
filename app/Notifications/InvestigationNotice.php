@@ -22,8 +22,8 @@ class InvestigationNotice extends Notification
     private const STATUS_LABELS = [
         'active' => 'Active',
         'completed' => 'Completed',
-        'takedown_requested' => 'Takedown requested',
-        'takedown_confirmed' => 'Takedown confirmed',
+        'takedown_requested' => 'Reported to BruCERT',
+        'takedown_confirmed' => 'Takedown confirmed by BruCERT',
     ];
 
     public function __construct(private Investigation $investigation, private string $kind) {}

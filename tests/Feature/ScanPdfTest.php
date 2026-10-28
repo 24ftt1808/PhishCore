@@ -124,7 +124,7 @@ test('regular users see the investigation status but not names or notes', functi
 
     $investigation = $captured->data['investigation'];
 
-    expect($investigation['status'])->toBe('Takedown requested');
+    expect($investigation['status'])->toBe('Reported to BruCERT');
     expect($investigation['assignee'])->toBeNull();
     expect($investigation['notes'])->toBeNull();
     expect($investigation['timeline'][0]['by'])->toBeNull();

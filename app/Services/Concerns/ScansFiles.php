@@ -195,7 +195,7 @@ trait ScansFiles
         $reasons[] = "The contents show that this is {$label}";
 
         if ($kind === 'other') {
-            $reasons[] = 'Only APK and PDF files can be checked in detail. Only the VirusTotal fingerprint check was done';
+            $reasons[] = 'Only PDF files can be checked in detail. Only the VirusTotal fingerprint check was done';
         }
 
         $known = ['pdf', 'apk', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'mp4', 'mp3'];

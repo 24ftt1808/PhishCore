@@ -173,8 +173,8 @@ test('a lone warning card fills its row', function () {
         ['name' => 'URL Structure', 'status' => 'SAFE', 'points' => 0, 'message' => 'No issues detected for this check.'],
     ]);
 
-    // not high risk, so there is no featured card: the one warning spans both columns on a tablet and the full row on a desktop
-    expect($html)->toContain('lg:col-span-6')->toContain('sm:col-span-2');
+    // not high risk, so there is no featured card: the one warning spans both columns on a tablet and the full row on a wide desktop
+    expect($html)->toContain('xl:col-span-6')->toContain('sm:col-span-2');
 });
 
 test('the wording fixes in CheckExplainer hold', function () {

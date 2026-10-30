@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -38,7 +39,7 @@ class LoginRequest extends FormRequest
      *
      * @throws ValidationException
      */
-        public function authenticate(): void
+    public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
@@ -52,12 +53,13 @@ class LoginRequest extends FormRequest
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
-                'email' => 'This account has been suspended. Please contact an administrator.',
+                'email' => User::SUSPENDED_MESSAGE,
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
     }
+
     /**
      * Ensure the login request is not rate limited.
      *

@@ -58,6 +58,9 @@ class User extends Authenticatable
         return in_array((int) $this->scan_retention_days, self::RETENTION_CHOICES, true) ? (int) $this->scan_retention_days : null;
     }
 
+    /** What a suspended person is told, on the login form and when they are signed out. */
+    public const SUSPENDED_MESSAGE = 'This account has been suspended. Please contact an administrator.';
+
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;

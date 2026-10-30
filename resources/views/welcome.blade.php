@@ -181,7 +181,7 @@
     <span class="inline-block font-mono text-[11px] font-medium uppercase tracking-[0.14em] px-3 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 mb-4">Platform Features</span>
     <h2 class="text-2xl md:text-3xl font-bold text-white mb-7 md:mb-12">Everything You Need to Stay Protected</h2>
 
-    <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-6 px-6 pb-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 lg:gap-6 md:overflow-visible md:mx-0 md:px-0 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-left">
+    <div class="flex gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain snap-x snap-mandatory -mx-6 px-6 pb-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-5 lg:gap-6 md:overflow-visible md:mx-0 md:px-0 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-left">
 
         <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0s">
             <div class="icon-tile mb-3.5 md:mb-4">

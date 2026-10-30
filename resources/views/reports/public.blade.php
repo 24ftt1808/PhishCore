@@ -17,7 +17,11 @@
 
     /* build each row once, render it as table row (desktop) and card (mobile) */
     $rows = [];
+    // One small colour per reporter code, in the site's blue/violet range, so rows from the same account are easy to spot
+    $reporterColours = ['#38bdf8', '#818cf8', '#34d399', '#fbbf24', '#f472b6', '#2dd4bf', '#a78bfa', '#fb923c'];
+
     foreach ($reports as $report) {
+        $reporterHash = $report->user_id ? hash_hmac('sha256', (string) $report->user_id, (string) config('app.key')) : null;
         $verdict = $report->analyses->first()->verdict ?? 'suspicious';
         $badge = $verdictBadge[$verdict] ?? $verdictBadge['suspicious'];
 
@@ -41,7 +45,9 @@
             'label' => $itemLabel,
             'icon' => $typeIcons[$report->type] ?? $typeIcons['url'],
             'badge' => $badge,
-            'by' => $report->user?->name ? Str::before($report->user->name, ' ') : 'Anonymous',
+            // No real names on a public page: a signed-in reporter shows as a stable code (e.g. Member #7F3A) that cannot be traced back to the account
+            'by' => $reporterHash ? 'Member #'.strtoupper(substr($reporterHash, 0, 4)) : 'Anonymous',
+            'dot' => $reporterHash ? $reporterColours[hexdec(substr($reporterHash, 4, 2)) % count($reporterColours)] : '#64748b',
             'date' => $report->created_at->format('Y-m-d H:i'),
             // Only website reports open a proof page; emails, numbers, screenshots and files stay plain text.
             'href' => ($report->type === 'url' && filled($report->url)) ? route('reports.public.show', $report) : null,
@@ -81,37 +87,37 @@
 
         {{-- Stats --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
-                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
-                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">TOTAL FLAGGED</p>
-                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg></div>
+            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+                <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
+                    <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Total flagged</p>
+                    <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg></div>
                 </div>
                 @php $totalFlagged = $stats['suspicious'] + $stats['phishing']; @endphp
-                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.65rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $totalFlagged }}">{{ $totalFlagged }}</p>
+                <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $totalFlagged }}">{{ $totalFlagged }}</p>
             </div>
 
-            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
-                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
-                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">SUSPICIOUS</p>
-                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-amber-400/10 !border-amber-300/20 !text-amber-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></div>
+            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+                <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
+                    <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Suspicious</p>
+                    <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-amber-400/10 !border-amber-300/20 !text-amber-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></div>
                 </div>
-                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.65rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['suspicious'] }}">{{ $stats['suspicious'] }}</p>
+                <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['suspicious'] }}">{{ $stats['suspicious'] }}</p>
             </div>
 
-            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
-                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
-                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">PHISHING</p>
-                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg></div>
+            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+                <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
+                    <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Phishing</p>
+                    <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg></div>
                 </div>
-                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.65rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['phishing'] }}">{{ $stats['phishing'] }}</p>
+                <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['phishing'] }}">{{ $stats['phishing'] }}</p>
             </div>
 
-            <div class="glass-card p-4 md:p-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 md:block">
-                <div class="contents md:flex md:items-center md:justify-between md:mb-4">
-                    <p class="col-start-2 row-start-1 max-md:min-h-[1.55rem] max-md:flex max-md:items-end text-[10px] md:text-[11px] tracking-[0.1em] md:tracking-[0.14em] leading-tight text-slate-400">MOST RECENT</p>
-                    <div class="max-md:col-start-1 max-md:row-start-1 max-md:row-span-2 icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+                <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
+                    <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Most recent</p>
+                    <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
                 </div>
-                <p class="col-start-2 row-start-2 mt-1 md:mt-0 text-[1.05rem] md:text-3xl whitespace-nowrap leading-none font-bold text-white">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
+                <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums">{{ $stats['latest']?->diffForHumans(short: true) ?? '—' }}</p>
             </div>
         </div>
 
@@ -269,7 +275,7 @@
                         <tr class="border-b border-white/10 text-left text-[11px] tracking-[0.14em] text-slate-500 bg-white/[0.02]">
                             <th class="px-4 xl:px-6 py-4 font-medium">REPORTED ITEM</th>
                             <th class="px-4 xl:px-6 py-4 font-medium">SCAN RESULT</th>
-                            <th class="px-4 xl:px-6 py-4 font-medium">SUBMITTED BY</th>
+                            <th class="px-4 xl:px-6 py-4 font-medium">REPORTER</th>
                             <th class="px-4 xl:px-6 py-4 font-medium">DATE &amp; TIME</th>
                         </tr>
                     </thead>
@@ -292,7 +298,7 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $r['badge']['label'] }}
                                     </span>
                                 </td>
-                                <td class="px-4 xl:px-6 py-4 text-slate-400">{{ $r['by'] }}</td>
+                                <td class="px-4 xl:px-6 py-4 text-slate-400 whitespace-nowrap"><span class="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style="background: {{ $r['dot'] }}" aria-hidden="true"></span>{{ $r['by'] }}</td>
                                 <td class="px-4 xl:px-6 py-4 text-slate-400 tabular-nums"><span class="block xl:inline">{{ substr($r['date'], 0, 10) }}</span> <span class="block xl:inline text-slate-500 xl:text-slate-400 text-xs xl:text-sm">{{ substr($r['date'], 11) }}</span></td>
                             </tr>
                         @endforeach
@@ -319,7 +325,7 @@
                             <span class="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide px-2.5 py-1 rounded-full border {{ $r['badge']['cls'] }}">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span> {{ $r['badge']['label'] }}
                             </span>
-                            <span class="text-xs text-slate-400 text-right">{{ $r['by'] }} &middot; {{ $r['date'] }}</span>
+                            <span class="text-xs text-slate-400 text-right"><span class="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style="background: {{ $r['dot'] }}" aria-hidden="true"></span>{{ $r['by'] }} &middot; {{ $r['date'] }}</span>
                         </div>
                     @if ($r['href'])
                         </a>
@@ -342,6 +348,10 @@
                     @endif
                 </p>
             </div>
+        @endif
+
+        @if ($reports->count() > 0)
+            <p class="mt-4 text-xs leading-relaxed text-slate-500">Reporters are shown as anonymous codes to protect their privacy. The same code means the same account, and guest scans show as Anonymous.</p>
         @endif
 
         {{-- fewer page numbers, and the text and the buttons wrap instead of squeezing on small tablets --}}

@@ -28,17 +28,43 @@
     {{-- Same animated background as the public pages, dimmed so data stays readable --}}
     <div class="hero-aurora dash-aurora" aria-hidden="true" style="opacity:.55"><span></span><span></span><span></span></div>
 
-    <div class="relative z-10 flex lg:h-screen dash-scope" x-data="{ sidebarOpen: false, logoutOpen: false }" @keydown.escape.window="logoutOpen = false">
+    <div class="relative z-10 flex lg:h-screen dash-scope" x-data="{ sidebarOpen: false, logoutOpen: false, scrolled: false, init() { this.scrolled = window.scrollY > 110; } }" @keydown.escape.window="logoutOpen = false" @scroll.window.passive="scrolled = window.scrollY > 110">
+
+        {{-- Soft fade under the floating top bar so content doesn't look cut off as it scrolls up (phones only) --}}
+        <div class="pointer-events-none fixed top-0 inset-x-0 z-[34] h-24 bg-gradient-to-b from-slate-950/90 via-slate-950/50 to-transparent lg:hidden" aria-hidden="true"></div>
 
         {{-- MOBILE TOP BAR --}}
-        <div class="dash-topbar lg:hidden fixed z-30 flex items-center justify-between">
-            <a href="{{ route('welcome') }}" class="flex items-center gap-2">
-              <span class="w-8 h-8 flex items-center justify-center">
-    <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-8 h-8 object-contain">
-</span>
-                <span class="font-bold text-white">PhishCore</span>
+        @php
+            $tbTitle = match (true) {
+                request()->routeIs('dashboard') => 'Dashboard',
+                request()->routeIs('scan.index', 'scan.show') => 'Scan',
+                request()->routeIs('scan.history') => 'Scan History',
+                request()->routeIs('analytics') => 'Analytics',
+                request()->routeIs('chat.index') => 'AI Chat',
+                request()->routeIs('play.index') => 'Phish Lab',
+                request()->routeIs('investigations.index') => 'Investigations',
+                request()->routeIs('reports.index') => 'Reports',
+                request()->routeIs('scam-news.index') => 'Scam News',
+                request()->routeIs('reported-numbers.index') => 'Reported Numbers',
+                request()->routeIs('safe-files.index') => 'Safe Files',
+                request()->routeIs('user-management.index') => 'User Management',
+                request()->routeIs('usage.index') => 'Website Usage',
+                request()->routeIs('profile.edit') => 'Settings',
+                default => 'PhishCore',
+            };
+        @endphp
+        <div class="dash-topbar lg:hidden fixed z-[35] flex items-center justify-between" :class="{ 'is-scrolled': scrolled }">
+            {{-- left island: logo + the page you are on --}}
+            <a href="{{ route('welcome') }}" class="tb-isl tb-brand" aria-label="PhishCore home">
+                <span class="tb-chip"><img src="{{ asset('phishcore-logo-icon.png') }}" alt="" class="w-6 h-6 object-contain"></span>
+                {{-- the page already shows its own heading, so the bar says "PhishCore" until you scroll past it, then shows the page name --}}
+                <span class="tb-ttl">
+                    <span class="tb-name">PhishCore</span>
+                    <span class="tb-page"><small>PhishCore</small><strong>{{ $tbTitle }}</strong></span>
+                </span>
             </a>
-            <div class="flex items-center gap-2">
+            {{-- right island: notifications + menu --}}
+            <div class="tb-isl tb-actions">
                 <button type="button" @click.stop="$store.bell.toggle()" :aria-expanded="$store.bell.open" aria-label="Notifications" class="tb-btn"
                         :class="{ 'is-open': $store.bell.open, 'has-unread': $store.bell.unread > 0 }">
                     <svg class="tb-bell" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
@@ -71,6 +97,7 @@
                 ['route' => 'scam-news.index',   'match' => ['scam-news.index'],           'label' => 'Scam News',       'tone' => 'violet', 'show' => (bool) ($u->is_team_member || $u->role === 'admin'), 'anim' => 'nudge', 'icon' => 'M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z'],
                 ['route' => 'reported-numbers.index', 'match' => ['reported-numbers.index'], 'label' => 'Reported Numbers', 'tone' => 'violet', 'show' => (bool) ($u->is_team_member || $u->role === 'admin'), 'anim' => 'nudge', 'icon' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3'],
                 ['route' => 'safe-files.index', 'match' => ['safe-files.index'], 'label' => 'Safe Files', 'tone' => 'violet', 'show' => (bool) ($u->is_team_member || $u->role === 'admin'), 'anim' => 'pulse', 'icon' => 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
+                ['route' => 'usage.index',      'match' => ['usage.index'],               'label' => 'Website Usage',   'tone' => 'violet', 'show' => $u->role === 'admin',     'anim' => 'rise', 'icon' => 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418'],
                 ['route' => 'user-management.index', 'match' => ['user-management.index'], 'label' => 'User Management', 'tone' => 'violet', 'show' => $u->role === 'admin',     'anim' => 'pulse', 'icon' => 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z'],
             ];
             $navPrefs = [
@@ -99,14 +126,32 @@
             @media (min-width: 1024px) { .side-island { top: 1rem; bottom: 1rem; left: 1rem; } }
             /* phones: the top bar floats as a frosted-glass pill, like the public navbar, and the page blurs behind it */
             .dash-topbar {
-                top: max(.75rem, env(safe-area-inset-top)); left: .75rem; right: .75rem;
-                padding: .35rem .4rem .35rem 1rem; border-radius: 9999px;
-                background: linear-gradient(180deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .03)), rgba(9, 18, 40, .26);
+                top: max(.75rem, env(safe-area-inset-top)); left: .75rem; right: .75rem; gap: .5rem;
+                pointer-events: none; /* only the two islands catch taps, so the gap between them stays clickable-through */
+            }
+            /* two floating glass islands, like the public navbar: logo + page name on the left, bell + menu on the right */
+            .tb-isl {
+                pointer-events: auto; display: flex; align-items: center; height: 3.25rem; border-radius: 9999px;
+                background: linear-gradient(180deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .03)), rgba(9, 18, 40, .4);
                 border: 1px solid rgba(255, 255, 255, .17);
                 box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .18), inset 0 -1px 0 rgba(0, 0, 0, .18);
                 -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%);
             }
-            @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .dash-topbar { background: #0b1830; } }
+            .tb-brand { gap: .55rem; padding: 0 1rem 0 .3rem; min-width: 0; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+            .tb-chip { flex: none; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 9999px;
+                background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); }
+            .tb-ttl { display: grid; min-width: 0; }
+            .tb-ttl > * { grid-area: 1 / 1; align-self: center; min-width: 0; transition: opacity .22s ease, transform .22s ease; }
+            .tb-name { font-weight: 800; font-size: 1rem; color: #fff; white-space: nowrap; }
+            .tb-page { display: flex; flex-direction: column; line-height: 1.15; opacity: 0; transform: translate3d(0, 6px, 0); }
+            .is-scrolled .tb-name { opacity: 0; transform: translate3d(0, -6px, 0); }
+            .is-scrolled .tb-page { opacity: 1; transform: none; }
+            .tb-page small { font: 600 .56rem/1 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .16em; text-transform: uppercase; color: #7dd3fc; margin-bottom: .2rem; }
+            .tb-ttl strong { font-weight: 800; font-size: 1rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .tb-actions { flex: none; gap: .25rem; padding: 0 .3rem; }
+            .tb-actions .tb-btn { background: none; border-color: transparent; box-shadow: none; }
+            .tb-actions .tb-btn.is-open { color: #bae6fd; border-color: rgba(125, 211, 252, .55); background: linear-gradient(180deg, rgba(56, 189, 248, .32), rgba(56, 189, 248, .1)); }
+            @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .tb-isl { background: #0b1830; } }
 
             /* the two round glass buttons in the top bar: only transform and opacity move, so they stay smooth on weak phones */
             .tb-btn { position: relative; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 9999px; color: #e2e8f0;
@@ -445,81 +490,108 @@
             .nb-desktop { display: none; width: 2.5rem; height: 2.5rem; padding: 0; border-radius: 9999px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); }
             @media (min-width: 1024px) { .nb-desktop { display: inline-flex; } }
             .nb-count { position: absolute; top: .1rem; right: .05rem; min-width: 1.05rem; height: 1.05rem; padding: 0 .28rem; border-radius: 999px; background: #ef4444; color: #fff; font-size: .65rem; font-weight: 700; line-height: 1.05rem; text-align: center; box-shadow: 0 0 0 2px #020617; }
-            /* the list: a frosted-glass bubble that drops out of the bell, with a light sweep and rows that slide in */
-            .nb-panel { position: fixed; z-index: 60; top: 4.9rem; left: .75rem; right: .75rem; max-height: calc(100vh - 6rem); display: flex; flex-direction: column; overflow: hidden; border-radius: 1.4rem;
-                transform-origin: calc(100% - 3.6rem) 0; will-change: transform, opacity;
-                background: linear-gradient(160deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .05) 50%, rgba(56, 189, 248, .09)), rgba(8, 17, 40, .5);
-                border: 1px solid rgba(255, 255, 255, .24);
-                box-shadow: 0 22px 44px -16px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .38), inset 0 -1px 0 rgba(255, 255, 255, .06);
-                -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-                animation: nb-drop .6s cubic-bezier(.3, 1.3, .5, 1); }
+            /* the list: a frosted-glass card that scales out of the bell. Blur and a soft static edge light, but no moving shine and no bounce */
+            .nb-panel { position: fixed; z-index: 60; top: 4.9rem; left: .75rem; right: .75rem; max-height: calc(100vh - 6.5rem); display: flex; flex-direction: column; overflow: hidden; border-radius: 1.4rem;
+                transform-origin: calc(100% - 4.3rem) 0;
+                background: linear-gradient(160deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .04) 55%, rgba(56, 189, 248, .08)), rgba(9, 18, 42, .55);
+                border: 1px solid rgba(255, 255, 255, .2);
+                box-shadow: 0 22px 44px -16px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -1px 0 rgba(255, 255, 255, .05);
+                -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
+                animation: nb-in .34s cubic-bezier(.2, .9, .3, 1.04); }
+            @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .nb-panel { background: #0c1a38; } }
             @media (min-width: 1024px) { .nb-panel { top: 1rem; left: 16.75rem; right: auto; width: 23rem; max-height: calc(100vh - 2rem); transform-origin: 0 1.6rem; } }
             @media (min-width: 1280px) { .nb-panel { left: 17.75rem; } }
-            @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .nb-panel { background: #0c1a38; } }
-            @keyframes nb-drop {
-                0% { opacity: 0; transform: translateY(-16px) scale(.55, .2); border-radius: 2.2rem; }
-                55% { opacity: 1; transform: translateY(3px) scale(1.03, 1.05); }
-                78% { transform: translateY(-1px) scale(.995, .99); }
-                100% { opacity: 1; transform: none; }
-            }
+            @keyframes nb-in { from { opacity: 0; transform: translate3d(0, -10px, 0) scale(.86, .6); } to { opacity: 1; transform: none; } }
             .nb-leaving { transition: opacity .14s ease, transform .14s ease; }
             .nb-leave-from { opacity: 1; transform: none; }
-            .nb-leave-to { opacity: 0; transform: translateY(-8px) scale(.96); }
-            .nb-gloss { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: inherit; }
-            .nb-gloss::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 60% at 15% 0%, rgba(255, 255, 255, .18), transparent 55%); }
-            .nb-gloss::after { content: ""; position: absolute; top: -20%; bottom: -20%; left: -60%; width: 50%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .22), transparent); transform: translateX(0) skewX(-18deg); animation: nb-sheen 1s ease-out .25s both; }
-            @keyframes nb-sheen { from { transform: translateX(0) skewX(-18deg); opacity: 1; } to { transform: translateX(520%) skewX(-18deg); opacity: 0; } }
-            .nb-head, .nb-list { position: relative; }
-            @keyframes nb-row-in { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
-            @keyframes nb-dot-pop { 0% { transform: scale(0); } 70% { transform: scale(1.5); } 100% { transform: scale(1); } }
-            .nb-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, .12); }
-            .nb-list { overflow-y: auto; }
-            .nb-row { display: flex; align-items: flex-start; border-bottom: 1px solid rgba(255, 255, 255, .08); transition: background-color .15s; animation: nb-row-in .45s cubic-bezier(.2, .9, .3, 1) both; animation-delay: calc(min(var(--i, 0), 8) * 50ms + 160ms); }
-            .nb-row:hover { background: rgba(125, 211, 252, .08); }
-            .nb-item { flex: 1; min-width: 0; display: flex; gap: .7rem; padding: .8rem .25rem .8rem 1rem; color: #cbd5e1; }
-            .nb-dot { flex: none; width: .5rem; height: .5rem; margin-top: .42rem; border-radius: 999px; background: transparent; }
-            .nb-row.is-unread .nb-dot { background: #38bdf8; box-shadow: 0 0 8px 1px rgba(56, 189, 248, .7); animation: nb-dot-pop .5s cubic-bezier(.3, 1.5, .5, 1) both; animation-delay: calc(min(var(--i, 0), 8) * 50ms + 360ms); }
-            .nb-row.is-unread .nb-msg { color: #fff; font-weight: 600; }
-            .nb-del { flex: none; margin: .4rem .5rem 0 .1rem; padding: .5rem; border-radius: .5rem; color: #94a3b8; transition: background-color .15s, color .15s; }
+            .nb-leave-to { opacity: 0; transform: translate3d(0, -8px, 0) scale(.96); }
+            @keyframes nb-row-in { from { opacity: 0; transform: translate3d(0, 6px, 0); } to { opacity: 1; transform: none; } }
+            .nb-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 1rem .7rem; border-bottom: 1px solid rgba(255, 255, 255, .12); }
+            .nb-new { font-size: .65rem; font-weight: 700; padding: .12rem .5rem; border-radius: 9999px; color: #bae6fd; background: rgba(56, 189, 248, .18); border: 1px solid rgba(125, 211, 252, .3); }
+            .nb-list { overflow-y: auto; overscroll-behavior: contain; }
+            .nb-group { font: 600 .58rem/1 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .16em; text-transform: uppercase; color: #94a3b8; padding: .7rem 1rem .15rem; }
+            .nb-row { display: flex; align-items: flex-start; transition: background-color .15s; animation: nb-row-in .26s cubic-bezier(.2, .9, .3, 1) both; animation-delay: calc(min(var(--i, 0), 6) * 45ms + 60ms); }
+            .nb-row + .nb-row { border-top: 1px solid rgba(255, 255, 255, .09); }
+            .nb-row.is-unread { background: rgba(56, 189, 248, .1); }
+            .nb-row:hover { background: rgba(125, 211, 252, .09); }
+            .nb-item { flex: 1; min-width: 0; display: flex; gap: .7rem; padding: .75rem .25rem .75rem 1rem; color: #cbd5e1; }
+            .nb-ic { flex: none; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: .75rem; border: 1px solid; color: #7dd3fc; background: rgba(56, 189, 248, .12); border-color: rgba(56, 189, 248, .28); }
+            .nb-ic svg { width: 1.05rem; height: 1.05rem; }
+            .nb-ic.tone-violet { color: #c4b5fd; background: rgba(139, 92, 246, .14); border-color: rgba(139, 92, 246, .32); }
+            .nb-ic.tone-amber { color: #fbbf24; background: rgba(251, 191, 36, .12); border-color: rgba(251, 191, 36, .28); }
+            .nb-ic.tone-green { color: #6ee7b7; background: rgba(16, 185, 129, .12); border-color: rgba(16, 185, 129, .28); }
+            .nb-dot { flex: none; align-self: center; width: .5rem; height: .5rem; margin-left: auto; border-radius: 999px; background: transparent; }
+            .nb-row.is-unread .nb-dot { background: #38bdf8; }
+            .nb-row.is-unread .nb-msg { color: #fff; font-weight: 700; }
+            .nb-del { flex: none; margin: .45rem .5rem 0 .1rem; padding: .5rem; border-radius: .5rem; color: #94a3b8; transition: background-color .15s, color .15s; }
             .nb-del:hover { background: rgba(248, 113, 113, .18); color: #fecaca; }
+            .nb-foot { display: flex; align-items: center; justify-content: space-between; padding: .65rem 1rem; border-top: 1px solid rgba(255, 255, 255, .1); }
+            .nb-empty { padding: 1.6rem 1.4rem 1.8rem; text-align: center; }
+            .nb-empty-ic { display: grid; place-items: center; width: 3rem; height: 3rem; margin: 0 auto .7rem; border-radius: 1rem; color: #7dd3fc; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
 
             /* weak phones, data saver and "reduce motion": no blur and no bounce, just a quick fade */
-            .fx-lite .dash-topbar { background: rgba(9, 20, 44, .9); -webkit-backdrop-filter: none; backdrop-filter: none; }
+            .fx-lite .tb-ttl > * { transition: none; }
+            .fx-lite .tb-isl { background: rgba(9, 20, 44, .9); -webkit-backdrop-filter: none; backdrop-filter: none; }
             .fx-lite .nb-panel { background: #0c1a38; -webkit-backdrop-filter: none; backdrop-filter: none; animation: nb-fade .18s ease-out; }
-            .fx-lite .nb-gloss::after, .fx-lite .nb-row, .fx-lite .nb-row.is-unread .nb-dot, .fx-lite .tb-bell { animation: none !important; }
+            .fx-lite .nb-row, .fx-lite .tb-bell { animation: none !important; }
             @keyframes nb-fade { from { opacity: 0; } to { opacity: 1; } }
             @media (prefers-reduced-motion: reduce) {
                 .nb-panel { animation: nb-fade .18s ease-out; }
-                .nb-gloss::after, .nb-row, .nb-row.is-unread .nb-dot, .tb-bell { animation: none !important; }
+                .nb-row, .tb-bell { animation: none !important; }
                 .tb-btn, .tb-burger i { transition: none; }
             }
         </style>
         <div class="nb-panel" x-show="$store.bell.open" x-cloak @click.outside="$store.bell.open = false" @keydown.escape.window="$store.bell.open = false" role="dialog" aria-label="Notifications"
              x-transition:leave="nb-leaving" x-transition:leave-start="nb-leave-from" x-transition:leave-end="nb-leave-to">
-            <span class="nb-gloss" aria-hidden="true"></span>
             <div class="nb-head">
-                <p class="text-sm font-semibold text-white">Notifications</p>
-                <span class="flex items-center gap-3">
-                    <button type="button" x-show="$store.bell.unread > 0" @click="$store.bell.readAll()" class="text-xs font-medium text-sky-300 hover:text-white">Mark all as read</button>
-                    <button type="button" x-show="$store.bell.items.length > 0" @click="$store.bell.clearAll()" class="text-xs font-medium text-slate-400 hover:text-white">Clear all</button>
-                </span>
+                <p class="flex items-center gap-2 text-sm font-semibold text-white">Notifications <span class="nb-new" x-show="$store.bell.unread > 0" x-cloak x-text="$store.bell.unread + ' new'"></span></p>
+                <button type="button" x-show="$store.bell.unread > 0" @click="$store.bell.readAll()" class="text-xs font-semibold text-sky-300 hover:text-white">Mark all as read</button>
             </div>
             <div class="nb-list">
-                <template x-for="(n, idx) in $store.bell.items" :key="n.id">
-                    <div class="nb-row" :class="n.unread ? 'is-unread' : ''" :style="'--i:' + idx">
+                <p class="nb-group" x-show="$store.bell.newItems.length > 0 && $store.bell.earlierItems.length > 0" x-cloak>New</p>
+                <template x-for="(n, idx) in $store.bell.newItems" :key="n.id">
+                    <div class="nb-row" :class="n.unread ? 'is-unread' : ''" :style="'--i:' + (idx)">
                         <a :href="n.url" class="nb-item">
-                            <span class="nb-dot" aria-hidden="true"></span>
-                            <span class="min-w-0">
-                                <span class="nb-msg block text-sm break-words" x-text="n.message"></span>
-                                <span class="block mt-0.5 text-xs text-slate-400" x-text="n.when"></span>
+                            <span class="nb-ic" :class="{ 'tone-violet': n.kind === 'assigned', 'tone-amber': n.kind === 'unassigned', 'tone-green': n.kind === 'status_changed' }" aria-hidden="true">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" :d="$store.bell.icon(n.kind)" /></svg>
                             </span>
+                            <span class="min-w-0">
+                                <span class="nb-msg block text-sm leading-snug break-words" x-text="n.message"></span>
+                                <span class="block mt-0.5 text-xs text-slate-500" x-text="n.when"></span>
+                            </span>
+                            <span class="nb-dot" aria-hidden="true"></span>
                         </a>
                         <button type="button" class="nb-del" @click.stop="$store.bell.remove(n.id)" aria-label="Delete notification" title="Delete">
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
                 </template>
-                <p x-show="$store.bell.items.length === 0" class="px-4 py-8 text-center text-sm text-slate-400">No notifications yet. Investigation updates will show up here.</p>
+                <p class="nb-group" x-show="$store.bell.newItems.length > 0 && $store.bell.earlierItems.length > 0" x-cloak>Earlier</p>
+                <template x-for="(n, idx) in $store.bell.earlierItems" :key="n.id">
+                    <div class="nb-row" :class="n.unread ? 'is-unread' : ''" :style="'--i:' + ($store.bell.newItems.length + idx)">
+                        <a :href="n.url" class="nb-item">
+                            <span class="nb-ic" :class="{ 'tone-violet': n.kind === 'assigned', 'tone-amber': n.kind === 'unassigned', 'tone-green': n.kind === 'status_changed' }" aria-hidden="true">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" :d="$store.bell.icon(n.kind)" /></svg>
+                            </span>
+                            <span class="min-w-0">
+                                <span class="nb-msg block text-sm leading-snug break-words" x-text="n.message"></span>
+                                <span class="block mt-0.5 text-xs text-slate-500" x-text="n.when"></span>
+                            </span>
+                            <span class="nb-dot" aria-hidden="true"></span>
+                        </a>
+                        <button type="button" class="nb-del" @click.stop="$store.bell.remove(n.id)" aria-label="Delete notification" title="Delete">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </template>
+                <div class="nb-empty" x-show="$store.bell.items.length === 0" x-cloak>
+                    <span class="nb-empty-ic"><svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg></span>
+                    <p class="text-sm font-semibold text-white">You are all caught up</p>
+                    <p class="mt-1 text-xs leading-snug text-slate-400">Investigation updates will show up here.</p>
+                </div>
+            </div>
+            <div class="nb-foot" x-show="$store.bell.items.length > 0" x-cloak>
+                <button type="button" @click="$store.bell.clearAll()" class="text-xs font-semibold text-slate-400 hover:text-white">Clear all</button>
             </div>
         </div>
 
@@ -539,6 +611,13 @@
                 open: false,
                 unread: initial.unread,
                 items: initial.items,
+                get newItems() { return this.items.filter((n) => n.unread); },
+                get earlierItems() { return this.items.filter((n) => ! n.unread); },
+                icon(kind) { return ({
+                    assigned: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
+                    unassigned: 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z',
+                    status_changed: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+                })[kind] || 'M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M2.25 13.5V6.75A2.25 2.25 0 014.5 4.5h15a2.25 2.25 0 012.25 2.25v6.75M2.25 13.5v4.5A2.25 2.25 0 004.5 20.25h15a2.25 2.25 0 002.25-2.25v-4.5'; },
                 toggle() { this.open = ! this.open; if (this.open) { this.load(); } },
                 apply(data) { this.unread = data.unread; this.items = data.items; },
                 async load() {

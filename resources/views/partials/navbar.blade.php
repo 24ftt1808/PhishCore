@@ -15,84 +15,41 @@
         active: '{{ request()->routeIs('reports.public', 'reports.public.show') ? 'public-reports' : 'home' }}',
         hlKey: null,
         mobileOpen: false,
-        sheetH: 0,
         lite: false,
+        measured: false,
         scrolled: false,
         lock: false,
         lockTimer: null,
         hl: { ready: false },
         sections: ['home', 'features', 'how-it-works', 'about', 'contact'],
 
-        /* the menu's glass is drawn as one shape behind the links; it needs the links' height */
-        measure() {
-            this.sheetH = this.$refs.sheet ? this.$refs.sheet.offsetHeight : 0;
-        },
-
         init() {
-            /* weak phones and data-saver mode get the plain morph, without the liquid neck */
+            /* weak phones and data-saver mode get the lighter menu animation (see [data-lite] in app.css) */
             try {
                 const c = navigator.connection || {};
-                this.lite = !!((navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) || c.saveData);
+                this.lite = !!((navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || c.saveData || localStorage.getItem('navLite') === '1');
             } catch (e) {}
-            /* the glass is one spring value (see .nav-pour in app.css): 0 is the closed button, 1 is the open menu. It bounces a
-               little as it opens, closes without a bounce, and can be turned around in mid-flight. */
-            const root = this.$root;
-            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-            const OPEN = { response: 0.6, damping: 0.74 };
-            const CLOSE = { response: 0.48, damping: 1 };
-            let x = 0;
-            let v = 0;
-            let raf = 0;
-            let last = 0;
-            let opening = false;
-            const paint = () => {
-                const value = x.toFixed(4);
-                root.style.setProperty('--p', value);
-                root.style.setProperty('--q', value);
-            };
-            const rest = (open) => {
-                x = open ? 1 : 0;
-                v = 0;
-                paint();
-                root.dataset.pour = open ? 'open' : 'rest';
-            };
-            const frame = (now) => {
-                const h = Math.min((now - last) / 1000, 1 / 20) / 4;
-                last = now;
-                const set = opening ? OPEN : CLOSE;
-                const w = (2 * Math.PI) / set.response;
-                const k = w * w;
-                const c = 2 * set.damping * w;
-                const to = opening ? 1 : 0;
-                for (let i = 0; i < 4; i++) {
-                    v += (-k * (x - to) - c * v) * h;
-                    x += v * h;
-                    if (x < 0) { x = 0; v = 0; }
-                }
-                paint();
-                if (Math.abs(x - to) < 0.0008 && Math.abs(v) < 0.01) {
-                    raf = 0;
-                    rest(opening);
-                    return;
-                }
-                raf = requestAnimationFrame(frame);
-            };
+            /* any other phone is watched during its first opening: if it cannot keep up (under about 35 frames a second), it
+               gets the lighter animation from then on */
             this.$watch('mobileOpen', (open) => {
-                if (open) this.measure();
-                opening = open;
-                if (reduce.matches) {
-                    if (raf) cancelAnimationFrame(raf);
-                    raf = 0;
-                    rest(open);
-                    return;
-                }
-                root.dataset.pour = 'moving';
-                if (!raf) {
-                    last = performance.now();
-                    raf = requestAnimationFrame(frame);
-                }
+                if (!open || this.lite || this.measured) return;
+                this.measured = true;
+                let frames = 0;
+                let start = 0;
+                const tick = (t) => {
+                    if (!start) start = t;
+                    frames++;
+                    if (t - start < 700) {
+                        requestAnimationFrame(tick);
+                        return;
+                    }
+                    if ((frames - 1) / ((t - start) / 1000) < 35) {
+                        this.lite = true;
+                        try { localStorage.setItem('navLite', '1'); } catch (e) {}
+                    }
+                };
+                requestAnimationFrame(tick);
             });
-            window.addEventListener('resize', () => { if (this.mobileOpen) this.measure(); });
 
             let prev = null;
             try {
@@ -235,26 +192,11 @@
             this.active = current;
         }
     }"
-    data-pour="rest" :data-lite="lite"
+    :data-lite="lite"
     class="pointer-events-none fixed top-4 inset-x-0 mx-auto z-50 w-[calc(100%-3rem)] min-[1180px]:max-w-[77rem]"
 >
-    {{-- The menu's liquid-glass body: the burger's circle and the menu are one gooey shape (see .nav-pour in app.css) --}}
-    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-        <defs>
-            <filter id="nav-goo" x="-5%" y="-10%" width="110%" height="120%" color-interpolation-filters="sRGB">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
-                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" result="goo"/>
-                <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
-            </filter>
-        </defs>
-    </svg>
-    <div class="nav-pour min-[1180px]:hidden" :data-open="mobileOpen" :data-lite="lite" :style="`--pour-h:${sheetH}px`" aria-hidden="true">
-        <span class="nav-pour-blob"></span>
-        <span class="nav-pour-blob is-sheet"></span>
-    </div>
-
     {{-- THREE ISLANDS: brand | links | auth (phones/tablets: brand | menu button) --}}
-    <div class="relative z-10 flex items-center justify-between gap-3">
+    <div class="flex items-center justify-between gap-3">
 
         {{-- BRAND --}}
         <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)"
@@ -314,7 +256,7 @@
         </div>
 
         {{-- HAMBURGER (own island) --}}
-        <div :class="{ 'nav-glass--scrolled': scrolled, 'nav-island--open': mobileOpen }"
+        <div :class="{ 'nav-glass--scrolled': scrolled }"
              class="pointer-events-auto nav-glass rounded-full p-[9px] flex min-[1180px]:hidden">
             <button type="button" @click="mobileOpen = !mobileOpen" :aria-expanded="mobileOpen.toString()" aria-controls="nav-sheet"
                     class="nav-burger" aria-label="Menu">
@@ -327,8 +269,10 @@
     <div class="nav-scrim min-[1180px]:hidden" :data-open="mobileOpen" @click="mobileOpen = false" aria-hidden="true"></div>
 
     <div class="nav-stage md:max-w-[34rem] md:ml-auto min-[1180px]:hidden">
-    <div id="nav-sheet" x-ref="sheet" class="nav-sheet"
+    <div id="nav-sheet" class="nav-glass nav-glass--scrolled nav-sheet"
          :data-open="mobileOpen" :inert="!mobileOpen" @keydown.escape.window="mobileOpen = false">
+        <span class="nav-sheet-shade" aria-hidden="true"></span>
+
         <div class="nav-sheet-in">
         <div class="grid gap-1.5 md:grid-cols-2 md:gap-2">
             @foreach ($navLinks as $link)
@@ -345,14 +289,14 @@
 
         <div class="nav-item nav-m-auth" style="--i: 6">
             @auth
-                <a href="{{ route('dashboard') }}" class="nav-m-cta btn-shine md:col-span-2">
+                <a href="{{ route('dashboard') }}" class="nav-m-cta md:col-span-2">
                     <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z"/></svg> Dashboard
                 </a>
             @else
                 <a href="{{ route('login') }}" class="nav-m-ghost">
                     <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg> Sign In
                 </a>
-                <a href="{{ route('register') }}" class="nav-m-cta btn-shine">
+                <a href="{{ route('register') }}" class="nav-m-cta">
                     <svg class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z"/></svg> Create Account
                 </a>
             @endauth
@@ -362,10 +306,8 @@
     </div>
 </div>
 
-{{-- A soft fade behind the floating bar, so page text doesn't show through the gaps between the pills (not on the home page, which has its own hero) --}}
-@unless (request()->routeIs('welcome'))
-    <div class="pointer-events-none fixed top-0 inset-x-0 z-40 h-24 bg-gradient-to-b from-slate-950 via-slate-950/85 to-transparent" aria-hidden="true"></div>
-@endunless
+{{-- A soft fade behind the floating bar, so page text doesn't show through the gaps between the pills. Light on purpose: noticeable, not a solid band --}}
+<div class="pointer-events-none fixed top-0 inset-x-0 z-40 h-24 bg-gradient-to-b from-slate-950/90 via-slate-950/50 to-transparent" aria-hidden="true"></div>
 
 {{-- Spacer: the navbar is fixed, so reserve its height --}}
 <div class="h-20" aria-hidden="true"></div>

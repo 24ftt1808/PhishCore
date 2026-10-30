@@ -11,6 +11,7 @@
             <li><strong class="text-white">Site information found during a scan:</strong> for example a site's IP address and hosting details. This is about the site you checked, not about you.</li>
             <li><strong class="text-white">Sign-in sessions:</strong> a record of your devices (browser and system type) so Settings can show where you are signed in.</li>
             <li><strong class="text-white">Last login time:</strong> the date and time you last signed in or registered, which administrators can see on the user management page.</li>
+            <li><strong class="text-white">Visit counts:</strong> how many different people open the site each day. A visitor is only a one-way code made from the address, the browser and the day, so it cannot be turned back into a person, and no address is stored for this.</li>
             <li><strong class="text-white">Activity in the app:</strong> your Phish Lab progress, notifications and any investigation requests you make.</li>
             <li><strong class="text-white">AI chat messages:</strong> what you type to the chat adviser, only while you use it.</li>
         </ul>

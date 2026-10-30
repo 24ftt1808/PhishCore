@@ -13,13 +13,14 @@ test('signed-in pages have the floating glass top bar for phones', function () {
         ->assertSee('backdrop-filter', false);
 });
 
-test('the top bar has the glass buttons and the notification list has its liquid animation', function () {
+test('the top bar has the glass buttons and the notification panel has its glass look and animation', function () {
     $this->actingAs(User::factory()->create())->get(route('scan.index'))
         ->assertOk()
         ->assertSee('tb-btn', false)
         ->assertSee('aria-label="Notifications"', false)
         ->assertSee('aria-label="Open the menu"', false)
-        ->assertSee('nb-drop', false)
+        ->assertSee('nb-panel', false)
+        ->assertSee('nb-in', false)
         ->assertSee('fx-lite', false);
 });
 

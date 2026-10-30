@@ -92,9 +92,9 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Toggle a user's suspended status. Suspending immediately blocks future
-     * logins (enforced in LoginRequest); it does not terminate an already
-     * active session.
+     * Toggle a user's suspended status. Suspending blocks future logins
+     * (enforced in LoginRequest) and signs the person out on their next
+     * request (EnsureAccountIsActive), even if they were already logged in.
      */
     public function toggleSuspend(User $user): RedirectResponse
     {

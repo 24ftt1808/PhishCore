@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Iodev\Whois\Factory;
 use Iodev\Whois\Loaders\SocketLoader;
@@ -76,9 +77,24 @@ class AnalysisEngine
             $points += 25;
         }
 
-        if (str_contains($url, '@')) {
+        // Only an "@" before the website name hides where a link goes ("https://bank.com@evil.ru/"). One in the
+        // page address is ordinary ("medium.com/@author/post", a "mailto" in a query string).
+        if ((string) parse_url($url, PHP_URL_USER) !== '' || preg_match('~^[a-z][a-z0-9+.\-]*://[^/?#]*@~i', $url) === 1) {
             $reasons[] = 'URL contains an "@" symbol, which can mask the real destination';
             $points += 25;
+
+            // "https://www.ecocash.co.zw@secure-login.ru/" opens secure-login.ru: everything before the "@" is
+            // ignored by the browser, so a website name placed there is only there to fool the reader.
+            $before = (string) parse_url($url, PHP_URL_USER);
+            if (str_contains($before, '.') && preg_match('/[a-z]{2,}\.[a-z]{2,}/i', $before) === 1) {
+                $reasons[] = "The link starts with \"{$before}\", but the browser ignores everything before the \"@\" and really opens \"".parse_url($url, PHP_URL_HOST).'"';
+                $points += 20;
+            }
+        } elseif (preg_match('/[\w.+\-]+@[\w\-]+\.[\w.\-]+/', rawurldecode((string) parse_url($url, PHP_URL_QUERY))) === 1) {
+            // Phishing links often carry the target's own email address so the fake sign-in page shows it already
+            // filled in. Unsubscribe links do the same, so it is only a supporting sign.
+            $reasons[] = 'The link carries an email address in it, the way phishing links fill in the target\'s address on a fake sign-in page';
+            $points += 15;
         }
 
         $hyphenCount = LookAlike::hyphenCount(parse_url($url, PHP_URL_HOST) ?? '');
@@ -104,7 +120,9 @@ class AnalysisEngine
         // a well-known name, not a fresh copy of one, so the spelling rules below leave it alone.
         $isOfficialBrandSite = $this->isOfficialBrandDomain($host) || ThreatLookup::isPopular($host);
         foreach ($brands as $brand) {
-            $matchesBrand = ! $isOfficialBrandSite && str_contains($normalizedHost, $brand);
+            // "pineapple" contains "apple" without being about Apple.
+            $matchesBrand = ! $isOfficialBrandSite && str_contains($normalizedHost, $brand)
+                && ! ($brand === 'apple' && substr_count($normalizedHost, 'apple') === substr_count($normalizedHost, 'pineapple'));
             // The legit-domain exclusion must run on the ORIGINAL host, not the
             // normalized one — otherwise a lookalike like "micros0ft.com" would
             // normalize into looking identical to "microsoft.com" and get
@@ -243,6 +261,35 @@ class AnalysisEngine
 
         // Fake Brunei-government look: "gov.bn" / "gov-bn" used inside a
         // domain that does not actually end in .gov.bn.
+        if (! $isOfficialBrandSite && ! preg_grep('/brand name|mimic|imitates|looks like|alphabets/', $reasons)
+            && ($onThrowaway = $this->brandOnThrowawayHost($host)) !== null) {
+            $reasons[] = "The address puts the brand name \"{$onThrowaway['brand']}\" on {$onThrowaway['where']}, which anyone can set up in minutes: the usual home of a page copying that brand";
+            $points += 25;
+            $brandRulePoints = 25;
+        }
+
+        // "usps.com-tracklfi.top" reads as "usps.com" at a glance, but the website is "com-tracklfi.top".
+        if (! $isOfficialBrandSite && preg_match('/^(?:[a-z0-9\-]+\.)*?((?!www\.)[a-z0-9][a-z0-9\-]+\.(?:com|net|org|gov|co))-[a-z0-9\-]+\.[a-z.]+$/', $host, $fakeStart) === 1) {
+            $reasons[] = "The address starts like \"{$fakeStart[1]}\", but the hyphen after it means the website it really opens is \"".RegistrableDomain::of($host).'"';
+            $points += 30;
+        }
+
+        // A hacked website hosting a copy of a brand's sign-in page: the brand and a sign-in word sit in the page
+        // address ("/chase/login", "/banking-postbank/login/"), on a site that has nothing to do with the brand.
+        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
+        if (! $isOfficialBrandSite && RegistrableDomain::freeHostingSuffixOf($host) === null
+            && preg_match('~(log-?in|sign-?in|signon|logon|verif|account|secure|update|confirm|webscr|banking|auth|password|wallet|unlock|validate|quota|billing|invoice|payment|suspend)~', $path) === 1
+            && ($pathBrand = $this->brandInPath($path)) !== null && ! str_contains($host, $pathBrand)) {
+            $reasons[] = "The page address names \"{$pathBrand}\" next to sign-in or account words, on a website that does not belong to {$pathBrand}: the usual sign of a copied sign-in page placed on a hacked site";
+            $points += 20;
+        }
+
+        $ending = substr((string) strrchr($host, '.'), 1);
+        if (! $isOfficialBrandSite && in_array($ending, self::RISKY_LINK_ENDINGS, true)) {
+            $reasons[] = "The address ends in \".{$ending}\", a very cheap domain ending that turns up in scam links far more often than in genuine ones";
+            $points += 10;
+        }
+
         if (preg_match('/gov[.\-]?bn/', $host) && ! str_ends_with($host, '.gov.bn') && $host !== 'gov.bn') {
             $reasons[] = 'Domain pretends to be a Brunei government site (contains "gov.bn") but is not under .gov.bn';
             $points += 30;
@@ -268,6 +315,134 @@ class AnalysisEngine
 
     /** "Brands" that are ordinary words too, so a domain containing one is not necessarily imitating anyone. */
     private const ORDINARY_WORD_BRANDS = ['bank'];
+
+    /**
+     * Sender domains that come free with a new account rather than being registered by a company.
+     * "something.onmicrosoft.com" is the address every new Microsoft 365 account starts with; a business
+     * normally adds its own domain before sending mail. Firebase's "firebaseapp.com" is left out on purpose:
+     * small apps send genuine "verify your email" messages from it.
+     */
+    private const THROWAWAY_SENDER_SUFFIXES = ['onmicrosoft.com'];
+
+    /** Brand names that are also everyday words or sit inside them ("pineapple", "groups", "purchase"), left out of brandOnThrowawayHost. */
+    private const EVERYDAY_BRAND_WORDS = ['apple', 'steam', 'zoom', 'outlook', 'imagine', 'tap', 'ups', 'unn', 'chase', 'grab', 'dst', 'citi', 'visa', 'taib'];
+
+    /** Brands often copied on throwaway addresses that are not in config/brands.php. */
+    private const EXTRA_COPIED_BRANDS = ['dpd', 'xfinity', 'comcast', 'rblx', 'itau', 'caixa', 'santander', 'nubank', 'mercadopago', 'mercadolibre', 'wellsfargo',
+        'ledger', 'telegram', 'docusign', 'wetransfer', 'sharepoint', 'onedrive', 'office365', 'icloud', 'gmail', 'yahoo', 'aramex', 'carousell', 'foodpanda', 'opensea', 'trustwallet'];
+
+    /**
+     * A well-known brand name joined to other words in an address that anyone can set up in minutes: a site on a
+     * free website builder ("shopeeakhirtahun172.blogspot.com", "comcastxfiniylo.weebly.com") or a cheap domain
+     * ending ("mydpd.zkcma.xyz"). A name that is exactly the brand ("microsoft.github.io") is the brand's own
+     * page and is left alone. Names of six letters or more count anywhere in a label; shorter names only at the
+     * start or end of one ("dhlexpress", "mydpd"), so "pineapple" and "groups" do not match.
+     *
+     * @return array{brand: string, where: string}|null
+     */
+    private function brandOnThrowawayHost(string $host): ?array
+    {
+        $host = preg_replace('/^www\./', '', $host) ?? $host;
+        $where = null;
+        $labelsPart = null;
+
+        $suffix = RegistrableDomain::freeHostingSuffixOf($host);
+        if ($suffix !== null && $host !== $suffix) {
+            $where = "a free website builder (\"{$suffix}\")";
+            $labelsPart = substr($host, 0, -(strlen($suffix) + 1));
+        }
+
+        $ending = substr((string) strrchr($host, '.'), 1);
+        if ($where === null && in_array($ending, self::RISKY_LINK_ENDINGS, true)) {
+            $where = "a cheap \".{$ending}\" address";
+            $labelsPart = substr($host, 0, -(strlen($ending) + 1));
+        }
+
+        if ($where === null || $labelsPart === '' || $labelsPart === null) {
+            return null;
+        }
+
+        $brands = array_values(array_diff(array_unique(array_filter(array_map(
+            fn ($name): string => preg_replace('/[^a-z0-9]/', '', strtolower((string) $name)) ?? '',
+            array_merge(
+                config('brands.page_brands', []),
+                config('brands.text_brands', []),
+                config('brands.subdomain_brands', []),
+                array_keys(config('brands.brunei_brands', [])),
+                self::EXTRA_COPIED_BRANDS,
+            ),
+        ), fn (string $name): bool => strlen($name) >= 3 && strlen($name) <= 20)), self::EVERYDAY_BRAND_WORDS));
+
+        foreach (preg_split('/[.\-]/', $labelsPart) ?: [] as $label) {
+            foreach ($brands as $brand) {
+                if ($labelsPart === $brand) {
+                    continue;
+                }
+                $matches = strlen($brand) >= 6
+                    ? str_contains($label, $brand)
+                    : (str_starts_with($label, $brand) || str_ends_with($label, $brand));
+                if ($matches) {
+                    return ['brand' => $brand, 'where' => $where];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Whether a sender domain is a default address from THROWAWAY_SENDER_SUFFIXES (a subdomain of one, not the suffix itself). */
+    private function isThrowawaySenderDomain(string $domain): bool
+    {
+        foreach (self::THROWAWAY_SENDER_SUFFIXES as $suffix) {
+            if (str_ends_with($domain, '.'.$suffix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Random filler text, a trick bulk scam mail uses to get past spam filters: the body is a block of
+     * meaningless letters and digits ("ryVvybyLFGk9hB6mfIwX...") and the real message is a picture, so the
+     * subject line is the only readable part. A real email is written in words. Links, email addresses and
+     * blocks of base64 (an attached file pasted along with the email: several lines of 60 to 100 characters)
+     * are removed first, so tracking codes inside links and attached files are not counted. It only counts
+     * when the filler is most of the text.
+     *
+     * @return array{flagged: bool, points: int, reasons: array<int, string>}
+     */
+    public function detectFillerText(string $body): array
+    {
+        $none = ['flagged' => false, 'points' => 0, 'reasons' => []];
+
+        $text = preg_replace([
+            '~https?://\S+~i',
+            '/[\w.+\-]+@[\w\-]+(\.[\w\-]+)+/',
+            '~(?:^[A-Za-z0-9+/]{60,100}={0,2}\r?\n){2,}(?:^[A-Za-z0-9+/]*={0,2}\r?(?:\n|$))?~m',
+        ], ' ', $body) ?? $body;
+
+        $visibleLength = strlen(preg_replace('/\s+/u', '', $text) ?? '');
+        if ($visibleLength === 0 || preg_match_all('~(?<![\w/=?&%.\-])[A-Za-z0-9]{30,}~', $text, $matches) === 0) {
+            return $none;
+        }
+
+        // Random strings mix lower case, capitals and digits; long ordinary words and numbers do not.
+        $filler = array_filter($matches[0], fn (string $run): bool => preg_match('/[a-z]/', $run) === 1
+            && preg_match('/[A-Z]/', $run) === 1
+            && preg_match('/\d/', $run) === 1);
+        $fillerLength = array_sum(array_map('strlen', $filler));
+
+        if ($fillerLength < 60 || $fillerLength / $visibleLength < 0.4) {
+            return $none;
+        }
+
+        return [
+            'flagged' => true,
+            'points' => 20,
+            'reasons' => ['Most of the message is a block of random letters and digits instead of words. Bulk scam mail adds this filler to get past spam filters, and the real message is usually a picture'],
+        ];
+    }
 
     /** Words scams put in an address to sound official. */
     private const OFFICIAL_SOUNDING_WORDS = '/(secure|security|login|logon|signin|verify|verification|update|support|alert|confirm|unlock|billing|refund|claim|wallet|account|webaccess|helpdesk|notice|recover|validate)/';
@@ -1150,28 +1325,27 @@ class AnalysisEngine
         $host = preg_replace('/^www\./', '', $host);
 
         // One shared list (also used to tell "same site" from "same platform", see RegistrableDomain).
-        foreach (RegistrableDomain::FREE_HOSTING_SUFFIXES as $suffix) {
-            if ($host === $suffix || str_ends_with($host, '.'.$suffix)) {
-                $points = 10;
-                $reasons = ["Hosted on \"{$suffix}\", a free website-builder/hosting platform commonly used for disposable phishing pages — legitimate small projects also use these, so this is a supporting signal only"];
+        $suffix = RegistrableDomain::freeHostingSuffixOf($host);
+        if ($suffix !== null) {
+            $points = 10;
+            $reasons = ["Hosted on \"{$suffix}\", a free website-builder/hosting platform commonly used for disposable phishing pages — legitimate small projects also use these, so this is a supporting signal only"];
 
-                // On a free platform the subdomain is whoever signed up, so a
-                // famous brand in the PATH (github.io/Amazon-Clone, /DHL,
-                // /Netflix) is the usual shape of a fake page copying that brand.
-                // A brand's own official pages are skipped.
-                $brand = $this->brandInPath((string) parse_url($url, PHP_URL_PATH));
-                if ($brand !== null && ! $this->isOfficialBrandDomain($host)) {
-                    $points += 15;
-                    $reasons[] = "The page address on this free platform names a well-known brand (\"{$brand}\") that the site does not belong to";
-                }
-
-                return [
-                    'flagged' => true,
-                    'points' => $points,
-                    'reasons' => $reasons,
-                    'platform' => $suffix,
-                ];
+            // On a free platform the subdomain is whoever signed up, so a
+            // famous brand in the PATH (github.io/Amazon-Clone, /DHL,
+            // /Netflix) is the usual shape of a fake page copying that brand.
+            // A brand's own official pages are skipped.
+            $brand = $this->brandInPath((string) parse_url($url, PHP_URL_PATH));
+            if ($brand !== null && ! $this->isOfficialBrandDomain($host)) {
+                $points += 15;
+                $reasons[] = "The page address on this free platform names a well-known brand (\"{$brand}\") that the site does not belong to";
             }
+
+            return [
+                'flagged' => true,
+                'points' => $points,
+                'reasons' => $reasons,
+                'platform' => $suffix,
+            ];
         }
 
         return [
@@ -2147,6 +2321,11 @@ class AnalysisEngine
             $points += 15;
         }
 
+        if ($this->isThrowawaySenderDomain($domain)) {
+            $reasons[] = "Sent from \"{$domain}\", the default address that comes with a new Microsoft 365 account. Companies send email from their own domain, while scammers create these accounts in minutes to send bulk scam mail";
+            $points += 20;
+        }
+
         return [
             'flagged' => $points > 0,
             'points' => $points,
@@ -2285,6 +2464,12 @@ class AnalysisEngine
     private function checkContentPatterns(string $text, bool $forPage = false): array
     {
         $text = mb_strtolower($text);
+        if (! $forPage) {
+            // A phone screen wraps long sentences ("verify within 6⏎hours"), and OCR keeps those line breaks. A single
+            // line break is joined back into a space so the wording rules still match; a blank line between
+            // paragraphs is kept.
+            $text = preg_replace('/(?<!\n)[ \t]*\n[ \t]*(?!\n)/u', ' ', str_replace("\r\n", "\n", $text)) ?? $text;
+        }
         $reasons = [];
         $points = 0;
         $matchedCategories = 0;
@@ -2318,21 +2503,21 @@ class AnalysisEngine
         $patterns = [
             'urgency' => [
                 'regex' => '/\b(within (the )?next 24 hours|less than 24 hours|within (24|48|72) hours|expires? in \d+ (hours|days)|act now|act immediately|urgent|urgently|final notice|immediately|offer ends|ends today|tindakan segera|segera (sahkan|kemas kini|bertindak|hubungi)|dalam masa 24 jam|notis akhir|amaran terakhir|at[eé] amanh[aã]|pr[oó]ximos de expirar|[uú]ltimo aviso|intento final|aviso final|dringend|sofort)\b/u',
-                'message_regex' => '/\b(within (the )?next 24 hours|less than 24 hours|within (24|48|72) hours|within \d+ (minutes|hours|days)|expires? in \d+ (hours|days)|act now|act immediately|urgent|urgently|final notice|immediately|offer ends|ends today|today only|before midnight|please hurry|hurry|tindakan segera|segera|dalam masa \d+ (jam|minit)|sebelum (jam|tarikh|tengah malam|slot)|hari ani|hari ini juga|cepat|penting (ni|ani)|notis akhir|amaran terakhir|at[eé] amanh[aã]|pr[oó]ximos de expirar|[uú]ltimo aviso|intento final|aviso final|dringend|sofort)\b/u',
+                'message_regex' => '/\b(within (the )?next 24 hours|less than 24 hours|within (24|48|72) hours|within \d+ (minutes|hours|days)|within (the )?\d+[- ](hour|minute|day)s?\b|within the (specified|given|stated) time|expires? in \d+ (hours|days)|act now|act immediately|urgent|urgently|final notice|immediately|offer ends|ends today|today only|before midnight|please hurry|hurry|tindakan segera|segera|dalam masa \d+ (jam|minit)|sebelum (jam|tarikh|tengah malam|slot)|hari ani|hari ini juga|cepat|penting (ni|ani)|notis akhir|amaran terakhir|at[eé] amanh[aã]|pr[oó]ximos de expirar|[uú]ltimo aviso|intento final|aviso final|dringend|sofort)\b/u',
                 'points' => 15,
                 'label' => 'Urgency language detected (e.g. "urgent", "24 hours", "act now", "segera")',
                 'lure' => true,
             ],
             'account_threat' => [
                 'regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
-                'message_regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired|frozen)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|has been frozen|will be (suspended|deactivated|disconnected|frozen|terminated|cut off)|(access|account|banking) will expire|expire today|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|(akaun|kad|card|talian|line|lesen|pasport|nombor|bekalan|supply|akses)\s+(\S+\s+){0,3}?(akan |telah |sudah |kena |kana |sedang )?(di)?(sekat|bekukan|beku|gantung|putuskan|potong|tamat tempoh|block|blocked|suspend|suspended|deactivated|disconnected|frozen|cut off)\b|(kena|kana) (sekat|block|gantung)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
+                'message_regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired|frozen)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|has been frozen|(flagged|marked|identified|classified) as (high[- ]risk|suspicious|risky|fraudulent)|permanent(ly)? (suspension|suspended|ban|banned|blocked|deactivat|disabl|closure|closed)|result in (the )?(permanent )?(suspension|deactivation|termination|ban|closure|blocking)|will be (suspended|deactivated|disconnected|frozen|terminated|cut off)|(access|account|banking) will expire|expire today|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|(akaun|kad|card|talian|line|lesen|pasport|nombor|bekalan|supply|akses)\s+(\S+\s+){0,3}?(akan |telah |sudah |kena |kana |sedang )?(di)?(sekat|bekukan|beku|gantung|putuskan|potong|tamat tempoh|block|blocked|suspend|suspended|deactivated|disconnected|frozen|cut off)\b|(kena|kana) (sekat|block|gantung)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
                 'points' => 15,
                 'label' => 'Account threat language detected (suspension/deactivation, "akaun disekat")',
                 'lure' => true,
             ],
             'credential_request' => [
                 'regex' => '/(verify your account|verify my|verify your (identity|wallet|email)|confirm your (password|information|identity|details)|enter your login|verification code|verify now|update your (payment|billing|account)|reset access|secret recovery phrase|seed phrase|recovery phrase|connect (your )?wallet|wallet verification|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kod pengesahan|kod otp|confirme (seus|suas) dados|atualize (seus|suas|sua) (dados|conta|cadastro)|aktualisieren sie|kontoinformationen|mettez [aà] jour)/u',
-                'message_regex' => '/(verify your account|verify my|verify your (identity|wallet|email)|confirm your (password|information|identity|details)|enter your login|enter your (ic|bank|card|online banking|account)|submit your (ic|identity card|bank|online banking|password|card)|update (your )?(ic|personal|account|bank) (details|information|number)|update your details|(fill in|isi) (your )?(bank|card|maklumat bank|butiran bank)|(bank|card|login) details|verification code|verify now|update your (payment|billing|account)|reset access|secret recovery phrase|seed phrase|recovery phrase|connect (your )?wallet|wallet verification|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kemas ?kini (maklumat|butiran|akaun|data)|maklumat (bank|akaun|perbankan|kad)|butiran (bank|akaun|kad)|card number|nombor kad|isi borang|kod pengesahan|kod otp|confirme (seus|suas) dados|atualize (seus|suas|sua) (dados|conta|cadastro)|aktualisieren sie|kontoinformationen|mettez [aà] jour)/u',
+                'message_regex' => '/(verify your account|verify my|verify your (identity|wallet|email)|confirm your (password|information|identity|details)|enter your login|enter your (ic|bank|card|online banking|account)|submit your (ic|identity card|bank|online banking|password|card)|update (your )?(ic|personal|account|bank) (details|information|number)|update your details|(fill in|isi) (your )?(bank|card|maklumat bank|butiran bank)|(bank|card|login) details|verification code|verify now|update your (payment|billing|account)|reset access|secret recovery phrase|seed phrase|recovery phrase|connect (your )?wallet|wallet verification|sahkan (akaun|maklumat|identiti|kata laluan)|masukkan (kata laluan|nombor pin|no\\.? pin|otp)|kemas ?kini (maklumat|butiran|akaun|data)|maklumat (bank|akaun|perbankan|kad)|butiran (bank|akaun|kad)|card number|nombor kad|isi borang|(register|daftar|fill in|isi)\s+(\S+\s+){0,4}?(using|with|dengan)\s+(your|ur|anda)\s+(ic|id|identity card|kad pengenalan)\s+(and|&|dan)\s+(\S+\s+){0,2}?(number|nombor|no\.?)|kod pengesahan|kod otp|confirme (seus|suas) dados|atualize (seus|suas|sua) (dados|conta|cadastro)|aktualisieren sie|kontoinformationen|mettez [aà] jour)/u',
                 'points' => 20,
                 'label' => 'Credential/verification request detected',
                 'ask' => true,
@@ -2343,8 +2528,56 @@ class AnalysisEngine
                 'label' => 'Asks you to send a code, OTP, PIN or card number (no real bank, agency or friend needs these)',
                 'ask' => true,
             ],
+            // A code is sent, then "an agent will call you to confirm it": the caller is the scammer, and the
+            // code unlocks your account for them.
+            'code_callback' => [
+                'message_regex' => '/(agent|officer|staff|representative|consultant|team|ejen|pegawai|kakitangan|wakil)\s+(kami\s+|kita\s+|bank\s+)?(will|akan)\s+(now\s+|soon\s+|shortly\s+|segera\s+)?(call|contact|phone|ring|hubungi|telefon|menghubungi|menelefon)\s+(you|anda|awak|kamu)\s+(\S+\s+){0,3}?(confirm|verify|validate|collect|get|sahkan|mengesahkan|minta|dapatkan)\s+(\S+\s+){0,2}?(pin|code|otp|tac|kod)\b/u',
+                'points' => 25,
+                'label' => 'Says someone will call you to confirm or collect the code you were sent (whoever asks for that code is the scammer)',
+                'ask' => true,
+            ],
+            // Phone dial codes ("*151*2*2*0784556301*250#") can send money from a mobile wallet. A code that
+            // carries a phone number, or one you are told to follow with your PIN, is a transfer to a stranger.
+            // An ordinary "dial *171# to buy data" is neither.
+            'dial_code' => [
+                'message_regex' => '/((dial|key in|enter|press|tekan|dail|taip)\s+\*[\d*#]{3,}.{0,80}?\b(pin|password|passcode|kata laluan|otp|tac)\b|\*\d{2,4}(\*\d+)*\*\+?\d{7,}(\*\d+)*#)/u',
+                'points' => 25,
+                'label' => 'Asks you to dial a phone code together with your PIN, or a code that contains someone\'s phone number (dialling it can send them money from your account)',
+                'ask' => true,
+            ],
+            // "If this was not you, call our agent within 10 minutes": the number belongs to the scammer. Banks
+            // and wallets do not send you to an "agent" to stop a payment.
+            'agent_callback' => [
+                'message_regex' => '/((call|contact|whatsapp|phone|ring|hubungi|telefon)\s+(our|the|an?|this|kami|pihak)?\s*(agent|ejen)\b|(if (this|it) (was|is|wasn.t|isn.t) (not )?you|if you did not (make|do|request|authori[sz]e)|bukan (anda|awak)|jika (anda|awak) tidak (membuat|melakukan)).{0,120}?\b(agent|ejen)\b)/u',
+                'points' => 15,
+                'label' => 'Tells you to call an "agent" about a payment or problem (genuine banks and wallets ask you to call their official number, not an agent)',
+                'lure' => true,
+            ],
+            // A job offer that wants money first: a medical, training or uniform fee before the interview or start.
+            'job_fee' => [
+                'message_regex' => '/((shortlisted|been selected|hired|interview|job offer|vacancy|position|post|jawatan|temuduga|tawaran kerja|kerja kosong)\b.{0,160}?\b(pay|bayar|transfer|send|deposit|hantar)\s+(\S+\s+){0,5}?(fee|fees|yuran|caj|charge|deposit)\b|\b(medical|screening|interview|training|uniform|placement|onboarding|processing)\s+(screening\s+)?(fee|yuran)\b.{0,100}?\b(job|interview|post|position|jawatan|temuduga|kerja|slot)\b)/u',
+                'points' => 20,
+                'label' => 'A job offer that asks you to pay a fee first (genuine employers do not charge you to be hired or interviewed)',
+                'ask' => true,
+            ],
+            // A "statement" or invoice to pass to your finance team, or to "open on a computer": malware hidden in a RAR or
+            // ZIP file, often sent from a hacked contact's WhatsApp. Genuine suppliers send statements too, so on its own
+            // this stays below "suspicious"; with an archive file or another warning sign it counts.
+            'statement_forward' => [
+                'message_regex' => '/((forward|send|pass|share|majukan|hantar|kemukakan|serahkan)\s+(\S+\s+){0,4}?(statement|soa|invoice|remittance|payment advice|penyata|invois)\b(\s+\S+){0,5}?\s+(to|kepada)\s+(\S+\s+){0,3}?(finance|accounts?|kewangan|akaun|accounting|payment)\b|open (it |this |the file |the attachment )?on (a |your )?(computer|pc|laptop|desktop)|(not|tidak) (be )?(fully )?visible on (a |your )?(mobile|phone|handphone)|buka (fail ini |dokumen ini )?(di|pada|menggunakan) (komputer|pc|laptop))/u',
+                'points' => 20,
+                'label' => 'Asks you to pass a "statement" or invoice file to your finance team, or to open it on a computer (a common way to spread malware hidden in a RAR or ZIP file)',
+                'lure' => true,
+            ],
+            // "Your SIM will be deactivated unless you re-register": a link or call that collects your IC and details.
+            'sim_reregister' => [
+                'message_regex' => '/((sim|sim cards?|kad sim|line|talian|nombor|number)\b.{0,80}?(re-?regist|daftar semula|register again|verify|sahkan).{0,100}?(deactivat|disconnect|block|suspend|terminat|sekat|putus|nyahaktif|tamat)|(re-?regist|daftar semula).{0,100}?(sim|kad sim|line|talian|nombor).{0,80}?(deactivat|disconnect|block|suspend|terminat|sekat|putus|nyahaktif|tamat)|(sim|sim cards?|kad sim|line|talian|nombor)\b.{0,80}?(deactivat|disconnect|block|suspend|terminat|sekat|putus|nyahaktif|tamat).{0,100}?(re-?regist|daftar semula|register again))/u',
+                'points' => 20,
+                'label' => 'Warns that your SIM card or number will be cut off unless you "re-register" (a common way to collect your IC and personal details)',
+                'lure' => true,
+            ],
             'money_ask' => [
-                'message_regex' => '/(transfer (me |us )?(bnd|b\$|\$|rm|sgd)\s?\d|pay (bnd|b\$|\$|rm)\s?\d|transfer (it |the money |a deposit |your savings |all )?(to|into) (our|my|this|the following|a safe|a secure|another)|send (me |us )?(bnd|b\$|\$|rm)\s?\d|send (me |us )?money|pay (a |the )?(deposit|processing fee|admin fee|registration fee|clearance fee|release fee|small admin fee|fee first)|(processing|admin|administration|registration|clearance|release) fee|transfer (a |the )?deposit|bayar (deposit|yuran|cagaran|duti|caj)|(bayar|transfer|pindah|hantar)\s(\S+\s){0,3}?dulu\b|transfer ke akaun|pindah(kan)? (semua )?(wang|duit)|hantar duit|yuran (proses|pemprosesan|pendaftaran|pelepasan|penghantaran)|invest (bnd|b\$|\$)\s?\d|minimum deposit|deposit minimum|bayar (zakat|derma|sumbangan)|(donation|derma|sumbangan) (needed|diperlukan|segera))/u',
+                'message_regex' => '/(transfer (me |us )?(bnd|b\$|\$|rm|sgd)\s?\d|pay (the |a )?(bnd|b\$|\$|rm)\s?\d|transfer (it |the money |a deposit |your savings |all )?(to|into) (our|my|this|the following|a safe|a secure|another)|send (me |us )?(bnd|b\$|\$|rm)\s?\d|send (me |us )?money|pay (a |the )?(deposit|processing fee|admin fee|registration fee|clearance fee|release fee|small admin fee|fee first)|(processing|admin|administration|registration|clearance|release) fee|transfer (a |the )?deposit|bayar (deposit|yuran|cagaran|duti|caj)|(bayar|transfer|pindah|hantar)\s(\S+\s){0,3}?dulu\b|transfer ke akaun|pindah(kan)? (semua )?(wang|duit)|hantar duit|yuran (proses|pemprosesan|pendaftaran|pelepasan|penghantaran)|invest (bnd|b\$|\$)\s?\d|minimum deposit|deposit minimum|bayar (zakat|derma|sumbangan)|(donation|derma|sumbangan) (needed|diperlukan|segera))/u',
                 'points' => 15,
                 'label' => 'Asks you to send money, pay a fee or pay a deposit first',
                 'ask' => true,
@@ -2367,8 +2600,8 @@ class AnalysisEngine
                 'lure' => true,
             ],
             'prize_scam' => [
-                'regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?)|weekly lottery|survey zone|redeem (your|for) |tahniah.{0,40}(menang|dipilih|terpilih)|anda (telah )?memenangi|tuntut hadiah|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
-                'message_regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?|tickets?)|weekly lottery|survey zone|redeem (your|for) |lucky draw|cabutan bertuah|giving away|giveaway|lucky you|selected as the winner|winner of|tahniah.{0,40}(menang|dipilih|terpilih|layak)|anda (telah )?memenangi|\b(menang|memenangi|pemenang)\b|layak menerima|eligible to (receive|withdraw|claim)|bantuan (kerajaan|tunai|khas)|tuntut (hadiah|bantuan|wang|tunai)|can claim|claim (it|now|bnd|\$)|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
+                'regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?)|weekly lottery|survey zone|redeem (your|for) |(surprise|free|claim|open|buka|tuntut) (your |a |anda )?(\S+ ){0,2}?(money packets?|red packets?|angpao|ang ?pow|duit raya)\b|tahniah.{0,40}(menang|dipilih|terpilih)|anda (telah )?memenangi|tuntut hadiah|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
+                'message_regex' => '/(you have won|you\'ve won|you could win|you have been chosen|you\'ve been chosen|chosen to (receive|participate)|congratulations.{0,40}(won|selected|chosen)|claim your (prize|reward|gift|refund|free|share|tokens?)|free (gift|rewards?|tickets?)|weekly lottery|survey zone|redeem (your|for) |lucky draw|cabutan bertuah|giving away|giveaway|lucky you|selected as the winner|winner of|tahniah.{0,40}(menang|dipilih|terpilih|layak)|anda (telah )?memenangi|\b(menang|memenangi|pemenang)\b|layak menerima|eligible to (receive|withdraw|claim)|bantuan (kerajaan|tunai|khas)|tuntut (hadiah|bantuan|wang|tunai)|can claim|claim (it|now|bnd|\$)|golden ticket|(surprise|free|claim|open|buka|tuntut|terima|receive|get|dapatkan)\s+(your\s+|a\s+|anda\s+)?(\S+\s+){0,2}?(money packets?|red packets?|angpao|ang ?pa[ou]|ang ?pow|duit raya|sampul (duit )?raya|lucky money|hong ?bao)\b|(money packets?|red packets?|angpao|ang ?pow|duit raya|lucky money)\s+(\S+\s+){0,3}?(for you|untuk anda|untuk awak|is waiting|menanti)|unclaimed (\S+\s+)?(reward|prize|gift|bonus|payout|winnings)|payout verification|(gift|reward|prize|bonus|surprise|payout) (is )?waiting (for you )?(in|inside) your account|check your account for (a |your )?(free |special )?(gift|reward|prize|bonus|payout)|mystery (\S+\s+)?gift|answer and win|free spins|freispiele|gratis spins|no deposit (bonus|required|needed)|(you have|you\'ve) been selected (to receive|as (a|the|our) winner|for (a|an|the|our) (free|special|exclusive|cash|prize|reward|gift|bonus))|pontos acumulados|resgate (agora|pendente)|resgatar|b[oô]nus de .{0,20}pontos)/u',
                 'points' => 20,
                 'label' => 'Prize/reward language detected (e.g. "you have won", "claim your reward", "tahniah anda menang", "cabutan bertuah")',
                 'lure' => true,
@@ -2482,14 +2715,14 @@ class AnalysisEngine
                 'lure' => true,
             ],
             'advance_fee' => [
-                'regex' => '/(dear friend\b(?!s)|god bless you|next of kin|inheritance|you have a donation|donation of \$|contacting you for the second time|reply urgently|powerball|meu caro amigo)/',
+                'regex' => '/(dear friend\b(?!s)|god bless you|next of kin|(late|deceased|unclaimed|your)\s+(\S+\s+){0,3}?inheritance|inheritance\s+(\S+\s+){0,6}?(fund|funds|claim|transfer|usd|million|beneficiar|deceased|next of kin|\$)|you have a donation|donation of \$|contacting you for the second time|reply urgently|powerball|meu caro amigo)/',
                 'points' => 25,
                 'label' => 'Advance-fee / "dear friend" scam language detected',
                 'lure' => true,
             ],
             'fine_lure' => [
                 'regex' => '/(traffic (violation|fine|ticket|challan|record)|red[- ]light|e-?challan|challan|speeding (fine|ticket)|parking (fine|ticket)|unpaid (toll|fine|ticket)|toll (fee|charge)|outstanding (fine|penalty)|saman (trafik|jalan raya|tertunggak|anda)|\bkompaun\b|compound (fine|notice))/',
-                'message_regex' => '/(traffic (violation|fine|ticket|challan|record)|red[- ]light|e-?challan|challan|speeding (fine|ticket)|parking (fine|ticket)|unpaid (toll|fine|ticket)|toll (fee|charge)|outstanding (fine|penalty)|court summons|saman (trafik|jalan raya|tertunggak|anda|mahkamah)|saman (belum|tidak) (bayar|dibayar)|ada saman|\bkompaun\b|compound (fine|notice)|bil (elektrik|air|api)( anda| kamu)? (tertunggak|belum)|tunggakan bil)/',
+                'message_regex' => '/(traffic (violation|fine|ticket|challan|record)|red[- ]light|e-?challan|challan|speeding (fine|ticket)|parking (fine|ticket)|unpaid (toll|fine|ticket)|toll (fee|charge)|outstanding (fine|penalty)|court summons|saman (trafik|jalan raya|tertunggak|anda|mahkamah)|saman (belum|tidak) (bayar|dibayar)|ada saman|(kesalahan|pelanggaran) (trafik|lalu ?lintas|jalan raya)|butiran (pelanggaran|kesalahan|saman)|kenderaan (anda|awak|kamu)\s+(\S+\s+){0,4}?(disaman|saman|kesalahan|pelanggaran)|\bkompaun\b|compound (fine|notice)|bil (elektrik|air|api)( anda| kamu)? (tertunggak|belum)|tunggakan bil)/',
                 'points' => 20,
                 'label' => 'Traffic-fine / penalty language detected (a common SMS scam: "violation", "e-challan", "unpaid toll", "saman")',
                 'lure' => true,
@@ -2534,11 +2767,12 @@ class AnalysisEngine
             'urgency' => '/\b(as soon as possible|final (warning|reminder|call)|last (warning|reminder|chance)|time is (running out|ticking)|expires? (today|soon|tonight)|before it.s too late|respond by|avoid (suspension|deletion|deactivation|interruption|loss))\b/u',
             'account_threat' => '/((wallet|assets?|account|access|card|storage|mailbox|service)\s+(\S+\s+){0,3}?(has|have|will) been (temporarily |permanently )?(suspended|locked|blocked|frozen|restricted|disabled|terminated)|will (lose|be locked out of) (all )?(your )?(assets|funds|access|data|files|photos)|lose (all )?your (assets|funds|data|files|photos)|(storage|mailbox|inbox)\s+(\S+\s+){0,2}?(is|are) (\d+% )?(full|almost full|over.?limit)|exceeded your (storage|quota|plan)|(scheduled|marked) for (permanent )?(deletion|removal)|will be (permanently )?(deleted|removed|erased|lost|locked)|data (loss|deletion) warning|password (has )?expired|password (expires|is due to expire)|keep (using )?(the |your )?(same|current) password|inactive account|period (of|without) (in)?activity|confirm (your )?continued use|(payment|billing|renewal)\s+(\S+\s+){0,2}?(failed|declined|could not be (processed|completed))|unable to (process|charge|validate|verify) your (payment|card|account|billing)|could(n.t| not) charge|problem with your (billing|payment)|payment (issue|problem)|update (your )?(payment|billing) (method|details|information)|someone (tried|attempted) to (log|sign) ?in|(new|recent|unusual) (sign|log).?in (attempt|activity))/u',
             'credential_request' => '/(complete (your )?verification|(has|have) not (yet )?been verified|not (yet )?verified|unverified (account|wallet)s?|\bkyc\b|verify (your )?(recovery phrase|seed|wallet|address|account ownership)|(log|sign) ?in to (review|view|access|confirm)|confirm (your )?(address|identity|account|details|information)|reconfirm your (home )?address|update (your )?(account|personal) (information|details)|reset (your )?(pin|password)s?\b)/u',
-            'prize_scam' => '/(you.ve been selected|you have been selected|been selected (as|to|for)|selected (as )?one of our|valued winners?|lucky (winner|one)|exclusive reward|loyalty (program|reward)|(short|quick) survey|take (this|a|our) survey|complimentary (gift|reward)|free trial offer|reward (is )?(waiting|ready|awaiting)|claim (your|the) (gift|bonus|reward|prize)|(donated|donating) \$?[\d.,]+|(selected|chosen) to receive)/u',
-            'advance_fee' => '/(\bbeneficiary\b|compensation fund|scam victims?|victims? compensation|consignment (box )?of (funds|money)|your consignment|diplomatic agent|abandoned (fund|check|cheque|funds)|unclaimed (balance|fund|funds|holdings)|unreviewed (credits|holdings)|lucrative (deal|business|offer)|business (proposal|dealing)|investment proposal|private client|fund manager|late client|foreign remittance|atm card (delivery|worth|of \$)|your atm card|atm delivery|bank draft|draft worth|charity.{0,20}foundation|(\$\s?[\d.,]+\s?(million|m)\b|[\d.,]+ million (us )?(usd|dollars))[^.]{0,80}(donat|compensat|inherit|claim|beneficiar|lotter|winning|transfer|fund))/u',
+            // Being "selected" for an interview, a course or a team is everyday news, not a prize.
+            'prize_scam' => '/((you.ve|you have) been selected(?!\s+(for|to|as)\s+(\S+\s+){0,2}?(interview|position|role|job|internship|shortlist|round|programme|program|course|training|team|scholarship|panel|attend|join|participate|present|speaker|candidate))|been selected (as|to|for)(?!\s+(\S+\s+){0,2}?(interview|position|role|job|internship|shortlist|round|programme|program|course|training|team|scholarship|panel|attend|join|participate|present|speaker|candidate))|selected (as )?one of our|valued winners?|lucky (winner|one)|exclusive reward|loyalty (program|reward)|(short|quick) survey|take (this|a|our) survey|complimentary (gift|reward)|free trial offer|reward (is )?(waiting|ready|awaiting)|claim (your|the) (gift|bonus|reward|prize)|(donated|donating) \$?[\d.,]+|(selected|chosen) to receive)/u',
+            'advance_fee' => '/(\bbeneficiary\b|compensation fund|scam victims?|victims? compensation|consignment (box )?of (funds|money)|your consignment|diplomatic agent|abandoned (fund|check|cheque|funds)|unclaimed (balance|fund|funds|holdings)|unreviewed (credits|holdings)|lucrative (deal|business|offer)|business (proposal|dealing)|investment proposal|private client|fund manager|late client|foreign remittance|atm card (delivery|worth|of \$)|your atm card|atm delivery|bank draft|draft worth|charity.{0,20}foundation|(\$\s?[\d.,]+\s?(million|m)\b|[\d.,]+ million (us )?(usd|dollars))[^.]{0,80}(donat|compensat|inherit|beneficiar|lotter|winning|(claim|transfer|fund|release)[^.]{0,40}\b(you|your)\b))/u',
             'crypto_scam' => '/(\bstaking\b|stake your|token (redistribution|distribution|reward)|claim (your )?[\d,]* ?(tokens?|btc|eth|xrp|sol|uni|op)\b|cloud mining|mining platform|upgrade your (wallet|ledger|device)|wallet (connected|upgrade)|withdraw your (\+?\$|btc|funds|assets|earnings)|bitcoin portfolio)/u',
             'customs_fee' => '/(package (is )?pending|(parcel|package|shipment) (is )?(pending|on hold|waiting)|pending (for )?delivery|schedule (your )?delivery|delivery (fee|charge|payment)|confirm the payment of|shipping fee|(returned|sent back) to (the )?sender)/u',
-            'call_to_action' => '/(click (on )?(the )?(button|link)( below)?|(button|link) below|get started( now)?|confirm (now|here|below)|claim (it )?now|update now|renew now|review (the )?documents?|(sign|log) ?in (now|here|below)|keep (current|same) password|download (the )?(secure )?(attachment|document|invoice|file)|upgrade (your )?(storage|plan) now|renew (your )?(protection|subscription|plan)|restore (your )?(access|storage|account|protection)|reactivate (your )?(account|subscription))/u',
+            'call_to_action' => '/(click (on )?(the )?(button|link)( below)?|(button|link) below|get started( now)?|confirm (now|here|below)|claim (it )?now|update now|renew now|review (the )?documents?|(sign|log) ?in (now|here|below)|keep (current|same) password|download (the )?(secure )?(attachment|document|invoice|file)|upgrade (your )?(storage|plan) now|renew (your )?(protection|subscription|plan)|restore (your )?(access|storage|account|protection)|re-?activate (your )?(account|subscription|wallet|card|line|number))/u',
             'identity_claim' => '/(director of|head of (the )?(foreign|remittance|operations)|on behalf of (mr|mrs|ms|dr)\b|(security|support|billing|account) (team|department|center|centre)|customer (support|service) (team|department))/u',
         ];
         $found = [];
@@ -2651,7 +2885,9 @@ class AnalysisEngine
     /**
      * Undoes the tricks phishing uses to slip past filters, and reports whether any were used:
      * invisible characters inside words ("A­m­a­z­o­n"), Cyrillic look-alike letters mixed into
-     * Latin words ("Yоur wаllet") and words spelt out letter by letter ("D e a r  c u s t o m e r").
+     * Latin words ("Yоur wаllet"), full-width or "fancy" bold letters ("ＥｃｏＣａｓｈ", "𝐘𝐎𝐔"),
+     * digits standing in for letters ("y0ur acc0unt is on h0ld") and words spelt out letter by
+     * letter ("D e a r  c u s t o m e r", then also short ones such as "w o n").
      *
      * @return array{0: string, 1: bool} the cleaned text and whether it was disguised
      */
@@ -2662,15 +2898,60 @@ class AnalysisEngine
             || (bool) preg_match('/(?=\w*\p{Latin})(?=\w*\p{Cyrillic})\b\w+\b/u', $text);
 
         $text = preg_replace('/['.$hidden.']/u', '', $text) ?? $text;
+
+        // Full-width Latin letters or "fancy" letters in an English or Malay message are a disguise. Chinese and
+        // Japanese text uses full-width punctuation as a matter of course, so that alone never counts.
+        if (preg_match('/[\x{FF21}-\x{FF3A}\x{FF41}-\x{FF5A}\x{1D400}-\x{1D7FF}]/u', $text) === 1
+            && preg_match('/[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]/u', $text) !== 1) {
+            $disguised = true;
+        }
+        $text = mb_strtolower($this->withPlainLetters($text));
+
         $text = strtr($text, ['а' => 'a', 'е' => 'e', 'о' => 'o', 'р' => 'p', 'с' => 'c', 'у' => 'y', 'х' => 'x', 'і' => 'i', 'ј' => 'j', 'ѕ' => 's', 'ԁ' => 'd', 'ӏ' => 'l', 'ո' => 'n', 'ս' => 'u', 'ο' => 'o', 'α' => 'a']);
 
         $spaced = preg_replace_callback('/(?<!\S)(?:\p{L} ){7,}\p{L}(?!\S)/u', fn ($m) => str_replace(' ', '', $m[0]), $text);
         if ($spaced !== null && $spaced !== $text) {
             $disguised = true;
-            $text = $spaced;
+            // A message that spells one word out letter by letter does the same to short ones ("you have w o n").
+            $text = preg_replace_callback('/(?<!\S)(?:\p{L} ){2,}\p{L}(?!\S)/u', fn ($m) => str_replace(' ', '', $m[0]), $spaced) ?? $spaced;
+        }
+
+        // Digits standing in for letters in the middle of words ("acc0unt", "unl0ck", "ba1ance"). One such word
+        // can be a product code ("mp4s"), so it takes two before the text counts as disguised and is read back.
+        // Codes inside links and email addresses ("p1sylj1blfvqjrrr") are not words, so they are left out, and a
+        // word with more than two digits is a code too.
+        $word = '/(?<![\p{L}\d])[a-z013457]{4,12}(?![\p{L}\d])/u';
+        $isLeet = fn (string $candidate): bool => preg_match('/[a-z][013457]+[a-z]/', $candidate) === 1
+            && preg_match_all('/[a-z]/', $candidate) >= 3
+            && preg_match_all('/\d/', $candidate) <= 2
+            && preg_match('/mp[34]|ps[345]|h26[45]|x26[45]|4wd|4x4|b2b|p2p|3ds|3gp/', $candidate) !== 1;
+        $plainWords = preg_replace(['~(https?://|www\.)\S+~i', '/\S+@\S+/', '/\S*\/\S*/'], ' ', $text) ?? $text;
+        preg_match_all($word, $plainWords, $words);
+        if (count(array_unique(array_filter($words[0], $isLeet))) >= 2) {
+            $disguised = true;
+            $text = preg_replace_callback($word, fn ($m) => $isLeet($m[0]) ? strtr($m[0], ['0' => 'o', '1' => 'l', '3' => 'e', '4' => 'a', '5' => 's', '7' => 't']) : $m[0], $text) ?? $text;
         }
 
         return [$text, $disguised];
+    }
+
+    /**
+     * The text with full-width letters ("ＥｃｏＣａｓｈ：", "ｈｔｔｐ：／／") and mathematical "fancy" letters
+     * ("𝐘𝐎𝐔 𝐀𝐑𝐄 𝐎𝐔𝐑 𝐖𝐈𝐍𝐍𝐄𝐑") turned into the ordinary letters they look like. Text without them is returned
+     * unchanged, so accents and other scripts are never touched.
+     */
+    private function withPlainLetters(string $text): string
+    {
+        if (preg_match('/[\x{FF01}-\x{FF5E}\x{3000}\x{1D400}-\x{1D7FF}]/u', $text) !== 1) {
+            return $text;
+        }
+
+        if (class_exists(\Normalizer::class)) {
+            return preg_replace_callback('/[\x{FF01}-\x{FF5E}\x{3000}\x{1D400}-\x{1D7FF}]+/u', fn ($m) => \Normalizer::normalize($m[0], \Normalizer::FORM_KC) ?: $m[0], $text) ?? $text;
+        }
+
+        // Without the intl extension, the full-width block maps straight onto ordinary ASCII.
+        return preg_replace_callback('/[\x{FF01}-\x{FF5E}\x{3000}]/u', fn ($m) => $m[0] === "\u{3000}" ? ' ' : mb_chr(mb_ord($m[0]) - 0xFEE0), $text) ?? $text;
     }
 
     /**
@@ -2909,17 +3190,28 @@ class AnalysisEngine
      * text on the next. To reduce false "needs review" results caused by
      * this flakiness, we retry once if the first attempt fails outright or
      * comes back with no usable text.
+     *
+     * When OCR.space cannot read the image at all (no key, busy, down), the backup reader on this server
+     * (Tesseract, see readWithBackupOcr) is tried before giving up, if it is switched on.
      */
     public function checkScreenshotOcr(string $imagePath): array
+    {
+        if (! file_exists($imagePath)) {
+            return ['success' => false, 'text' => '', 'error' => 'Uploaded image could not be found'];
+        }
+
+        $online = $this->readWithOcrSpace($imagePath);
+
+        return $online['success'] ? $online : ($this->readWithBackupOcr($imagePath) ?? $online);
+    }
+
+    /** One OCR.space reading of the image, with one retry on a second engine. */
+    private function readWithOcrSpace(string $imagePath): array
     {
         $apiKey = config('services.ocr_space.key');
 
         if (! $apiKey) {
             return ['success' => false, 'text' => '', 'error' => 'OCR API key not configured'];
-        }
-
-        if (! file_exists($imagePath)) {
-            return ['success' => false, 'text' => '', 'error' => 'Uploaded image could not be found'];
         }
 
         $lastError = 'OCR processing failed';
@@ -2935,7 +3227,9 @@ class AnalysisEngine
             try {
                 $response = Http::asMultipart()
                     ->attach('file', $imageBytes, $imageName)
-                    ->timeout(30)
+                    // With the backup reader on, OCR.space gets less time, so a slow day still leaves room for the
+                    // backup inside the web server's 60-second limit.
+                    ->timeout(config('services.ocr_backup.enabled') ? 15 : 30)
                     ->post('https://api.ocr.space/parse/image', [
                         'apikey' => $apiKey,
                         'language' => 'eng',
@@ -2989,6 +3283,90 @@ class AnalysisEngine
         }
 
         return ['success' => false, 'text' => '', 'error' => $lastError];
+    }
+
+    /**
+     * Reads the image with Tesseract on this server, the backup for when OCR.space is busy or down. Off unless
+     * OCR_BACKUP_ENABLED=true (install it on Ubuntu with "sudo apt install tesseract-ocr"). The image is turned
+     * grey, flipped to dark text on light if it is a dark-mode screenshot, and enlarged first: Tesseract reads small
+     * light-on-dark phone text poorly otherwise. Returns null when the backup is off, missing or reads nothing.
+     *
+     * @return array{success: true, text: string, error: null, reader: string}|null
+     */
+    private function readWithBackupOcr(string $imagePath): ?array
+    {
+        if (! config('services.ocr_backup.enabled')) {
+            return null;
+        }
+
+        $prepared = $this->prepareImageForBackupOcr($imagePath);
+
+        try {
+            $result = Process::timeout(40)->run([
+                (string) config('services.ocr_backup.binary', 'tesseract'),
+                $prepared ?? $imagePath,
+                'stdout',
+                '-l',
+                (string) config('services.ocr_backup.languages', 'eng'),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Backup OCR could not run', ['error' => $e->getMessage()]);
+
+            return null;
+        } finally {
+            if ($prepared !== null) {
+                @unlink($prepared);
+            }
+        }
+
+        if (! $result->successful()) {
+            Log::warning('Backup OCR failed', ['error' => Str::limit(trim($result->errorOutput()), 200)]);
+
+            return null;
+        }
+
+        $text = trim(implode("\n", array_filter(array_map('trim', explode("\n", $result->output())), fn (string $line): bool => $line !== '')));
+
+        return $text === '' ? null : ['success' => true, 'text' => $text, 'error' => null, 'reader' => 'backup'];
+    }
+
+    /**
+     * A grey, enlarged copy of the image for the backup reader, with dark-mode screenshots flipped to dark text on a
+     * light background. Returns the copy's path, or null when GD is missing or the image cannot be decoded.
+     */
+    private function prepareImageForBackupOcr(string $imagePath): ?string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return null;
+        }
+
+        $image = @imagecreatefromstring((string) file_get_contents($imagePath));
+        if ($image === false) {
+            return null;
+        }
+
+        imagefilter($image, IMG_FILTER_GRAYSCALE);
+
+        // Average brightness from a 20 x 20 grid of samples.
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $total = 0;
+        for ($x = 0; $x < 20; $x++) {
+            for ($y = 0; $y < 20; $y++) {
+                $total += imagecolorat($image, (int) ($x * ($width - 1) / 19), (int) ($y * ($height - 1) / 19)) & 0xFF;
+            }
+        }
+        if ($total / 400 < 110) {
+            imagefilter($image, IMG_FILTER_NEGATE);
+        }
+
+        $scale = max($width, $height) < 1600 ? 2 : 1;
+        $enlarged = $scale > 1 ? imagescale($image, $width * $scale, $height * $scale) : $image;
+
+        $path = tempnam(sys_get_temp_dir(), 'ocr').'.png';
+        $saved = imagepng($enlarged ?: $image, $path);
+
+        return $saved ? $path : null;
     }
 
     /**
@@ -3055,12 +3433,18 @@ class AnalysisEngine
     }
 
     /**
-     * A long link in a chat bubble often breaks right after "https://", so the OCR text has the
-     * start of the link on one line and the address on the next. Joins them back together so the
-     * link is read as one.
+     * Makes the links in a message readable before they are looked for:
+     *  - full-width characters become ordinary ones ("ｈｔｔｐ：／／ｅｃｃ－ｖｅｒｉｆｙ．ｎｅｔ");
+     *  - "defanged" links are put back together ("hxxp://ecocash-verify[.]top"). Scams write links this way
+     *    so filters do not see them (and security notices do it so nobody clicks); either way the link is real;
+     *  - a long link in a chat bubble often breaks right after "https://", so the OCR text has the start of
+     *    the link on one line and the address on the next. Those are joined back into one link.
      */
     private function joinWrappedLinks(string $text): string
     {
+        $text = $this->withPlainLetters($text);
+        $text = preg_replace(['~\bhxxp(s?)(?=(?:\[?:\]?)//)~i', '~\[\.\]|\(\.\)|\{\.\}|\[dot\]|\(dot\)~i', '~\[:\]~'], ['http$1', '.', ':'], $text) ?? $text;
+
         return preg_replace('~\b(https?://)\s+(?=[a-z0-9])~i', '$1', $text) ?? $text;
     }
 
@@ -3089,6 +3473,10 @@ class AnalysisEngine
 
         $domains = [];
         foreach ($matches[1] as $domain) {
+            // A name of one to three digits ("1.com") is usually the cut-off end of a longer link in the OCR text.
+            if (preg_match('/^(www\.)?\d{1,3}\.[a-z]+$/i', $domain) === 1) {
+                continue;
+            }
             $domains[preg_replace('/^www\./', '', strtolower($domain))] = true;
         }
 
@@ -3107,7 +3495,9 @@ class AnalysisEngine
      */
     private function extractAllEmailsFromText(string $text): array
     {
-        $normalized = preg_replace('/\s*@\s*/', '@', $text);
+        // Spaces around "@" are only closed up on the same line and when at least two address characters come before
+        // it: OCR often reads an icon as "f@" or "@" next to a website name ("f@ dh1-bru.site"), which is not an email.
+        $normalized = preg_replace('/(?<=[a-zA-Z0-9._%+-]{2})[ \t]*@[ \t]*/', '@', $text);
         $normalized = preg_replace('/\s*\.\s*(?=[a-zA-Z]{2,}\b)/', '.', $normalized);
 
         preg_match_all('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $normalized, $matches);
@@ -3132,29 +3522,187 @@ class AnalysisEngine
      */
     private function extractAllPhonesFromText(string $text): array
     {
-        preg_match_all('/\+\d[\d\-\s\(\)]{5,17}\d|\d{2,4}[\s\-]\d{2,4}[\s\-]\d{2,6}(?:[\s\-]\d{2,4})?/', $text, $matches);
+        // The last form is a Brunei number written the local way, three digits then four ("712 3456", "223-8181").
+        preg_match_all('/\+\d[\d\-\s\(\)]{5,17}\d|\d{2,4}[\s\-]\d{2,4}[\s\-]\d{2,6}(?:[\s\-]\d{2,4})?|(?<![\w.,])[278]\d{2}[ \-]\d{4}(?![\w.,]\d|\d)/', $text, $matches, PREG_OFFSET_CAPTURE);
 
-        $candidates = array_map(function ($m) {
-            return trim(preg_replace('/\s{2,}/', ' ', $m));
-        }, $matches[0] ?? []);
+        // Tracking, order, invoice and account numbers are written in groups too ("DHL-7623-8891-022",
+        // "Ref: 4521 8873 0094"). A group of digits joined to letters, or labelled as a reference just before it,
+        // is not a phone number. A "+" in front always counts as a phone number.
+        $candidates = [];
+        foreach ($matches[0] ?? [] as [$match, $offset]) {
+            $before = substr($text, max(0, $offset - 30), min(30, $offset));
+            $isReference = ! str_starts_with($match, '+') && (
+                preg_match('/[A-Za-z][\-\/#]?$/', $before) === 1
+                || preg_match('/\b(tracking|track|ref|reference|order|invoice|receipt|awb|waybill|consignment|parcel|account|acct|a\/c|token|meter|serial|transaction|txn|trx|booking|ticket|case|id|no\.?|number|nombor|rujukan|resit|akaun)\b[\s:#.\-]*(no\.?|number|#)?[\s:#.\-]*$/i', $before) === 1
+            );
+            if (! $isReference) {
+                $candidates[] = trim(preg_replace('/\s{2,}/', ' ', $match));
+            }
+        }
 
         return array_values(array_unique(array_filter($candidates, fn ($c) => strlen(preg_replace('/\D/', '', $c)) >= 7)));
     }
 
-    private function decodeQrCode(string $imagePath): ?string
+    /**
+     * Every QR code in the image, as links. zbar (QR_READER_ENABLED=true, install with "sudo apt install zbar-tools")
+     * finds small QR codes inside a poster or a photo of a screen, and reads several in one image. The built-in PHP
+     * reader is the fallback: it only reads a clean QR code that fills most of the image.
+     *
+     * @return array<int, string>
+     */
+    public function decodeQrCodes(string $imagePath): array
+    {
+        $values = $this->readQrWithZbar($imagePath);
+        if ($values === null) {
+            $one = $this->readQrWithPhp($imagePath);
+            $values = $one === null ? [] : [$one];
+        }
+
+        $links = [];
+        foreach ($values as $value) {
+            $link = $this->qrValueToLink($value);
+            if ($link !== null) {
+                $links[] = $link;
+            }
+        }
+
+        return array_slice(array_values(array_unique($links)), 0, 5);
+    }
+
+    /**
+     * What zbar read, one QR code per line; [] when it found none; null when it is off, missing or failed, so
+     * the PHP reader is tried instead.
+     *
+     * @return array<int, string>|null
+     */
+    private function readQrWithZbar(string $imagePath): ?array
+    {
+        if (! config('services.qr_reader.enabled')) {
+            return null;
+        }
+
+        try {
+            $result = Process::timeout(10)->run([
+                (string) config('services.qr_reader.binary', 'zbarimg'),
+                '--quiet', '--raw', '-Sdisable', '-Sqrcode.enable',
+                $imagePath,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('QR reader could not run', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        // zbarimg ends with code 4 when it ran fine but the image has no QR code.
+        if ($result->exitCode() === 4) {
+            return [];
+        }
+        if (! $result->successful()) {
+            Log::warning('QR reader failed', ['error' => Str::limit(trim($result->errorOutput()), 200)]);
+
+            return null;
+        }
+
+        return array_values(array_filter(array_map('trim', explode("\n", $result->output())), fn (string $line): bool => $line !== ''));
+    }
+
+    private function readQrWithPhp(string $imagePath): ?string
     {
         if (! class_exists(QrReader::class)) {
             return null;
         }
 
         try {
-            $qrReader = new QrReader($imagePath);
-            $decoded = $qrReader->text();
+            $decoded = (new QrReader($imagePath))->text();
 
             return (is_string($decoded) && $decoded !== '') ? $decoded : null;
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    /**
+     * A QR code's text as a link to check. Many posters encode "www.site.com/page" without "https://", so that is
+     * accepted too. Wi-Fi details, contact cards and plain text are not links and are skipped.
+     */
+    private function qrValueToLink(string $value): ?string
+    {
+        $value = trim($value);
+        if (preg_match('~^https?://\S+$~i', $value) === 1) {
+            return filter_var($value, FILTER_VALIDATE_URL) ? $value : null;
+        }
+        if (preg_match('~^(www\.)?[a-z0-9\-]+(\.[a-z0-9\-]+)*\.[a-z]{2,}(/\S*)?$~i', $value) === 1) {
+            $link = 'https://'.$value;
+
+            return filter_var($link, FILTER_VALIDATE_URL) ? $link : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * QR-code services: the code opens their address first and they forward the visitor on, so the image alone
+     * cannot show the final website. Genuine posters use them too, so this is a note, not a warning.
+     */
+    private const QR_SERVICE_HOSTS = '/(^|\.)(me-qr\.com|qrco\.de|qr-code-generator\.com|qr\.page|qrcodechimp\.com|qrfy\.io|uqr\.me|scanned\.page|qr\.codes|qrs\.ly|q-r\.to|qr1\.be|l\.ead\.me|beaconstac\.com|flowcode\.com|qrstud\.io|linko\.page)$/';
+
+    private function isQrServiceHost(string $host): bool
+    {
+        return preg_match(self::QR_SERVICE_HOSTS, strtolower($host)) === 1;
+    }
+
+    /**
+     * A government website printed in the image or message (moe.gov.my, polis.gov.bn, go.id, .gov), in lower case
+     * and without "www.".
+     *
+     * @return array<int, string>
+     */
+    private function printedGovernmentSites(string $text): array
+    {
+        preg_match_all('~(?<![a-z0-9\-.@])(?:www\.)?((?:[a-z0-9\-]+\.)+(?:(?:gov|go|gob|govt)\.[a-z]{2}|gov))(?![a-z0-9\-])~i', $text, $m);
+
+        return array_values(array_unique(array_map('strtolower', $m[1] ?? [])));
+    }
+
+    private function isGovernmentOrSchoolHost(string $host): bool
+    {
+        return preg_match('~(^|\.)((gov|go|gob|govt|edu|mil)\.[a-z]{2}|gov|edu|mil)$~i', $host) === 1;
+    }
+
+    /**
+     * "Official website mismatch": the image or message prints a government website (moe.gov.my) but its link goes
+     * to an unrelated website. Scammers copy a real ministry or police poster and swap in their own link. Links to
+     * a government or school website, a big platform (Google Forms, Facebook, Instagram), a link shortener or a
+     * QR-code service are left alone: genuine notices use those too, and the final website cannot be seen.
+     */
+    private function checkOfficialSiteMismatch(string $text, ?string $url): array
+    {
+        $none = ['flagged' => false, 'points' => 0, 'reasons' => []];
+        $host = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
+        $host = preg_replace('/^www\./', '', $host) ?? $host;
+        if ($host === '') {
+            return $none;
+        }
+
+        $printed = $this->printedGovernmentSites($text);
+        if ($printed === [] || $this->isGovernmentOrSchoolHost($host) || $this->isOfficialBrandDomain($host)
+            || $this->isQrServiceHost($host) || array_key_exists(RegistrableDomain::of($host), self::LINK_SHORTENERS)
+            || in_array(RegistrableDomain::of($host), ['forms.gle', 'google.com', 'office.com', 'microsoft.com', 'wa.me', 'linktr.ee'], true)) {
+            return $none;
+        }
+
+        $linkSite = RegistrableDomain::of($host);
+        foreach ($printed as $site) {
+            if (RegistrableDomain::of($site) === $linkSite) {
+                return $none;
+            }
+        }
+
+        return [
+            'flagged' => true,
+            'points' => 30,
+            'reasons' => ["The text names the government website \"{$printed[0]}\", but the link goes to \"{$linkSite}\", which is not a government website. Scammers copy official posters and notices and swap in their own link."],
+        ];
     }
 
     /**
@@ -3542,9 +4090,10 @@ class AnalysisEngine
         $headerResult = trim((string) $emailHeaders) !== '' ? $this->checkEmailAuthentication((string) $emailHeaders, $email) : null;
 
         $linkResult = $hasContentText ? $this->checkEmailLinks($combinedText, $domain) : ['flagged' => false, 'points' => 0, 'reasons' => [], 'url' => null];
+        $fillerResult = $this->detectFillerText((string) $body);
 
         $rulePoints = $emailResult['points'] + $ageResult['points'] + $contentResult['points'] + $brandResult['points']
-            + $domainHistoryResult['points'] + ($headerResult['points'] ?? 0) + $linkResult['points'];
+            + $domainHistoryResult['points'] + ($headerResult['points'] ?? 0) + $linkResult['points'] + $fillerResult['points'];
         $aiResult = $hasContentText ? $this->checkAiText($combinedText, $rulePoints) : null;
 
         $totalPoints = $this->requireCorroboration(min(100, $rulePoints + ($aiResult['points'] ?? 0)), [
@@ -3555,6 +4104,7 @@ class AnalysisEngine
             $headerResult['points'] ?? 0,
             $aiResult['points'] ?? 0,
             $linkResult['points'],
+            $fillerResult['points'],
         ], $this->wordingKinds($contentResult) - 1 + (($headerResult['points'] ?? 0) >= 30 ? 1 : 0));
         $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
 
@@ -3575,6 +4125,9 @@ class AnalysisEngine
             }
             if ($linkResult['url'] !== null) {
                 $checks[] = $this->buildCheck('Links in the Email', $linkResult, $linkResult['points'] >= 25 ? 'HIGH RISK' : 'SUSPICIOUS');
+            }
+            if ($fillerResult['flagged']) {
+                $checks[] = $this->buildCheck('Hidden Filler Text', $fillerResult, 'SUSPICIOUS');
             }
             if ($aiResult !== null) {
                 $checks[] = $this->buildCheck('AI Message Review', $aiResult, $aiResult['verdict'] === 'scam' ? 'HIGH RISK' : 'SUSPICIOUS');
@@ -3619,8 +4172,18 @@ class AnalysisEngine
 
         $worst = null;
 
-        foreach (array_slice($links, 0, 8) as $link) {
-            $host = (string) parse_url($link, PHP_URL_HOST);
+        // A scam sends you to one place. A digest or newsletter that links many different sites is not judged
+        // by the kind of place each link goes to (a blog list will include a Blogspot site or two).
+        $siteCount = count(array_unique(array_map(
+            fn (string $link): string => (string) RegistrableDomain::of((string) parse_url($this->unwrapRedirectLink($link), PHP_URL_HOST)),
+            $links
+        )));
+        $judgeLinkKinds = $siteCount <= 5;
+
+        foreach (array_slice($links, 0, 8) as $written) {
+            // A link wrapped by Outlook SafeLinks or Google's redirect is judged by where it really goes.
+            $link = $this->unwrapRedirectLink($written);
+            $host = strtolower((string) parse_url($link, PHP_URL_HOST));
 
             if ($host === '') {
                 continue;
@@ -3635,24 +4198,94 @@ class AnalysisEngine
                 continue;
             }
 
-            if ($worst === null || $syntax['points'] > $worst['syntax']['points']) {
-                $worst = ['link' => $link, 'syntax' => $syntax];
+            $kind = $judgeLinkKinds ? $this->emailLinkKind($link, $host, $senderDomain) : ['points' => 0, 'reason' => null];
+            $points = (int) round($syntax['points'] * 0.6) + $kind['points'];
+
+            if ($worst === null || $points > $worst['points']) {
+                $worst = ['link' => $link, 'syntax' => $syntax, 'kind' => $kind, 'points' => $points, 'unwrapped' => $link !== $written];
             }
         }
 
-        if ($worst === null || $worst['syntax']['points'] <= 0) {
+        if ($worst === null || $worst['points'] <= 0) {
             return $none;
         }
 
         $host = (string) parse_url($worst['link'], PHP_URL_HOST);
-        $points = (int) round($worst['syntax']['points'] * 0.6);
+        $intro = $worst['unwrapped']
+            ? "A link in the email is wrapped in a redirect, and really goes to \"{$host}\":"
+            : "A link in the email goes to \"{$host}\":";
 
         return [
-            'flagged' => $points > 0,
-            'points' => $points,
-            'reasons' => array_merge(["A link in the email goes to \"{$host}\":"], $worst['syntax']['reasons']),
+            'flagged' => true,
+            'points' => $worst['points'],
+            'reasons' => array_merge([$intro], $worst['kind']['reason'] !== null ? [$worst['kind']['reason']] : [], $worst['syntax']['reasons']),
             'url' => $worst['link'],
         ];
+    }
+
+    /** Link shorteners: the address shown says nothing about where the link really goes. Mapped to the site that owns each one. */
+    private const LINK_SHORTENERS = [
+        't.co' => ['x.com', 'twitter.com'], 'bit.ly' => [], 'tinyurl.com' => [], 'is.gd' => [], 'v.gd' => [], 'cutt.ly' => [],
+        'rb.gy' => [], 'ow.ly' => ['hootsuite.com'], 'shorturl.at' => [], 'tiny.cc' => [], 's.id' => [], 'lnkd.in' => ['linkedin.com'],
+        'buff.ly' => ['buffer.com'], 'rebrand.ly' => [], 'shorte.st' => [], 'urlz.fr' => [],
+    ];
+
+    /** Cloud file storage. A company's web pages live on its own site; a scam often uploads one page here as a file. */
+    private const CLOUD_FILE_HOSTS = '/(^|\.)(storage\.googleapis\.com|firebasestorage\.googleapis\.com|blob\.core\.windows\.net|backblazeb2\.com|digitaloceanspaces\.com|ipfs\.[a-z.]+|[a-z0-9.\-]*ipfs[a-z0-9.\-]*)$|(^|[.\-])s3([.\-][a-z0-9\-]+)*\.amazonaws\.com$/';
+
+    /** Domain endings that cost almost nothing and turn up in scam links far more than in genuine ones. */
+    private const RISKY_LINK_ENDINGS = ['xyz', 'top', 'cc', 'lat', 'help', 'bond', 'buzz', 'cfd', 'sbs', 'cyou', 'icu', 'click', 'rest', 'monster', 'quest', 'hair', 'boats', 'autos', 'mom'];
+
+    /**
+     * The real address behind an Outlook SafeLinks or Google redirect link ("...safelinks.protection.outlook.com/?url=..."),
+     * or the link itself when it is not one of these.
+     */
+    private function unwrapRedirectLink(string $link): string
+    {
+        $host = strtolower((string) parse_url($link, PHP_URL_HOST));
+        $isSafeLinks = str_ends_with($host, '.safelinks.protection.outlook.com');
+        $isGoogleRedirect = preg_match('/^(www\.)?google\.[a-z.]+$/', $host) === 1 && parse_url($link, PHP_URL_PATH) === '/url';
+
+        if (! $isSafeLinks && ! $isGoogleRedirect) {
+            return $link;
+        }
+
+        parse_str((string) parse_url($link, PHP_URL_QUERY), $query);
+        $target = $query['url'] ?? $query['q'] ?? null;
+
+        return is_string($target) && filter_var($target, FILTER_VALIDATE_URL) && preg_match('~^https?://~i', $target) ? $target : $link;
+    }
+
+    /**
+     * What kind of place a link in an email leads to, when that kind is itself a warning sign: a link shortener
+     * (unless the sender owns it, as X does t.co) or a page stored as a file in cloud storage. Only the strongest
+     * kind counts. Well-known and official sites are left alone.
+     *
+     * @return array{points: int, reason: ?string}
+     */
+    private function emailLinkKind(string $link, string $host, ?string $senderDomain): array
+    {
+        $host = preg_replace('/^www\./', '', $host) ?? $host;
+        $sender = RegistrableDomain::of((string) $senderDomain);
+
+        if (isset(self::LINK_SHORTENERS[$host]) && ! in_array($sender, self::LINK_SHORTENERS[$host], true)) {
+            return ['points' => 10, 'reason' => "It is a short link (\"{$host}\"), which hides the address it really opens"];
+        }
+
+        // Only web pages count here: emails also link pictures and PDFs kept in cloud storage for good reasons.
+        $path = strtolower((string) parse_url($link, PHP_URL_PATH));
+        if (preg_match(self::CLOUD_FILE_HOSTS, $host) === 1 && preg_match('~(\.s?html?|\.php|/[^./]*)$~', $path === '' ? '/' : $path) === 1) {
+            return ['points' => 15, 'reason' => 'It opens a web page stored as a file in cloud storage. Companies keep their pages on their own website; scams upload a single page to free storage so it has no website of its own'];
+        }
+
+        // Free website builders (Blogspot, GitHub Pages) are left out on purpose: people share their own blogs
+        // and projects by email, and on real email this added false alarms without catching more scams.
+        if ($this->isOfficialBrandDomain($host) || ThreatLookup::isPopular($host)) {
+            return ['points' => 0, 'reason' => null];
+        }
+
+        // Cheap domain endings are judged by the address check (checkUrlSyntax) itself.
+        return ['points' => 0, 'reason' => null];
     }
 
     /** The most suspicious-looking full link in a message, or null when there is none. */
@@ -4206,7 +4839,8 @@ class AnalysisEngine
         if ($urls === []) {
             $urls = array_map(fn ($domain) => 'https://'.$domain, $this->extractBareDomainsFromText($text));
         }
-        usort($urls, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
+        usort($urls, fn ($a, $b) => ($this->checkUrlSyntax($b)['points'] + $this->checkOfficialSiteMismatch($text, $b)['points'])
+            <=> ($this->checkUrlSyntax($a)['points'] + $this->checkOfficialSiteMismatch($text, $a)['points']));
         $url = $urls[0] ?? null;
 
         $brand = $this->detectBrandInText($text);
@@ -4233,6 +4867,11 @@ class AnalysisEngine
             $points += $pressure['points'];
             $reasons = array_merge($reasons, $pressure['reasons']);
         }
+        $officialSite = $this->checkOfficialSiteMismatch($text, $url);
+        if ($officialSite['flagged']) {
+            $points += $officialSite['points'];
+            $reasons = array_merge($reasons, $officialSite['reasons']);
+        }
         if ($url) {
             $syntax = $this->checkUrlSyntax($url);
             $points += (int) round($syntax['points'] * 0.6);
@@ -4244,6 +4883,7 @@ class AnalysisEngine
             $attachment['flagged'] ? $attachment['points'] : 0,
             isset($mismatch) && $mismatch['flagged'] ? $mismatch['points'] : 0,
             $pressure['flagged'] ? $pressure['points'] : 0,
+            $officialSite['points'],
             $url ? round($syntax['points'] * 0.6) : 0,
         ], $this->wordingKinds($content) - 1);
         $hasEvidence = $url || $brand['brand'] || $content['flagged'] || $attachment['flagged'];
@@ -4271,11 +4911,12 @@ class AnalysisEngine
             : $this->brandOnlyMentioned($brand['brand']);
 
         $links = $this->checkEmailLinks($text, $domain['domain'] ?? null);
+        $filler = $this->detectFillerText($body);
 
-        $score = $this->requireCorroboration(min(100, $domain['points'] + $content['points'] + $brandResult['points'] + $links['points']), [
-            $domain['points'], $content['points'], $brandResult['points'], $links['points'],
+        $score = $this->requireCorroboration(min(100, $domain['points'] + $content['points'] + $brandResult['points'] + $links['points'] + $filler['points']), [
+            $domain['points'], $content['points'], $brandResult['points'], $links['points'], $filler['points'],
         ], $this->wordingKinds($content) - 1);
-        $reasons = array_merge($domain['reasons'], $content['reasons'], $brandResult['points'] > 0 ? $brandResult['reasons'] : [], $links['reasons']);
+        $reasons = array_merge($domain['reasons'], $content['reasons'], $brandResult['points'] > 0 ? $brandResult['reasons'] : [], $links['reasons'], $filler['reasons']);
 
         return ['score' => $score, 'reasons' => $reasons];
     }
@@ -4283,6 +4924,13 @@ class AnalysisEngine
     private function analyzeScreenshot(string $imagePath, ?int $reportId = null): array
     {
         $ocr = $this->checkScreenshotOcr($imagePath);
+        // QR codes are read from the picture itself, so a poster with a QR code is still checked when its text
+        // could not be read.
+        $qrLinks = file_exists($imagePath) ? $this->decodeQrCodes($imagePath) : [];
+
+        if (! $ocr['success'] && $qrLinks !== []) {
+            $ocr = ['success' => true, 'text' => '', 'error' => null, 'reader' => 'qr-only'];
+        }
 
         if (! $ocr['success']) {
             return [
@@ -4301,19 +4949,17 @@ class AnalysisEngine
 
         $text = $ocr['text'];
 
-        $qrUrl = $this->decodeQrCode($imagePath);
-
-        $candidateUrlsRaw = $this->extractAllUrlsFromText($text);
-        if ($qrUrl) {
-            $candidateUrlsRaw[] = $qrUrl;
-        }
+        $candidateUrlsRaw = [...$this->extractAllUrlsFromText($text), ...$qrLinks];
         $candidateUrls = array_values(array_unique(array_filter($candidateUrlsRaw, fn ($u) => filter_var($u, FILTER_VALIDATE_URL))));
         $extractedUrl = null;
         if (! empty($candidateUrls)) {
-            usort($candidateUrls, fn ($a, $b) => $this->checkUrlSyntax($b)['points'] <=> $this->checkUrlSyntax($a)['points']);
+            // The riskiest link is the one checked in full. A government website-mismatch counts here too, so a
+            // copied ministry poster is judged on its swapped-in link, not on the real website it also prints.
+            $linkRisk = fn (string $u): int => $this->checkUrlSyntax($u)['points'] + $this->checkOfficialSiteMismatch($text, $u)['points'];
+            usort($candidateUrls, fn ($a, $b) => $linkRisk($b) <=> $linkRisk($a));
             $extractedUrl = $candidateUrls[0];
         }
-        $urlCameFromQr = $qrUrl && $extractedUrl === $qrUrl;
+        $urlCameFromQr = $extractedUrl !== null && in_array($extractedUrl, $qrLinks, true);
 
         // No full link anywhere? Scammers often write the address without "https://" (e.g. "polydrop.top").
         $urlWasBare = false;
@@ -4352,7 +4998,7 @@ class AnalysisEngine
         $brandSurfaceText = $brandDetection['surface'];
         $contentResult = $this->checkContentPatterns($text);
         $attachmentResult = $this->detectAttachment($text);
-        $aiResult = $this->checkAiText($text, $contentResult['points']);
+        $aiResult = trim($text) === '' ? null : $this->checkAiText($text, $contentResult['points']);
         $hasAnyEvidence = $extractedUrl || $extractedEmail || $extractedPhone || $detectedBrand || $contentResult['flagged'] || $attachmentResult['flagged']
             || ($aiResult['flagged'] ?? false);
 
@@ -4381,11 +5027,31 @@ class AnalysisEngine
         $checks[] = [
             'name' => 'Screenshot Text Extraction',
             'status' => $hasAnyEvidence ? 'INFO' : 'REVIEW',
-            'message' => $hasAnyEvidence
+            'message' => ($hasAnyEvidence
                 ? ('Extracted from image: '.implode(' | ', $extractionParts ?: ['phishing-style language']))
-                : 'No URL, email address, phone number, brand reference, QR code, or phishing-style language was found in the image. Extracted text: "'.Str::limit($text, 200).'"',
+                : 'No URL, email address, phone number, brand reference, QR code, or phishing-style language was found in the image. Extracted text: "'.Str::limit($text, 200).'"')
+                .(($ocr['reader'] ?? null) === 'backup' ? ' (The online text reader was busy, so PhishCore\'s backup reader read this image. It can miss small or blurry text.)' : '')
+                .(($ocr['reader'] ?? null) === 'qr-only' ? ' (The text in this image could not be read, so only its QR code was checked.)' : ''),
             'points' => 0,
         ];
+
+        if ($qrLinks !== []) {
+            $qrNotes = [];
+            foreach ($qrLinks as $qrLink) {
+                $qrHost = strtolower((string) parse_url($qrLink, PHP_URL_HOST));
+                $qrNotes[] = "The QR code opens {$qrLink}"
+                    .($this->isQrServiceHost($qrHost) ? " ({$qrHost} is a QR-code service that forwards you to another website, so the final website cannot be seen from the image)" : '')
+                    .($qrLink === $extractedUrl ? '. This link is checked in full below.' : '.');
+            }
+            $checks[] = ['name' => 'QR Code', 'status' => 'INFO', 'message' => implode(' ', $qrNotes), 'points' => 0];
+        }
+
+        $officialSite = $this->checkOfficialSiteMismatch($text, $extractedUrl);
+        if ($officialSite['flagged']) {
+            $totalPoints += $officialSite['points'];
+            $signalCategories++;
+            $checks[] = $this->buildCheck('Official Website Mismatch', $officialSite, 'HIGH RISK');
+        }
 
         if ($extractedEmail) {
             $emailResult = $this->checkEmailDomain($extractedEmail);

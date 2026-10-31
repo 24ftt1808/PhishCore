@@ -1,6 +1,8 @@
 @php
     $shared = $shared ?? false;
-    $totalScore = max($analysis->risk_score, 1);
+    // Each check's share of all the warning points, so the shares add up to 100%. (The score itself stops at
+    // 100, but the checks can add up to more, so dividing by the score made the shares add up to over 100%.)
+    $totalScore = max(collect($analysis->flags ?? [])->filter(fn ($check) => is_array($check))->sum(fn ($check) => max(0, (int) ($check['points'] ?? 0))), 1);
     $breakdownRows = collect($analysis->flags ?? [])
         ->filter(fn ($check) => is_array($check))
         ->map(function ($check) use ($totalScore) {
@@ -593,6 +595,8 @@
 @endif
 
 {!! $afterResultCard ?? '' !!}
+
+@include('scan._community-reports')
 
 @include('scan._checks')
 

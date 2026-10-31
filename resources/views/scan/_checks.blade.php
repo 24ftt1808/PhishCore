@@ -48,7 +48,7 @@
     // every check, in plain words
     $checks = $allChecks->map(function (array $c) use ($ex, $toneOf) {
         $name = (string) ($c['name'] ?? 'Check');
-        $status = (string) ($c['status'] ?? 'SAFE');
+        $status = $ex::shownStatus($c);
 
         return [
             'name' => $name,

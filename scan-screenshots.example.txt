@@ -15,3 +15,20 @@ legit|email|scan-screenshots/legit-04-receipt-email.png
 legit|blank|scan-screenshots/unknown-01-no-text.png
 scam|real|scan-screenshots/real-01-redlight.png
 scam|real|scan-screenshots/real-02-meta.png
+# Real scams shared publicly on Threads (Brunei and nearby), phone numbers blurred. legit-05 is a genuine DST message.
+# real-04 and real-08 are malware lures from hacked WhatsApp accounts; real-05 is a WhatsApp account-takeover attempt.
+scam|real|scan-screenshots/real-03-pdrm-parking-sms.jpg
+scam|real|scan-screenshots/real-04-rar-statement-whatsapp.jpg
+scam|real|scan-screenshots/real-05-whatsapp-account-verify.jpg
+scam|real|scan-screenshots/real-06-traffic-fine-malay-sms.jpg
+scam|real|scan-screenshots/real-07-dhl-customs-page.jpg
+scam|real|scan-screenshots/real-08-zip-statement-whatsapp.jpg
+legit|real|scan-screenshots/legit-05-dst-data-usage.jpg
+# More real examples from Threads. real-09 is a fake Touch 'n Go "money packet" page, real-10 a WhatsApp account SMS,
+# real-11 a copied ministry teacher-hiring poster with a swapped-in link. legit-06 and legit-07 are genuine Brunei job posters
+# with QR codes (YSHHB and the Royal Brunei Police Force); the profile photo on legit-06 is blurred.
+scam|real|scan-screenshots/real-09-tng-money-packet-page.jpg
+scam|real|scan-screenshots/real-10-whatsapp-policy-sms.jpg
+scam|real|scan-screenshots/real-11-kpm-teacher-job-post.jpg
+legit|real|scan-screenshots/legit-06-yshhb-job-poster.jpg
+legit|real|scan-screenshots/legit-07-polis-recruitment-poster.jpg

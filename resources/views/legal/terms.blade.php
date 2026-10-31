@@ -1,6 +1,6 @@
 <x-legal title="Terms of Use">
     <div>
-        <p>PhishCore is a phishing detection platform built as a final year project at Politeknik Brunei. By creating an account or using PhishCore, you agree to these terms. If you do not agree, please do not use the service.</p>
+        <p>PhishCore is a phishing detection platform built as a student final year project. By creating an account or using PhishCore, you agree to these terms. If you do not agree, please do not use the service.</p>
     </div>
 
     <div>

@@ -28,7 +28,30 @@ final class RegistrableDomain
         'serveo.net', 'ngrok.io', 'ngrok-free.app', 'trycloudflare.com', 'workers.dev',
         'onrender.com', 'fly.dev', 'railway.app', 'surge.sh', 'webflow.io', 'infinityfreeapp.com',
         'wasmer.app', 'replit.app', 'replit.dev', 'pythonanywhere.com', 'streamlit.app', 'deno.dev',
+        // Free web hosts, page publishers and temporary site addresses seen hosting phishing pages.
+        'webcindario.com', 'telegra.ph', 'graph.org', 'appspot.com', 'xsph.ru', 'swtest.ru', 'filesusr.com',
+        'temporary.link', 'mywebsitetransfer.com', 'cprapid.com', 'byethost7.com', 'byethost8.com', 'byethost9.com',
+        'byethost10.com', 'byethost11.com', 'byethost12.com', 'byethost13.com', 'byethost14.com', 'byethost15.com',
+        'byethost16.com', 'byethost17.com', 'byethost18.com', 'freewebhostmost.com', 'weeblysite.com', 'framer.app',
+        'framer.website', 'godaddysites.com', 'mystrikingly.com', 'bio.site', 'gitbook.io', 'bolt.host',
     ];
+
+    /**
+     * The free-hosting suffix a host sits on ("blogspot.com", "vercel.app"), or null. Blogspot also runs under
+     * country endings ("name.blogspot.fi", "name.blogspot.co.ke"), which are matched by pattern.
+     */
+    public static function freeHostingSuffixOf(string $host): ?string
+    {
+        $host = strtolower($host);
+
+        foreach (self::FREE_HOSTING_SUFFIXES as $suffix) {
+            if ($host === $suffix || str_ends_with($host, '.'.$suffix)) {
+                return $suffix;
+            }
+        }
+
+        return preg_match('/(?:^|\.)(blogspot\.(?:com?\.)?[a-z]{2})$/', $host, $match) === 1 ? $match[1] : null;
+    }
 
     /** Second-level labels that sit in front of a two-letter country domain (com.bn, co.uk, edu.my ...). */
     private const SECOND_LEVEL_LABELS = ['com', 'co', 'org', 'net', 'gov', 'edu', 'ac', 'or', 'ne', 'go', 'mil', 'sch', 'web', 'name'];
@@ -63,12 +86,11 @@ final class RegistrableDomain
             return $host;
         }
 
-        foreach (self::FREE_HOSTING_SUFFIXES as $suffix) {
-            if (str_ends_with($host, '.'.$suffix)) {
-                $suffixLabels = substr_count($suffix, '.') + 1;
+        $suffix = self::freeHostingSuffixOf($host);
+        if ($suffix !== null && $host !== $suffix) {
+            $suffixLabels = substr_count($suffix, '.') + 1;
 
-                return implode('.', array_slice($labels, -($suffixLabels + 1)));
-            }
+            return implode('.', array_slice($labels, -($suffixLabels + 1)));
         }
 
         $topLevel = $labels[count($labels) - 1];
@@ -89,13 +111,9 @@ final class RegistrableDomain
     {
         $host = strtolower(trim((string) $host, " .\t"));
 
-        foreach (self::FREE_HOSTING_SUFFIXES as $suffix) {
-            if (str_ends_with($host, '.'.$suffix)) {
-                return $suffix;
-            }
-        }
+        $suffix = self::freeHostingSuffixOf($host);
 
-        return null;
+        return $suffix !== null && $host !== $suffix ? $suffix : null;
     }
 
     /** True when both hosts belong to the same registrable domain. */

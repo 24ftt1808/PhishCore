@@ -33,5 +33,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- The QR and backup text readers are switched on per test, so a developer's .env does not change the results. -->
+        <env name="QR_READER_ENABLED" value="false"/>
+        <env name="OCR_BACKUP_ENABLED" value="false"/>
     </php>
 </phpunit>

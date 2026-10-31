@@ -158,7 +158,7 @@
             <div>
                 <p class="text-3xl font-bold text-white tabular-nums leading-none" data-count="{{ $threatsDetected }}">{{ number_format($threatsDetected) }}</p>
                 <p class="mt-2 text-sm text-slate-300">Threats Detected</p>
-                <p class="text-[11px] text-slate-500 mt-0.5">Flagged as phishing</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Flagged as phishing or suspicious</p>
             </div>
         </a>
 
@@ -200,8 +200,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
                 </svg>
             </div>
-            <h3 class="text-white font-semibold mb-2">AI-Powered Threat Detection</h3>
-            <p class="text-sm text-slate-400">Machine learning models trained on phishing patterns classify URLs with high accuracy.</p>
+            <h3 class="text-white font-semibold mb-2">Smart Threat Detection</h3>
+            <p class="text-sm text-slate-400">Rule-based checks, live threat lists and an AI review work together, and every result explains why it was flagged.</p>
         </div>
 
         <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.16s">
@@ -211,7 +211,7 @@
                 </svg>
             </div>
             <h3 class="text-white font-semibold mb-2">SSL &amp; Domain Analysis</h3>
-            <p class="text-sm text-slate-400">Checks certificate validity, domain age, registrar reputation, and WHOIS data.</p>
+            <p class="text-sm text-slate-400">Checks the security certificate, how new the domain is (WHOIS and RDAP), and look-alike brand names.</p>
         </div>
 
         <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.24s">
@@ -231,7 +231,7 @@
                 </svg>
             </div>
             <h3 class="text-white font-semibold mb-2">Detailed Security Reports</h3>
-            <p class="text-sm text-slate-400">Export comprehensive PDF reports of scan results for documentation and compliance.</p>
+            <p class="text-sm text-slate-400">Export comprehensive PDF reports of scan results to keep or share as evidence.</p>
         </div>
 
         <div class="reveal glass-card p-5 md:p-6 shrink-0 snap-center w-[80%] sm:w-[46%] md:w-auto" style="transition-delay: 0.4s">
@@ -257,7 +257,7 @@
         @php
             $steps = [
                 ['n' => '01', 'title' => 'Submit What You Received', 'desc' => 'Paste a suspicious link, sender email, phone number, upload a screenshot, or upload a PDF into the PhishCore scanner.'],
-                ['n' => '02', 'title' => 'Multi-Layer Analysis', 'desc' => 'PhishCore inspects SSL certificates, domain age, URL structure, blacklists, and behavioural patterns simultaneously.'],
+                ['n' => '02', 'title' => 'Multi-Layer Analysis', 'desc' => 'PhishCore inspects SSL certificates, domain age, URL structure, blacklists, and behavioural patterns together.'],
                 ['n' => '03', 'title' => 'Clear Risk Score & Report', 'desc' => 'Receive an easy-to-read risk score from 0–100 with a full breakdown of every indicator checked.'],
             ];
         @endphp
@@ -662,7 +662,7 @@
             $why = [
                 ['title' => 'Reduces Phishing Risk', 'desc' => 'Gives users a quick, reliable way to verify links before clicking, reducing exposure to credential theft.'],
                 ['title' => 'Understandable Results', 'desc' => 'Complex security checks are presented as a clear numeric score with plain-language explanations.'],
-                ['title' => 'Centralised Data', 'desc' => 'All scans, reports, and analytics are stored in one place so administrators can monitor threats across the institution.'],
+                ['title' => 'Centralised Data', 'desc' => 'All scans, reports, and analytics are stored in one place so the PhishCore team can spot emerging scams early and pass confirmed threats to BruCERT.'],
                 ['title' => 'Cybersecurity Awareness', 'desc' => 'Helps everyday users build habits around link safety and digital vigilance.'],
             ];
         @endphp
@@ -688,16 +688,51 @@
     </div>
 </section>
 
-<div class="max-w-7xl mx-auto px-6 pb-8">
-    <div class="rounded-xl border border-amber-300/20 bg-amber-400/[0.06] p-5 flex gap-4 items-start">
-        <span class="w-8 h-8 rounded-lg bg-amber-400/10 border border-amber-300/25 flex items-center justify-center shrink-0">
-            <svg width="16" height="16" class="text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+{{-- STAY VIGILANT: a reminder that a scan is a help, not a guarantee, with the three things never to share. --}}
+<style>
+    .vig { position: relative; overflow: hidden; display: flex; align-items: center; gap: 1.25rem; padding: 1.4rem 1.6rem 1.4rem 1.85rem; border-radius: 1.25rem;
+        background: radial-gradient(120% 140% at 0% 0%, rgba(251, 191, 36, .13), transparent 55%), linear-gradient(135deg, rgba(30, 41, 70, .72), rgba(12, 20, 40, .78));
+        border: 1px solid rgba(252, 211, 77, .22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 18px 40px -24px rgba(0, 0, 0, .9); }
+    .vig::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #fcd34d, #f59e0b 55%, #ea580c); }
+    .vig-icon { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 3.25rem; height: 3.25rem; border-radius: 1rem; color: #fcd34d;
+        background: linear-gradient(145deg, rgba(251, 191, 36, .22), rgba(245, 158, 11, .08)); border: 1px solid rgba(252, 211, 77, .38); box-shadow: 0 0 26px -6px rgba(251, 191, 36, .55); }
+    .vig-eyebrow { font-size: .68rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #fcd34d; }
+    .vig-title { margin-top: .2rem; font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.35; }
+    .vig-text { margin-top: .25rem; font-size: .86rem; color: #cbd5e1; line-height: 1.55; }
+    .vig-tips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; padding: 0; list-style: none; }
+    .vig-tip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .7rem; border-radius: 9999px; font-size: .76rem; font-weight: 600; color: #fde68a;
+        background: rgba(251, 191, 36, .08); border: 1px solid rgba(252, 211, 77, .25); }
+    .vig-tip svg { width: .9rem; height: .9rem; color: #fbbf24; }
+    .vig-cta { display: inline-flex; align-items: center; gap: .45rem; flex-shrink: 0; padding: .7rem 1.15rem; border-radius: .85rem; font-size: .86rem; font-weight: 700; color: #1f1300;
+        background: linear-gradient(90deg, #fcd34d, #f59e0b); box-shadow: 0 10px 24px -12px rgba(245, 158, 11, .9); transition: transform .2s ease, filter .2s ease; }
+    .vig-cta:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .vig-cta:focus-visible { outline: 2px solid #fde68a; outline-offset: 3px; }
+    @media (max-width: 767px) {
+        .vig { flex-direction: column; align-items: flex-start; gap: .9rem; padding: 1.25rem 1.2rem 1.25rem 1.45rem; }
+        .vig-cta { width: 100%; justify-content: center; }
+    }
+    @media (prefers-reduced-motion: reduce) { .vig-cta { transition: none; } .vig-cta:hover { transform: none; } }
+</style>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+    <aside class="vig reveal" data-fx="rise" aria-labelledby="vig-title">
+        <span class="vig-icon" aria-hidden="true">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></svg>
         </span>
-        <p class="text-sm text-slate-300">
-            <span class="text-amber-300 font-medium">Stay Vigilant Online — </span>
-            PhishCore supports safer browsing, but users should still avoid sharing passwords, financial details or personal information on unfamiliar websites.
-        </p>
-    </div>
+        <div class="min-w-0 flex-1">
+            <p class="vig-eyebrow">Stay vigilant online</p>
+            <h2 id="vig-title" class="vig-title">PhishCore helps, but your own caution is the best protection.</h2>
+            <p class="vig-text">Even when a scan looks clean, never share these on a website or with someone you do not know:</p>
+            <ul class="vig-tips">
+                <li class="vig-tip"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Passwords and OTP codes</li>
+                <li class="vig-tip"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>Card and bank details</li>
+                <li class="vig-tip"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16.5c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M15 9.5h3M15 13h3"/></svg>IC and personal details</li>
+            </ul>
+        </div>
+        <a href="#scanner" class="vig-cta">
+            Check a link first
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+    </aside>
 </div>
 
 {{-- ABOUT --}}
@@ -716,11 +751,11 @@
         <p class="text-slate-400 mb-4">
             PhishCore is a student final-year project that combines <span class="text-white font-medium">application development</span>,
             <span class="text-white font-medium">data analytics</span>, and <span class="text-white font-medium">cloud networking</span>
-            to address a real cybersecurity challenge faced by educational institutions.
+            to address a real cybersecurity challenge in Brunei.
         </p>
         <p class="text-slate-400 mb-6">
             Its purpose is to help users recognise and respond to phishing websites through clear, accessible detection results rather than technical jargon.
-            The platform centralises scanning activity so administrators can monitor emerging threats across the institution.
+            The platform centralises scanning activity so the PhishCore team can spot emerging scams early and pass confirmed threats to BruCERT.
         </p>
         <p class="text-xs text-slate-600">
             Note: PhishCore is a prototype developed for academic demonstration. Results are provided for educational and security awareness purposes and should not be treated as a guarantee of complete protection.
@@ -789,7 +824,7 @@
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
             </span>
             <h3 class="text-white font-semibold mb-1">Seen a suspicious message?</h3>
-            <p class="text-sm text-slate-400 mb-3">Scan the link, email, number or screenshot yourself. Confirmed threats appear on the public reports page.</p>
+            <p class="text-sm text-slate-400 mb-3">Scan the link, email, number or screenshot yourself. Links PhishCore flags appear on the public reports page.</p>
             <a href="{{ route('reports.public') }}" class="text-sm text-sky-300 hover:text-sky-200 transition">View public reports &rarr;</a>
         </div>
 
@@ -799,7 +834,7 @@
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" /></svg>
             </span>
             <h3 class="text-white font-semibold mb-1">A student project</h3>
-            <p class="text-sm text-slate-400">Built at Politeknik Brunei as a 2026 final year project, for a safer Brunei.</p>
+            <p class="text-sm text-slate-400">Built as a 2026 final year project, for a safer Brunei.</p>
         </div>
     </div>
 </section>
@@ -808,7 +843,7 @@
 <section class="reveal max-w-4xl mx-auto px-6 pb-16 md:pb-24">
     <div class="glass-panel rounded-2xl p-6 md:p-12 text-center">
         <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Ready to Check a Suspicious Link?</h2>
-        <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8">Create an account or sign in to begin scanning websites and protecting your digital activity.</p>
+        <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8">Scan a link, email, number, screenshot or file now, no account needed. Create an account to keep your scan history.</p>
         <div class="flex flex-col sm:flex-row sm:justify-center gap-3 md:gap-4">
             <a href="{{ route('register') }}" class="btn-primary !rounded-lg !px-6 !py-3.5 md:!py-3">Create Account</a>
             <a href="{{ route('login') }}" class="btn-ghost !rounded-lg !px-6 !py-3.5 md:!py-3">Sign In</a>

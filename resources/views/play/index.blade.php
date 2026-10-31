@@ -21,19 +21,19 @@
         .pl-rankbtn[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
         .pl-rankbtn:hover { color: #bae6fd; }
         .pl-rankbtn:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
-        .pl-ranks-pop { position: absolute; z-index: 20; top: calc(100% + .45rem); left: 0; right: 0; padding: .5rem; border-radius: 1.2rem; transform-origin: 18% 0; background: linear-gradient(160deg, rgba(48, 84, 150, .66), rgba(14, 26, 56, .8)); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); border: 1px solid rgba(186, 230, 253, .4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -14px 28px -12px rgba(56, 189, 248, .3), 0 28px 50px -16px rgba(0, 0, 0, .85), 0 0 40px -10px rgba(56, 189, 248, .45); overflow: hidden; }
+        .pl-ranks-pop { position: absolute; z-index: 20; top: calc(100% + .45rem); left: 0; right: 0; padding: .5rem; border-radius: 1.2rem; transform-origin: 18% 0; background: linear-gradient(160deg, #26467f, #0c1732); border: 1px solid rgba(186, 230, 253, .4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -14px 28px -12px rgba(56, 189, 248, .3), 0 24px 40px -16px rgba(0, 0, 0, .85), 0 0 32px -10px rgba(56, 189, 248, .45); overflow: hidden; contain: layout paint; will-change: transform, opacity; }
         .pl-ranks-pop::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 42%; border-radius: inherit; background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, 0)); pointer-events: none; }
-        .pl-ranks-pop::after { content: ""; position: absolute; right: -3rem; bottom: -4rem; width: 9rem; height: 9rem; border-radius: 9999px; background: radial-gradient(circle, rgba(56, 189, 248, .4), transparent 70%); pointer-events: none; animation: pl-blob 5s ease-in-out infinite alternate; }
+        .pl-ranks-pop::after { content: ""; position: absolute; right: -3rem; bottom: -4rem; width: 9rem; height: 9rem; border-radius: 9999px; background: radial-gradient(circle, rgba(56, 189, 248, .35), transparent 70%); pointer-events: none; }
         @keyframes pl-blob { to { transform: translate(-3rem, -1rem) scale(1.25); } }
-        .pl-liq-in { transition: transform .6s cubic-bezier(.34, 1.56, .64, 1), opacity .3s ease, border-radius .6s cubic-bezier(.34, 1.56, .64, 1); }
-        .pl-liq-from { opacity: 0; transform: scale(.55, .3) translateY(-10px); border-radius: 2.6rem; }
-        .pl-liq-to { opacity: 1; transform: none; border-radius: 1.2rem; }
-        .pl-liq-out { transition: transform .2s ease-in, opacity .18s ease-in; }
+        .pl-liq-in { transition: transform .32s cubic-bezier(.34, 1.4, .64, 1), opacity .2s ease; }
+        .pl-liq-from { opacity: 0; transform: scale(.92, .7) translateY(-8px); }
+        .pl-liq-to { opacity: 1; transform: none; }
+        .pl-liq-out { transition: transform .15s ease-in, opacity .14s ease-in; }
         .pl-liq-gone { opacity: 0; transform: scale(.9, .6) translateY(-6px); }
-        .pl-ranks-pop .pl-rank { position: relative; color: #94a3b8; animation: pl-liq-item .55s cubic-bezier(.34, 1.56, .64, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms + 120ms); }
+        .pl-ranks-pop .pl-rank { position: relative; color: #94a3b8; animation: pl-liq-item .28s ease-out backwards; animation-delay: calc(var(--i, 0) * 22ms + 60ms); }
         .pl-ranks-pop .pl-rank.done { color: #e2e8f0; }
         .pl-ranks-pop .pl-rank.now { color: #fff; background: rgba(56, 189, 248, .24); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
-        @keyframes pl-liq-item { from { opacity: 0; transform: translateY(-10px) scale(.85); } }
+        @keyframes pl-liq-item { from { opacity: 0; transform: translateY(-6px); } }
         .pl-ranks-pop .pl-ranks { gap: .15rem; }
         .pl-ranks-pop .pl-rank { padding: .25rem .5rem; font-size: .85rem; }
         .pl-ranks-pop .pl-rank i { width: 1.6rem; height: 1.6rem; }

@@ -164,7 +164,7 @@ class ScanPdfController extends Controller
 
         $cards = $allChecks->map(function (array $check) {
             $name = (string) ($check['name'] ?? 'Check');
-            $status = (string) ($check['status'] ?? 'SAFE');
+            $status = CheckExplainer::shownStatus($check);
             [$text, $rgb] = self::STATUS_COLORS[$status] ?? self::STATUS_COLORS['UNKNOWN'];
             $group = CheckExplainer::group($status);
             $plain = trim(CheckExplainer::plain((string) ($check['message'] ?? '')));
@@ -213,7 +213,9 @@ class ScanPdfController extends Controller
         }
 
         // ---- "Why this score?": how much of the score each check is responsible for
-        $totalScore = max((int) $analysis->risk_score, 1);
+        // Each check's share of all the warning points, so the shares add up to 100% (the score stops at 100,
+        // the checks can add up to more).
+        $totalScore = max((int) $cards->where('points', '>', 0)->sum('points'), 1);
         $breakdown = $cards->where('points', '>', 0)
             ->sortByDesc('points')
             ->map(function (array $card) use ($totalScore) {
@@ -405,7 +407,7 @@ class ScanPdfController extends Controller
                 $i++;
             }
         };
-        $num = function () use (&$i, $len, $d, $skip): float {
+        $num = function () use (&$i, $d, $skip): float {
             $skip();
             preg_match('/\G-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/', $d, $m, 0, $i);
             $i += strlen($m[0]);

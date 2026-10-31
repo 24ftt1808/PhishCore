@@ -1,6 +1,6 @@
 <x-legal title="Privacy Policy">
     <div>
-        <p>This explains what PhishCore collects, why, who else sees it, and the choices you have. PhishCore is a student project from Politeknik Brunei, and we have tried to collect as little as we can.</p>
+        <p>This explains what PhishCore collects, why, who else sees it, and the choices you have. PhishCore is a student final year project, and we have tried to collect as little as we can.</p>
     </div>
 
     <div>

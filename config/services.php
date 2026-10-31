@@ -87,6 +87,22 @@ return [
         'key' => env('OCR_SPACE_API_KEY'),
     ],
 
+    // Backup text reader for screenshots (Tesseract on this server), used when OCR.space is busy or down.
+    // Install it on Ubuntu with: sudo apt install tesseract-ocr
+    'ocr_backup' => [
+        'enabled' => (bool) env('OCR_BACKUP_ENABLED', false),
+        'binary' => env('OCR_BACKUP_BINARY', 'tesseract'),
+        'languages' => env('OCR_BACKUP_LANGUAGES', 'eng'),
+    ],
+
+    // Reads QR codes in screenshots with zbar, which finds small QR codes inside posters and photos. Off unless
+    // QR_READER_ENABLED=true (install it on Ubuntu with "sudo apt install zbar-tools"). When off or missing, the
+    // built-in PHP reader is used, which only reads a clean QR code that fills the image.
+    'qr_reader' => [
+        'enabled' => (bool) env('QR_READER_ENABLED', false),
+        'binary' => env('QR_READER_BINARY', 'zbarimg'),
+    ],
+
     'virustotal' => [
         'key' => env('VIRUSTOTAL_API_KEY'),
     ],

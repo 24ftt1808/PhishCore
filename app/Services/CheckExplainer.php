@@ -32,6 +32,9 @@ class CheckExplainer
         'Sender Domain Analysis' => 'Sender address',
         'Email Authentication' => 'Sender verification',
         'Links in the Email' => 'Links in the email',
+        'Hidden Filler Text' => 'Hidden filler text',
+        'QR Code' => 'QR code in the image',
+        'Official Website Mismatch' => 'Government website match',
         'Message Content / Behavior Patterns' => 'Scam warning signs in the message',
         'Brand / Sender Correlation' => 'Sender identity',
         'Brand / Domain Correlation' => 'Brand and website match',
@@ -67,6 +70,9 @@ class CheckExplainer
         'Email Authentication' => 'When an email arrives, the mailbox provider checks whether the sending server and the digital signature really belong to the domain in the From line (these checks are called SPF, DKIM and DMARC). A failed check suggests the sender is using a name that is not theirs. Passing is not proof of safety, because scammers can set these checks up for their own domains.',
         'Message Content / Behavior Patterns' => 'We look for the tactics scams rely on: pressure to act quickly, threats, prizes, and requests for money, codes or personal details.',
         'Links in the Email' => 'Each link in the email is checked the way a link scan checks an address: look-alike names, brand words in odd places, lists of reported phishing sites. Links to the sender\'s own website are left out. The worst link is counted, at a reduced weight, because real emails often carry tracking links.',
+        'QR Code' => 'PhishCore reads any QR code in the image and checks the website it opens, the same as a typed link. Scanning a QR code with your phone takes you straight there, so it is worth checking first.',
+        'Official Website Mismatch' => 'Scammers copy real ministry, police and school posters and swap in their own link. If the poster prints a government website but its link goes somewhere else, the link is not from that government office.',
+        'Hidden Filler Text' => 'Bulk scam mail often hides its real message in a picture and fills the text with random letters and digits so spam filters have nothing to read. A genuine email is written in words.',
         'Brand / Sender Correlation' => 'If a message claims to come from a bank or company but the sender address does not belong to it, the sender is likely an impersonator.',
         'Brand / Domain Correlation' => 'If a page or message uses a company\'s name but the website does not belong to that company, it is likely impersonating it.',
         'Phone Number Analysis' => 'We check whether the number is valid, what type of line it is, and which country it belongs to.',
@@ -224,6 +230,24 @@ class CheckExplainer
     }
 
     /** warn = something looks wrong, ok = looks fine, info = no answer or just information. */
+    /**
+     * The status a check is shown with. "Previous reports" that added no points is a note about PhishCore's own
+     * history, not a check that passed, so it is listed under "for information" instead of "passed". The stored
+     * result and the score are not changed.
+     *
+     * @param  array<string, mixed>  $check  one stored check (name, status, points)
+     */
+    public static function shownStatus(array $check): string
+    {
+        $status = (string) ($check['status'] ?? 'SAFE');
+
+        if ($status === 'SAFE' && str_starts_with((string) ($check['name'] ?? ''), 'Previous Reports') && (int) ($check['points'] ?? 0) === 0) {
+            return 'INFO';
+        }
+
+        return $status;
+    }
+
     public static function group(string $status): string
     {
         return match ($status) {

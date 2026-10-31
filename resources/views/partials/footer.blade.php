@@ -36,7 +36,7 @@
                 <p class="eyebrow mb-5 !text-slate-500">Platform</p>
                 <ul class="space-y-3 text-sm">
                     <li><a href="{{ route('welcome') }}#scanner" class="footer-link">URL Scanning</a></li>
-                    <li><a href="{{ route('welcome') }}#features" class="footer-link">AI Threat Detection</a></li>
+                    <li><a href="{{ route('welcome') }}#features" class="footer-link">Smart Threat Detection</a></li>
                     <li><a href="{{ route('welcome') }}#features" class="footer-link">Security Reports</a></li>
                     <li><a href="{{ route('welcome') }}#features" class="footer-link">Scan History</a></li>
                 </ul>

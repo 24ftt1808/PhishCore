@@ -255,4 +255,46 @@ return [
      * genuine, for example a payment app that differs from a brand by one letter.
      */
     'known_lookalikes' => [],
+
+    /**
+     * Look-alike Watch (php artisan lookalikes:watch, daily): words searched for in new website names published in
+     * the public certificate logs (crt.sh), with each brand's real websites, which are never listed.
+     *
+     * 'anywhere' words count as a word of their own in a name, or joined to lure words (bibd-login.top, mybibd.xyz,
+     * baiduribankverify.com), but never inside another word (cantarus.my and staruss.de are not tarus).
+     * 'beside_brunei' words are everyday words or short letters (DST, Pos, Polis), so they only count when "brunei"
+     * is right next to them or in the same name (dst-brunei-topup.com, posbrunei.xyz). The certificate logs are
+     * searched once per 'anywhere' word, and once for "brunei" to find the rest.
+     */
+    'lookalike_watch' => [
+        'anywhere' => [
+            'bibd' => ['bibd.com.bn'],
+            'baiduri' => ['baiduri.com.bn'],
+            'progresif' => ['progresif.com', 'progresifevents.com'],
+            'taib' => ['taib.com.bn', 'insuranstaib.com.bn'],
+            'bdcb' => ['bdcb.gov.bn'],
+            'tarus' => ['tarus.com.bn'],
+            'edarussalam' => ['gov.bn'],
+        ],
+        'beside_brunei' => [
+            'dst' => ['dst.com.bn'],
+            'imagine' => ['imagine.com.bn'],
+            'unn' => ['unn.com.bn'],
+            'post' => ['post.gov.bn'],
+            'pos' => ['post.gov.bn'],
+            'polis' => ['polis.gov.bn', 'police.gov.bn'],
+            'police' => ['polis.gov.bn', 'police.gov.bn'],
+            'rbpf' => ['polis.gov.bn', 'police.gov.bn'],
+            'jpd' => ['jpd.gov.bn'],
+            'customs' => ['customs.gov.bn'],
+            'kastam' => ['customs.gov.bn'],
+            'imigresen' => ['immigration.gov.bn'],
+            'immigration' => ['immigration.gov.bn'],
+            'royal' => ['flyroyalbrunei.com'],
+            'uob' => ['uobgroup.com', 'uob.com.sg', 'uob.com.my'],
+            'maybank' => ['maybank.com', 'maybank2u.com.my', 'maybank.com.bn'],
+            'scb' => ['sc.com'],
+            'tap' => ['tap.com.bn'],
+        ],
+    ],
 ];

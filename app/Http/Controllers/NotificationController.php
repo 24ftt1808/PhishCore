@@ -27,6 +27,12 @@ class NotificationController extends Controller
         $notification = $request->user()->notifications()->whereKey($id)->firstOrFail();
         $notification->markAsRead();
 
+        // Some notifications are about a page rather than a scan (the Look-alike Watch list).
+        $link = $notification->data['link'] ?? null;
+        if (is_string($link) && str_starts_with($link, '/') && ! str_starts_with($link, '//')) {
+            return redirect($link);
+        }
+
         $reportId = $notification->data['report_id'] ?? null;
 
         if ($reportId && Report::whereKey($reportId)->exists()) {

@@ -23,3 +23,7 @@ Schedule::command('scans:prune-old')->dailyAt('03:30')->timezone('Asia/Brunei')-
 // The phishing lists (OpenPhish, URLhaus, PhishTank) and the popular-sites list used by the scan: refresh them
 // every 6 hours (same cron entry as above). The popular-sites list is only downloaded again after a week.
 Schedule::command('feeds:update')->everySixHours()->withoutOverlapping();
+
+// Look-alike Watch: search the public certificate logs for new websites copying a Brunei brand, every morning,
+// Brunei time (same cron entry as above).
+Schedule::command('lookalikes:watch')->dailyAt('07:15')->timezone('Asia/Brunei')->withoutOverlapping();

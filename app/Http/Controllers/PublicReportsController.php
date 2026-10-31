@@ -70,7 +70,8 @@ class PublicReportsController extends Controller
             $query->whereDate('created_at', '<=', $dateTo);
         }
 
-        $rows = (int) $request->input('rows', 8);
+        // Kept between 5 and 50, so a link like ?rows=100000 cannot make the server build one huge page.
+        $rows = min(50, max(5, (int) $request->input('rows', 8)));
         $reports = $query->latest()->paginate($rows)->withQueryString();
 
         return view('reports.public', [

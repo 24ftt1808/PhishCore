@@ -5,6 +5,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChatPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvestigationController;
+use App\Http\Controllers\LookalikeWatchController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NumberReportController;
 use App\Http\Controllers\PagePreviewController;
@@ -135,6 +136,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/scan/{report}/trust-file', [TrustedFileController::class, 'destroy'])->middleware('throttle:30,1')->name('scan.untrust-file');
     Route::get('/safe-files', [TrustedFileController::class, 'index'])->name('safe-files.index');
     Route::delete('/safe-files/{trustedFile}', [TrustedFileController::class, 'destroyFile'])->middleware('throttle:30,1')->name('safe-files.destroy');
+
+    // Look-alike Watch: new websites copying a Brunei brand, from the public certificate logs (team and administrators).
+    Route::get('/lookalike-watch', [LookalikeWatchController::class, 'index'])->name('lookalike-watch.index');
+    Route::post('/lookalike-watch/check', [LookalikeWatchController::class, 'check'])->middleware('throttle:3,10')->name('lookalike-watch.check');
+    Route::patch('/lookalike-watch/{lookalikeDomain}/dismiss', [LookalikeWatchController::class, 'dismiss'])->middleware('throttle:60,1')->name('lookalike-watch.dismiss');
+    Route::patch('/lookalike-watch/{lookalikeDomain}/restore', [LookalikeWatchController::class, 'restore'])->middleware('throttle:60,1')->name('lookalike-watch.restore');
 
     // Administrators only: how many people use the site (visitors, sign-ups, scans)
     Route::get('/usage', [SiteUsageController::class, 'index'])->name('usage.index');

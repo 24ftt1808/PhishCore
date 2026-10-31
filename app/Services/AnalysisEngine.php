@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\HiddenNumber;
 use App\Models\KnownScamNumber;
+use App\Models\LookalikeDomain;
 use App\Models\NumberReport;
 use App\Models\Report;
 use App\Services\Concerns\ScansFiles;
@@ -167,7 +168,6 @@ class AnalysisEngine
                 'bdcb' => ['bdcb.gov.bn'],
                 'progresif' => ['progresif.com', 'progresifevents.com'],
                 'mydst' => ['dst.com.bn'],
-                'tarus' => ['tarus.com.bn'],
                 'bruneipost' => ['post.gov.bn'],
                 'posbrunei' => ['post.gov.bn'],
                 'posbn' => ['post.gov.bn'],
@@ -185,6 +185,8 @@ class AnalysisEngine
                 'rbpf' => ['polis.gov.bn', 'police.gov.bn'],
                 'taib' => ['taib.com.bn', 'insuranstaib.com.bn'],
                 'tap' => ['tap.com.bn'],
+                // "tarus" is also part of ordinary words and names ("cantarus", "staruss", the Russian town Tarusa).
+                'tarus' => ['tarus.com.bn'],
             ];
             // A "1" can stand for "i" as well as "l" ("b1bd"), so both readings are tried.
             $hostReadings = array_unique([$normalizedHost, strtr($host, ['0' => 'o', '1' => 'i', '3' => 'e', '4' => 'a', '5' => 's', '7' => 't', '8' => 'b']), str_replace('-', '', $normalizedHost)]);
@@ -193,6 +195,11 @@ class AnalysisEngine
                 // Shopee and Lazada run many real sites of their own (shopeepay, shopeefood), so
                 // only a name joined with a hyphen ("shopee-buyer-pay", "shopee-jkt1777") counts.
                 if (in_array($bnBrand, ['shopee', 'lazada'], true) && ! preg_match('/(^|[.\-])'.$bnBrand.'-|-'.$bnBrand.'([.\-]|$)/', $host)) {
+                    continue;
+                }
+                // A digit read as a letter only counts for a 4-letter name when the address is built from several
+                // words ("b1bd-login.com"): on its own "bdc8.lat" is just letters and a number.
+                if (strlen($bnBrand) <= 4 && ! str_contains(str_replace('-', '', $host), $bnBrand) && ! str_contains($host, '-')) {
                     continue;
                 }
                 foreach ($hostReadings as $reading) {
@@ -1927,6 +1934,39 @@ class AnalysisEngine
             'flagged' => true,
             'points' => 15,
             'reasons' => ["The message pressures the reader to act and links to \"{$host}\", which is not a known official domain"],
+        ];
+    }
+
+    /**
+     * A note when the Look-alike Watch found this website in the certificate logs before anyone scanned it. Display
+     * only: it adds no points, because a listing is a lead for the team, not a verdict.
+     */
+    private function lookalikeWatchNote(string $url): ?array
+    {
+        $host = strtolower((string) preg_replace('/^www\./', '', (string) parse_url($url, PHP_URL_HOST)));
+        if ($host === '') {
+            return null;
+        }
+
+        try {
+            $hit = LookalikeDomain::whereIn('domain', [$host, 'www.'.$host])->first();
+        } catch (\Throwable $e) {
+            return null; // the table does not exist yet (before "php artisan migrate")
+        }
+        if ($hit === null) {
+            return null;
+        }
+
+        $brand = strlen($hit->brand) <= 4 ? strtoupper($hit->brand) : ucfirst($hit->brand);
+        $when = ($hit->certificate_issued_at ?? $hit->created_at)->format('j M Y');
+
+        return [
+            'name' => 'Look-alike Watch',
+            'status' => 'INFO',
+            'message' => "PhishCore's Look-alike Watch spotted this website on {$when}, when it was "
+                .($hit->source === 'new-domains' ? 'registered' : 'given its security certificate').", because its name copies {$brand}."
+                .($hit->status === 'dismissed' ? ' The PhishCore team has since checked it and dismissed it.' : ' The PhishCore team has not confirmed it yet.'),
+            'points' => 0,
         ];
     }
 
@@ -3902,6 +3942,10 @@ class AnalysisEngine
 
         if ($aiPageResult !== null) {
             $checks[] = $this->buildCheck('AI Page Review', $aiPageResult, $aiPageResult['verdict'] === 'scam' ? 'HIGH RISK' : 'SUSPICIOUS');
+        }
+
+        if ($watched = $this->lookalikeWatchNote($url)) {
+            $checks[] = $watched;
         }
 
         $result = [

@@ -1159,7 +1159,9 @@ class AnalysisEngine
                 $points += 10;
             }
 
-            if ($isHosting) {
+            if ($isHosting && $this->isTrustedPublicHost((string) $host)) {
+                $reasons[] = 'Runs on a rented server, as most websites do, including this government, school or brand website';
+            } elseif ($isHosting) {
                 // Reduced from 15: datacenter/cloud hosting is now the norm
                 // for the vast majority of legitimate websites too (AWS,
                 // Google Cloud, Cloudflare, etc.) — including Google's own
@@ -1621,7 +1623,12 @@ class AnalysisEngine
         // naturally use this vocabulary throughout checkout/account flows.
         // Multiple DIFFERENT lure categories appearing together is a much
         // more specific, less common pattern.
-        if ($patternResult['matched_categories'] >= 3) {
+        // A Brunei government or school website, or a brand's own website, writes about fines, payments, police
+        // and accounts as a matter of course (polis.gov.bn has a guide to paying traffic fines), so its wording is
+        // not counted against it.
+        if ($this->isTrustedPublicHost($host)) {
+            // nothing: the wording rules are for copies of these sites, not the sites themselves
+        } elseif ($patternResult['matched_categories'] >= 3) {
             $reasons[] = 'Page text contains multiple phishing-style lure phrases (urgency, credential requests, etc.)';
             $points += 15;
         } elseif ($patternResult['matched_categories'] >= 2) {
@@ -2020,6 +2027,14 @@ class AnalysisEngine
         }
 
         return [$checks, 0];
+    }
+
+    /** A Brunei government or school website (.gov.bn, .edu.bn), or a known brand's own website. */
+    private function isTrustedPublicHost(string $host): bool
+    {
+        $host = strtolower(preg_replace('/^www\./', '', $host) ?? $host);
+
+        return $host !== '' && ($this->isBruneiGovernmentHost($host) || preg_match('/(^|\.)edu\.bn$/', $host) === 1 || $this->isOfficialBrandDomain($host));
     }
 
     private function isBruneiGovernmentHost(?string $host): bool

@@ -112,3 +112,11 @@ test('"Brunei Post" is not read as a job offer, and "reactivate your wallet" cou
     expect(implode(' ', $engine->scoreMessageRules('Brunei Post: your parcel is on hold. Pay the delivery fee BND 1.50 at bruneipost-redeliver.top')['reasons']))->not->toContain('job offer')
         ->and($engine->scoreMessageRules('Reactivate your wallet. Copy this to your browser: hxxp://ecocash-verify[.]top/login')['verdict'])->not->toBe('clean');
 });
+
+test('a Brunei government website is not flagged for writing about fines and payments', function () {
+    $html = '<html><title>Pasukan Polis Diraja Brunei</title><body><a>Senarai Kesalahan Kompaun Trafik</a><a>Panduan Pembayaran Denda Kompaun (Kesalahan Trafik) Melalui Aplikasi BIBD</a><p>Bayar denda segera. Sila log masuk untuk semak saman anda.</p></body></html>';
+    $engine = new AnalysisEngine;
+
+    expect($engine->inspectPageHtml($html, 'www.polis.gov.bn')['points'])->toBe(0)
+        ->and($engine->inspectPageHtml($html, 'polis-brunei-saman.top')['points'])->toBeGreaterThan(0);
+});

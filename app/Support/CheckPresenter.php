@@ -165,6 +165,7 @@ class CheckPresenter
             'Message Content / Behavior Patterns' => 'Pressure, threats, prizes and requests for money or codes',
             'Links in the Email' => 'Every link inside the email',
             'Look-alike Watch' => 'Whether PhishCore spotted this website copying a Brunei brand',
+            'Hidden Link' => 'Whether a link in the image could be checked',
             'QR Code' => 'Where the QR code in the image leads',
             'Official Website Mismatch' => 'Whether the link belongs to the government office the text names',
             'Hidden Filler Text' => 'Random filler text used to get past spam filters',

@@ -872,7 +872,13 @@ class AnalysisEngine
 
         if (! $feeds['flagged']) {
             if (! $google['flagged'] && ! ($google['unavailable'] ?? false) && ($google['reasons'] ?? []) === []) {
-                $google['detail'] = 'This address is not on Google Safe Browsing or on the community phishing lists we keep (OpenPhish, URLhaus and PhishTank).';
+                // Only the lists that really have addresses saved here are named: URLhaus and PhishTank need a key, and a
+                // list whose every download failed was never checked.
+                $lists = ThreatLookup::loadedListNames();
+                $names = count($lists) > 1 ? implode(', ', array_slice($lists, 0, -1)).' and '.end($lists) : ($lists[0] ?? null);
+                $google['detail'] = $names === null
+                    ? 'This address is not on Google Safe Browsing.'
+                    : "This address is not on Google Safe Browsing or on the community phishing lists we keep ({$names}).";
             }
 
             return $google;
@@ -1922,11 +1928,17 @@ class AnalysisEngine
         if (! $url || ($contentResult['matched_categories'] ?? 0) < 1) {
             return $none;
         }
+        // "Click the link" is not pressure: everyone writes it when sharing a link (photos, slides, a form).
+        if (isset($contentResult['categories']) && array_diff($contentResult['categories'], ['call_to_action']) === []) {
+            return $none;
+        }
 
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         $host = preg_replace('/^www\./', '', $host);
 
-        if ($host === '' || $this->isOfficialBrandDomain($host) || $this->isBruneiGovernmentHost($host)) {
+        // Brunei government and school websites (.gov.bn, .edu.bn) can only be registered by those bodies: a lecturer's
+        // "please download the slides before Friday" with a link to the school's own site is not a pressure scam.
+        if ($host === '' || $this->isOfficialBrandDomain($host) || $this->isBruneiGovernmentHost($host) || preg_match('/(^|\.)edu\.bn$/', $host) === 1) {
             return $none;
         }
 
@@ -1968,6 +1980,46 @@ class AnalysisEngine
                 .($hit->status === 'dismissed' ? ' The PhishCore team has since checked it and dismissed it.' : ' The PhishCore team has not confirmed it yet.'),
             'points' => 0,
         ];
+    }
+
+    /**
+     * "Click the link" and "please do this soon" are how genuine emails and messages are written every day (a lecturer
+     * sharing slides, a company newsletter). When that is the only thing a scan found, with no bad link, sender,
+     * phone number or scam wording next to it, it is shown "for information" and adds no points instead of appearing
+     * as a caution. Next to any other warning sign it still counts as before.
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: int}
+     */
+    private function calmEverydayWordingOnly(array $checks, int $totalPoints, array $contentResult): array
+    {
+        $categories = $contentResult['categories'] ?? [];
+        if ($categories === [] || array_diff($categories, ['call_to_action', 'urgency']) !== []) {
+            return [$checks, $totalPoints];
+        }
+
+        foreach ($checks as $check) {
+            if (($check['name'] ?? '') !== 'Message Content / Behavior Patterns' && ($check['points'] ?? 0) > 0) {
+                return [$checks, $totalPoints];
+            }
+        }
+
+        $what = implode(' and ', array_filter([
+            in_array('call_to_action', $categories, true) ? 'asks you to click or open a link' : null,
+            in_array('urgency', $categories, true) ? 'asks you to act soon' : null,
+        ]));
+
+        foreach ($checks as $i => $check) {
+            if (($check['name'] ?? '') === 'Message Content / Behavior Patterns') {
+                $checks[$i] = [
+                    'name' => 'Message Content / Behavior Patterns',
+                    'status' => 'INFO',
+                    'message' => "Only everyday wording was found: the message {$what}. Genuine emails and messages are written this way all the time, so on its own it is not a warning sign.",
+                    'points' => 0,
+                ];
+            }
+        }
+
+        return [$checks, 0];
     }
 
     private function isBruneiGovernmentHost(?string $host): bool
@@ -2550,7 +2602,7 @@ class AnalysisEngine
             ],
             'account_threat' => [
                 'regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
-                'message_regex' => '/(account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired|frozen)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|has been frozen|(flagged|marked|identified|classified) as (high[- ]risk|suspicious|risky|fraudulent)|permanent(ly)? (suspension|suspended|ban|banned|blocked|deactivat|disabl|closure|closed)|result in (the )?(permanent )?(suspension|deactivation|termination|ban|closure|blocking)|will be (suspended|deactivated|disconnected|frozen|terminated|cut off)|(access|account|banking) will expire|expire today|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|(akaun|kad|card|talian|line|lesen|pasport|nombor|bekalan|supply|akses)\s+(\S+\s+){0,3}?(akan |telah |sudah |kena |kana |sedang )?(di)?(sekat|bekukan|beku|gantung|putuskan|potong|tamat tempoh|block|blocked|suspend|suspended|deactivated|disconnected|frozen|cut off)\b|(kena|kana) (sekat|block|gantung)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
+                'message_regex' => '/(re-?activate (your )?(wallet|account|card|line|number|sim|e-?wallet)|aktifkan semula (akaun|dompet|kad|talian)|account will be suspended|(account|wallet|access|password|mailbox|membership) (is|has been|was|will be|is now)( temporarily| permanently)? (locked|suspended|deactivated|blocked|restricted|limited|expired|frozen)|password (will )?expir(es|y)|temporary suspension|avoid deactivation|will be blocked|have been blocked|messages blocked|unusual sign-?in|unusual (login|activity)|has been frozen|(flagged|marked|identified|classified) as (high[- ]risk|suspicious|risky|fraudulent)|permanent(ly)? (suspension|suspended|ban|banned|blocked|deactivat|disabl|closure|closed)|result in (the )?(permanent )?(suspension|deactivation|termination|ban|closure|blocking)|will be (suspended|deactivated|disconnected|frozen|terminated|cut off)|(access|account|banking) will expire|expire today|akaun (anda )?(akan |telah |sedang )?(di)?(sekat|bekukan|gantung|kunci|tutup)|(akaun|kad|card|talian|line|lesen|pasport|nombor|bekalan|supply|akses)\s+(\S+\s+){0,3}?(akan |telah |sudah |kena |kana |sedang )?(di)?(sekat|bekukan|beku|gantung|putuskan|potong|tamat tempoh|block|blocked|suspend|suspended|deactivated|disconnected|frozen|cut off)\b|(kena|kana) (sekat|block|gantung)|valor bloqueado|conta (foi|ser[aá]|est[aá]) (bloquead|suspens|cancelad)|cuenta (ha sido|ser[aá]) (bloquead|suspendid)|vor[uü]bergehend|einschr[aä]nkung|activit[eé]s de connexion inhabituelles)/u',
                 'points' => 15,
                 'label' => 'Account threat language detected (suspension/deactivation, "akaun disekat")',
                 'lure' => true,
@@ -2595,7 +2647,7 @@ class AnalysisEngine
             ],
             // A job offer that wants money first: a medical, training or uniform fee before the interview or start.
             'job_fee' => [
-                'message_regex' => '/((shortlisted|been selected|hired|interview|job offer|vacancy|position|post|jawatan|temuduga|tawaran kerja|kerja kosong)\b.{0,160}?\b(pay|bayar|transfer|send|deposit|hantar)\s+(\S+\s+){0,5}?(fee|fees|yuran|caj|charge|deposit)\b|\b(medical|screening|interview|training|uniform|placement|onboarding|processing)\s+(screening\s+)?(fee|yuran)\b.{0,100}?\b(job|interview|post|position|jawatan|temuduga|kerja|slot)\b)/u',
+                'message_regex' => '/((shortlisted|been selected|hired|interview|job offer|vacancy|position|job post|the post of|jawatan|temuduga|tawaran kerja|kerja kosong)\b.{0,160}?\b(pay|bayar|transfer|send|deposit|hantar)\s+(\S+\s+){0,5}?(fee|fees|yuran|caj|charge|deposit)\b|\b(medical|screening|interview|training|uniform|placement|onboarding|processing)\s+(screening\s+)?(fee|yuran)\b.{0,100}?\b(job|interview|post|position|jawatan|temuduga|kerja|slot)\b)/u',
                 'points' => 20,
                 'label' => 'A job offer that asks you to pay a fee first (genuine employers do not charge you to be hired or interviewed)',
                 'ask' => true,
@@ -2776,7 +2828,7 @@ class AnalysisEngine
             ],
             'customs_fee' => [
                 'regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan)|redelivery|delivery (attempt )?failed|will be sent back|taxa de recolhimento|alf[aâ]ndega)/u',
-                'message_regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan)|duti kastam|tahan kastam|ditahan (di )?kastam|stuck at customs|held at customs|redelivery|delivery (attempt )?failed|will be sent back|taxa de recolhimento|alf[aâ]ndega)/u',
+                'message_regex' => '/((customs|kastam).{0,30}(fee|duty|charge|clearance|caj|duti|yuran)|(caj|yuran|bayaran) (kastam|penghantaran|pelepasan)|duti kastam|tahan kastam|ditahan (di )?kastam|stuck at customs|held at customs|redelivery|delivery (attempt )?failed|will be sent back|taxa de recolhimento|alf[aâ]ndega|(?<!message )(?<!messages )(?<!email )(?<!e-mail )(?<!mail )(?<!reply )(could ?n.?t|could not|cannot|can.?t|unable to|was not|wasn.?t) (be )?deliver(ed)?(?! to (the )?(recipient|address|following))|delivery (was )?unsuccessful|failed delivery|unsuccessful delivery|re-?schedule (your |the )?(delivery|parcel|package)|(parcel|package|shipment|item) (is |has been )?(on hold|held|pending|returned)|(bungkusan|parsel|barang) (anda )?(ditahan|tertangguh|gagal dihantar|tidak dapat dihantar))/u',
                 'points' => 15,
                 'label' => 'Customs/delivery-fee language detected (a common parcel scam)',
                 'lure' => true,
@@ -2848,6 +2900,11 @@ class AnalysisEngine
             $found['secrecy'] = ['points' => 15, 'label' => 'Asks you to keep it secret (scammers say this so no one can warn you)', 'lure' => true];
         }
 
+        // An email bounce ("a message that you sent could not be delivered") is about email, not a parcel.
+        if (isset($found['customs_fee']) && preg_match('/(mail delivery (software|subsystem|system|failure)|mailer-daemon|delivery status notification|undeliverable|returned message|could not be delivered to (all of )?(its|the) recipients?)/u', $text)) {
+            unset($found['customs_fee']);
+        }
+
         foreach ($found as $key => $pattern) {
             $reasons[] = $pattern['label'];
             $points += $pattern['points'];
@@ -2897,6 +2954,7 @@ class AnalysisEngine
             'matched_categories' => $matchedCategories,
             'specific_categories' => $specificCategories,
             'everyday_categories' => $everydayCategories,
+            'categories' => array_keys($found),
         ];
     }
 
@@ -4185,6 +4243,9 @@ class AnalysisEngine
             ];
         }
 
+        [$checks, $totalPoints] = $this->calmEverydayWordingOnly($checks, $totalPoints, $contentResult);
+        $verdict = $totalPoints >= 60 ? 'phishing' : ($totalPoints >= 25 ? 'suspicious' : 'clean');
+
         return [
             'risk_score' => $totalPoints,
             'verdict' => $verdict,
@@ -5072,7 +5133,7 @@ class AnalysisEngine
             'name' => 'Screenshot Text Extraction',
             'status' => $hasAnyEvidence ? 'INFO' : 'REVIEW',
             'message' => ($hasAnyEvidence
-                ? ('Extracted from image: '.implode(' | ', $extractionParts ?: ['phishing-style language']))
+                ? ('Extracted from image: '.implode(' | ', $extractionParts ?: ['no link, email address or phone number, only the message text, which was checked for scam wording']))
                 : 'No URL, email address, phone number, brand reference, QR code, or phishing-style language was found in the image. Extracted text: "'.Str::limit($text, 200).'"')
                 .(($ocr['reader'] ?? null) === 'backup' ? ' (The online text reader was busy, so PhishCore\'s backup reader read this image. It can miss small or blurry text.)' : '')
                 .(($ocr['reader'] ?? null) === 'qr-only' ? ' (The text in this image could not be read, so only its QR code was checked.)' : ''),
@@ -5088,6 +5149,17 @@ class AnalysisEngine
                     .($qrLink === $extractedUrl ? '. This link is checked in full below.' : '.');
             }
             $checks[] = ['name' => 'QR Code', 'status' => 'INFO', 'message' => implode(' ', $qrNotes), 'points' => 0];
+        }
+
+        // "The link below", "click here": the message has a link, but a screenshot shows only its words
+        // ("[AD4308 ISM – Lecture Slides]"), not the address, so it cannot be checked. Said plainly, no points.
+        if ($extractedUrl === null && preg_match('/\b(link (below|above|provided|here)|(the )?following link|click (here|below|the link|on the link)|tap (here|the link|below)|klik (di sini|pautan|link)|pautan (di bawah|berikut|ini))\b/iu', $text)) {
+            $checks[] = [
+                'name' => 'Hidden Link',
+                'status' => 'INFO',
+                'message' => 'The message points to a link, but the screenshot only shows the link\'s words, not its real address, so PhishCore could not check where it goes. Press and hold the link (or hover over it on a computer) to see the address, then scan that address with Scan Link before opening it.',
+                'points' => 0,
+            ];
         }
 
         $officialSite = $this->checkOfficialSiteMismatch($text, $extractedUrl);
@@ -5201,6 +5273,7 @@ class AnalysisEngine
             $checks[] = $this->buildCheck('Previous Reports (Domain)', $domainHistoryResult, $domainHistoryResult['points'] >= 50 ? 'HIGH RISK' : 'SUSPICIOUS');
         }
 
+        [$checks, $totalPoints] = $this->calmEverydayWordingOnly($checks, $totalPoints, $contentResult);
         $riskScore = min(100, $totalPoints);
         $verdict = ! $hasAnyEvidence ? 'review' : ($riskScore >= 60 ? 'phishing' : ($riskScore >= 25 ? 'suspicious' : 'clean'));
         $confidence = $hasAnyEvidence ? min(95, 40 + $signalCategories * 13) : 20;

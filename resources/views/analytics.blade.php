@@ -799,8 +799,11 @@
     <div class="a-bottom-spacer" aria-hidden="true"></div>
 
     @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    {{-- Chart.js is served from PhishCore itself, so the charts still work on a network that blocks outside sites. --}}
+    <script src="{{ asset('vendor/chart-4.4.0.umd.js') }}"></script>
     <script>
+    (function () {
+        if (typeof Chart === 'undefined') return; // the chart file did not load: keep the rest of the page working
         Chart.defaults.font.family = "'Manrope', ui-sans-serif, system-ui, sans-serif";
         Chart.defaults.color = '#94a3b8';
 
@@ -901,6 +904,7 @@
                 plugins: { legend: { display: false }, tooltip: { ...tooltip, displayColors: true } }
             }
         });
+        })();
     </script>
     @endpush
 

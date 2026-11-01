@@ -396,7 +396,8 @@
         });
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    {{-- Chart.js is served from PhishCore itself, so the charts still work on a network that blocks outside sites. --}}
+    <script src="{{ asset('vendor/chart-4.4.0.umd.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const canvas = document.getElementById('trendChart');

@@ -107,7 +107,9 @@
             @endif
 
             @if ($topReason && ($topReason['points'] ?? 0) > 0)
-                <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ \App\Services\CheckExplainer::plain((string) $topReason['message']) }}</p>
+                @php $topPlain = \App\Services\CheckExplainer::plain((string) $topReason['message']); @endphp
+                {{-- On a "no threats" result the strongest sign is a small one, so it is introduced as that rather than read as a warning. --}}
+                <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $shownVerdict === 'clean' ? 'One small warning sign, not enough on its own to call this a scam: '.\Illuminate\Support\Str::lcfirst($topPlain) : $topPlain }}</p>
             @endif
 
             @if ($aiSkipped)

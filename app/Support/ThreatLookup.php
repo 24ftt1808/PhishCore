@@ -6,6 +6,7 @@ use App\Models\PopularDomain;
 use App\Models\ThreatUrl;
 use App\Services\ThreatFeeds;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -39,7 +40,11 @@ final class ThreatLookup
             $row = ThreatUrl::query()->where('url_hash', sha1(ThreatFeeds::normalizeUrl($url)))->first();
 
             return $row ? ['source' => $row->source, 'name' => self::nameOf($row->source)] : null;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            // Answer "not found" so the scan carries on, but leave a trace: a broken table would otherwise look
+            // like "not on any list" with no sign of the problem.
+            Log::warning('Phishing list lookup failed', ['error' => mb_substr($e->getMessage(), 0, 200)]);
+
             return null;
         }
     }
@@ -65,7 +70,11 @@ final class ThreatLookup
             $row = ThreatUrl::query()->where('registrable', $registrable)->first();
 
             return $row ? ['source' => $row->source, 'name' => self::nameOf($row->source)] : null;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            // Answer "not found" so the scan carries on, but leave a trace: a broken table would otherwise look
+            // like "not on any list" with no sign of the problem.
+            Log::warning('Phishing list lookup failed', ['error' => mb_substr($e->getMessage(), 0, 200)]);
+
             return null;
         }
     }
@@ -133,6 +142,31 @@ final class ThreatLookup
             } catch (Throwable) {
                 return [];
             }
+        }
+    }
+
+    /**
+     * The names of the phishing lists that really have addresses saved on this server ("OpenPhish", "URLhaus"),
+     * so a result never claims to have checked a list that was never downloaded (no key set, or every download failed).
+     *
+     * @return array<int, string>
+     */
+    public static function loadedListNames(): array
+    {
+        if (! self::listsInUse()) {
+            return [];
+        }
+
+        try {
+            return Cache::remember('threat_list_names', 600, fn (): array => ThreatUrl::query()
+                ->distinct()
+                ->pluck('source')
+                ->map(fn ($source) => self::nameOf((string) $source))
+                ->sort()
+                ->values()
+                ->all());
+        } catch (Throwable) {
+            return [];
         }
     }
 

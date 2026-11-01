@@ -12,6 +12,7 @@ use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Downloads a scan as a PDF case report.
@@ -754,12 +755,24 @@ class ScanPdfController extends Controller
         // the only place the PDF library may read local files from (the bundled Manrope font)
         $options->set('chroot', [resource_path('fonts')]);
 
-        $dompdf = new Dompdf($options);
-        $this->registerFonts($dompdf);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->render();
+        // The PDF library writes each picture to a temporary file and reads it back. On Windows, a virus scanner
+        // can hold such a file for a moment, so the library reads an empty picture and stops ("Division by zero").
+        // One more try, with fresh temporary files, gets past that; a real problem still shows on the second try.
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                $dompdf = new Dompdf($options);
+                $this->registerFonts($dompdf);
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->loadHtml($html, 'UTF-8');
+                $dompdf->render();
 
-        return $dompdf->output();
+                return $dompdf->output();
+            } catch (\Throwable $e) {
+                if ($attempt >= 2) {
+                    throw $e;
+                }
+                Log::warning('PDF report failed on the first try, trying again', ['error' => mb_substr($e->getMessage(), 0, 200)]);
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\AnalysisEngine;
+use App\Services\ThreatFeeds;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -62,12 +63,21 @@ test('a website without HTTPS keeps its warning and gets no passing detail', fun
 test('an address that is on no list says which lists were checked', function () {
     config(['services.google_safe_browsing.key' => 'test-key']);
     Http::fake(['safebrowsing.googleapis.com/*' => Http::response(['matches' => []], 200)]);
+    (new ThreatFeeds)->replaceUrls('openphish', ['https://some-other-scam.example/login']);
 
     $result = $this->engine->checkBlacklist('https://example.com');
 
     expect($result['flagged'])->toBeFalse()
         ->and($result['detail'])->toContain('Google Safe Browsing')
-        ->toContain('OpenPhish');
+        ->toContain('OpenPhish')
+        ->not->toContain('PhishTank');
+});
+
+test('a list that was never downloaded is not named as checked', function () {
+    config(['services.google_safe_browsing.key' => 'test-key']);
+    Http::fake(['safebrowsing.googleapis.com/*' => Http::response(['matches' => []], 200)]);
+
+    expect($this->engine->checkBlacklist('https://example.com')['detail'])->toBe('This address is not on Google Safe Browsing.');
 });
 
 test('an address Google flags keeps its warning and gets no passing detail', function () {

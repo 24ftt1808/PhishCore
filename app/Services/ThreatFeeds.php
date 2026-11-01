@@ -86,6 +86,7 @@ class ThreatFeeds
                 throw new RuntimeException('the list was empty');
             }
 
+            unset($body); // the parsed addresses are all that is needed from here on
             $count = $this->replaceUrls((string) $feed['source'], $urls);
 
             return ['name' => $name, 'ok' => true, 'count' => $count, 'error' => null];
@@ -105,7 +106,16 @@ class ThreatFeeds
     {
         // Whole seconds, because the database keeps whole seconds: "seen before this run" must not match rows saved by it.
         $now = now()->startOfSecond();
-        $rows = [];
+        // Saved 500 at a time, so a list of 100,000 addresses never has to be held as database rows all at once
+        // (that used to run past PHP's memory limit on the URLhaus list).
+        $seen = [];
+        $batch = [];
+        $save = function () use (&$batch): void {
+            if ($batch !== []) {
+                ThreatUrl::query()->upsert(array_values($batch), ['source', 'url_hash'], ['url', 'host', 'registrable', 'seen_at', 'updated_at']);
+                $batch = [];
+            }
+        };
 
         foreach ($urls as $url) {
             $host = strtolower((string) parse_url($url, PHP_URL_HOST));
@@ -116,7 +126,11 @@ class ThreatFeeds
             }
 
             $hash = sha1(self::normalizeUrl($url));
-            $rows[$hash] = [
+            if (isset($seen[$hash])) {
+                continue;
+            }
+            $seen[$hash] = true;
+            $batch[$hash] = [
                 'source' => $source,
                 'url_hash' => $hash,
                 'url' => mb_substr($url, 0, 2048),
@@ -126,15 +140,17 @@ class ThreatFeeds
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
-        }
 
-        foreach (array_chunk(array_values($rows), 500) as $chunk) {
-            ThreatUrl::query()->upsert($chunk, ['source', 'url_hash'], ['url', 'host', 'registrable', 'seen_at', 'updated_at']);
+            if (count($batch) >= 500) {
+                $save();
+            }
         }
+        $save();
 
         ThreatUrl::query()->where('source', $source)->where('seen_at', '<', $now)->delete();
+        Cache::forget('threat_list_names'); // the result page names the lists that hold addresses
 
-        return count($rows);
+        return count($seen);
     }
 
     /** True when the popular-sites list was never downloaded or is older than refresh_days. */
@@ -180,13 +196,17 @@ class ThreatFeeds
         DB::transaction(function () use ($domains) {
             PopularDomain::query()->delete();
 
+            // Inserted 1,000 at a time without first building every row, to keep memory low.
             $rows = [];
             foreach ($domains as $domain => $position) {
                 $rows[] = ['domain' => $domain, 'position' => $position];
+                if (count($rows) >= 1000) {
+                    PopularDomain::query()->insert($rows);
+                    $rows = [];
+                }
             }
-
-            foreach (array_chunk($rows, 1000) as $chunk) {
-                PopularDomain::query()->insert($chunk);
+            if ($rows !== []) {
+                PopularDomain::query()->insert($rows);
             }
         });
 
@@ -273,7 +293,7 @@ class ThreatFeeds
     {
         $urls = [];
 
-        foreach (preg_split('/\R/', $text) ?: [] as $line) {
+        foreach (self::lines($text) as $line) {
             $line = trim($line);
 
             if ($line === '' || str_starts_with($line, '#') || ! self::isWebAddress($line)) {
@@ -299,7 +319,7 @@ class ThreatFeeds
         $statusColumn = null;
         $urls = [];
 
-        foreach (preg_split('/\R/', $csv) ?: [] as $line) {
+        foreach (self::lines($csv) as $line) {
             $line = trim($line);
 
             if ($line === '') {
@@ -334,6 +354,27 @@ class ThreatFeeds
         }
 
         return array_keys($urls);
+    }
+
+    /**
+     * The lines of a downloaded list one at a time, without first copying the whole list into an array of lines
+     * (a list of 100,000 addresses would otherwise need several times its own size in memory).
+     *
+     * @return \Generator<int, string>
+     */
+    private static function lines(string $text): \Generator
+    {
+        $length = strlen($text);
+        $start = 0;
+
+        while ($start < $length) {
+            $end = strpos($text, "\n", $start);
+            if ($end === false) {
+                $end = $length;
+            }
+            yield rtrim(substr($text, $start, $end - $start), "\r");
+            $start = $end + 1;
+        }
     }
 
     /**

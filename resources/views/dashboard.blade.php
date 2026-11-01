@@ -373,7 +373,8 @@
     </div>
 
     @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    {{-- Chart.js is served from PhishCore itself, so the charts still work on a network that blocks outside sites. --}}
+    <script src="{{ asset('vendor/chart-4.4.0.umd.js') }}"></script>
     <script>
         (function () {
             const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -391,6 +392,8 @@
                 };
                 requestAnimationFrame(tick);
             });
+
+            if (typeof Chart === 'undefined') return; // the chart file did not load: keep the rest of the page working
 
             Chart.defaults.font.family = "'Manrope', system-ui, sans-serif";
             Chart.defaults.color = '#cbd5e1';

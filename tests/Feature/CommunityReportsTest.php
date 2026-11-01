@@ -100,6 +100,41 @@ test('a first sighting says so', function () {
         ->assertSee('You are the first to check the website brand-new-site.example on PhishCore.');
 });
 
+test('a first sighting on the public pages does not say "you", because the reader did not scan it', function () {
+    $mine = communityReportScan(['url' => 'https://brand-new-site.example/'], 'phishing');
+    $mine->forceFill(['share_token' => str_repeat('b', 40)])->save();
+
+    $this->get(route('scan.shared', str_repeat('b', 40)))
+        ->assertOk()
+        ->assertSee('This is the only PhishCore scan of the website brand-new-site.example so far.')
+        ->assertDontSee('You are the first to check');
+
+    $this->get(route('reports.public.show', $mine))
+        ->assertOk()
+        ->assertSee('This is the only PhishCore scan of the website brand-new-site.example so far.')
+        ->assertDontSee('You are the first to check');
+});
+
+test('the public page never tells a visitor "you have checked this before"', function () {
+    $owner = User::factory()->create();
+    communityReportScan(['url' => 'https://dh1-bru.site/pay'], 'phishing', $owner);
+    $mine = communityReportScan(['url' => 'https://dh1-bru.site/fee'], 'phishing', $owner);
+
+    $this->get(route('reports.public.show', $mine))
+        ->assertOk()
+        ->assertDontSee('You have checked this before too.');
+});
+
+test('a team member opening someone else\'s first sighting gets the neutral wording', function () {
+    $mine = communityReportScan(['url' => 'https://brand-new-site.example/'], 'phishing');
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->get(route('scan.show', $mine))
+        ->assertOk()
+        ->assertSee('This is the only PhishCore scan of')
+        ->assertDontSee('You are the first to check');
+});
+
 test('the public shared page shows the counts but not the team status', function () {
     $earlier = communityReportScan(['url' => 'https://dh1-bru.site/pay']);
     Investigation::create(['report_id' => $earlier->id, 'status' => 'takedown_requested']);

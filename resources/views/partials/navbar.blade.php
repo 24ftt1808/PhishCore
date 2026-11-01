@@ -9,6 +9,29 @@
     ];
 @endphp
 
+@if (request()->routeIs('welcome', 'reports.public'))
+    {{-- Turns the intro animations on for the front page and Public Reports (the hero's own intro is in welcome.blade.php). Set up here, before the bar is
+         drawn, so it never flashes; skipped for "reduce motion", and without JavaScript the bar is simply shown. --}}
+    <script>
+        try { if (! window.matchMedia('(prefers-reduced-motion: reduce)').matches) { document.documentElement.classList.add('hx-on'); } } catch (e) {}
+    </script>
+    {{-- The navbar itself only animates on the front page; on Public Reports only the page content does. --}}
+    @if (request()->routeIs('welcome'))
+    <style>
+        .hx-on .hxn-island { animation: hxn-drop .7s cubic-bezier(.22,1,.36,1) both; animation-delay: var(--hxn-d, 0s); }
+        .hx-on .hxn-logo { animation: hxn-logo .8s cubic-bezier(.34,1.56,.64,1) .2s both; }
+        .hx-on .hxn-brandtext { animation: hxn-in-left .6s cubic-bezier(.22,1,.36,1) .35s both; }
+        .hx-on .hxn-link { animation: hxn-fade .45s ease both; animation-delay: calc(.35s + var(--i, 0) * .06s); }
+        .hx-on .hxn-cta { animation: hxn-glow 1.1s ease 1.1s both; }
+        @keyframes hxn-drop { from { opacity: 0; translate: 0 -26px; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
+        @keyframes hxn-logo { from { opacity: 0; rotate: -120deg; scale: .4; } to { opacity: 1; rotate: 0deg; scale: 1; } }
+        @keyframes hxn-in-left { from { opacity: 0; translate: -10px 0; } to { opacity: 1; translate: 0 0; } }
+        @keyframes hxn-fade { from { opacity: 0; translate: 0 -6px; } to { opacity: 1; translate: 0 0; } }
+        @keyframes hxn-glow { 0% { filter: brightness(1); } 35% { filter: brightness(1.35) drop-shadow(0 0 14px rgba(56, 189, 248, .8)); } 100% { filter: brightness(1); } }
+    </style>
+    @endif
+@endif
+
 <div
     x-data="{
         isWelcome: {{ request()->routeIs('welcome') ? 'true' : 'false' }},
@@ -201,9 +224,9 @@
         {{-- BRAND --}}
         <a href="{{ route('welcome') }}#home" @click="go('home', $el.href)"
            :class="{ 'nav-glass--scrolled': scrolled }"
-           class="pointer-events-auto nav-glass rounded-full h-[60px] pl-3 pr-5 flex items-center gap-2.5 shrink-0">
-            <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="w-10 h-10 object-contain">
-            <span class="flex flex-col items-start leading-tight">
+           class="hxn-island pointer-events-auto nav-glass rounded-full h-[60px] pl-3 pr-5 flex items-center gap-2.5 shrink-0" style="--hxn-d: 0s">
+            <img src="{{ asset('phishcore-logo-icon.png') }}" alt="PhishCore logo" class="hxn-logo w-10 h-10 object-contain">
+            <span class="hxn-brandtext flex flex-col items-start leading-tight">
                 <span class="block text-left font-bold text-white text-[15px]">PhishCore</span>
                 <span class="hidden xl:block text-left text-[11px] font-semibold tracking-wide text-sky-300 mt-0.5">Detection Platform</span>
             </span>
@@ -211,11 +234,11 @@
 
         {{-- LINKS --}}
         <nav aria-label="Main" :class="{ 'nav-glass--scrolled': scrolled }"
-             class="pointer-events-auto nav-glass rounded-full hidden min-[1180px]:block p-[7px]">
+             class="hxn-island pointer-events-auto nav-glass rounded-full hidden min-[1180px]:block p-[7px]" style="--hxn-d: .12s">
             <div x-ref="links" @mouseleave="resetHl()" class="relative flex items-center text-sm">
                 <span x-ref="pill" class="nav-highlight absolute inset-y-0 rounded-full pointer-events-none"
                       :style="`opacity:${hl.ready ? 1 : 0};transition:opacity .2s ease`">
-                    <span x-ref="blob" class="nav-blob block w-full h-full rounded-full"></span>
+                    <span x-ref="blob" class="hxn-link nav-blob block w-full h-full rounded-full" style="--i: 0"></span>
                 </span>
 
                 @foreach ($navLinks as $link)
@@ -229,7 +252,8 @@
                        @focus="moveTo($el)"
                        @blur="resetHl()"
                        :class="active === '{{ $link['key'] }}' ? 'text-sky-300' : 'text-slate-300 hover:text-white'"
-                       class="relative z-10 h-11 px-3.5 xl:px-[1.125rem] inline-flex items-center rounded-full font-medium whitespace-nowrap transition-colors duration-200">
+                       style="--i: {{ $loop->index }}"
+                       class="hxn-link relative z-10 h-11 px-3.5 xl:px-[1.125rem] inline-flex items-center rounded-full font-medium whitespace-nowrap transition-colors duration-200">
                         {{ $link['label'] }}
                     </a>
                 @endforeach
@@ -238,17 +262,17 @@
 
         {{-- AUTH --}}
         <div :class="{ 'nav-glass--scrolled': scrolled }"
-             class="pointer-events-auto nav-glass rounded-full hidden min-[1180px]:flex items-center gap-1 h-[60px] pl-2 pr-2">
+             class="hxn-island pointer-events-auto nav-glass rounded-full hidden min-[1180px]:flex items-center gap-1 h-[60px] pl-2 pr-2" style="--hxn-d: .24s">
             @auth
                 <a href="{{ route('dashboard') }}"
-                   class="btn-shine group inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold whitespace-nowrap bg-gradient-to-b from-sky-300 via-sky-400 to-sky-500 text-slate-950 shadow-[0_10px_24px_-10px_rgba(14,165,233,.9)] hover:from-sky-200 hover:via-sky-300 hover:to-sky-400 transition-colors">
+                   class="hxn-cta btn-shine group inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold whitespace-nowrap bg-gradient-to-b from-sky-300 via-sky-400 to-sky-500 text-slate-950 shadow-[0_10px_24px_-10px_rgba(14,165,233,.9)] hover:from-sky-200 hover:via-sky-300 hover:to-sky-400 transition-colors">
                     Dashboard
                     <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </a>
             @else
                 <a href="{{ route('login') }}" class="signin-glow inline-flex items-center h-11 px-4 xl:px-5 rounded-full text-sm font-medium text-slate-300 whitespace-nowrap">Sign In</a>
                 <a href="{{ route('register') }}"
-                   class="btn-shine group inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold whitespace-nowrap bg-gradient-to-b from-sky-300 via-sky-400 to-sky-500 text-slate-950 shadow-[0_10px_24px_-10px_rgba(14,165,233,.9)] hover:from-sky-200 hover:via-sky-300 hover:to-sky-400 transition-colors">
+                   class="hxn-cta btn-shine group inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-semibold whitespace-nowrap bg-gradient-to-b from-sky-300 via-sky-400 to-sky-500 text-slate-950 shadow-[0_10px_24px_-10px_rgba(14,165,233,.9)] hover:from-sky-200 hover:via-sky-300 hover:to-sky-400 transition-colors">
                     Create Account
                     <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </a>
@@ -257,7 +281,7 @@
 
         {{-- HAMBURGER (own island) --}}
         <div :class="{ 'nav-glass--scrolled': scrolled }"
-             class="pointer-events-auto nav-glass rounded-full p-[9px] flex min-[1180px]:hidden">
+             class="hxn-island pointer-events-auto nav-glass rounded-full p-[9px] flex min-[1180px]:hidden" style="--hxn-d: .12s">
             <button type="button" @click="mobileOpen = !mobileOpen" :aria-expanded="mobileOpen.toString()" aria-controls="nav-sheet"
                     class="nav-burger" aria-label="Menu">
                 <i></i><i></i><i></i>

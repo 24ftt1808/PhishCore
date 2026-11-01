@@ -18,22 +18,81 @@
     @keyframes pc-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.4rem); } }
     @keyframes pc-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
     @media (prefers-reduced-motion: reduce) { .pc-mascot, .pc-cora, .pc-cora .rb-eye { animation: none; } }
+
+    /* ---------- Hero intro: a short "live scan" when the page opens ----------
+       Only runs when the script below adds .hx-on to <html> (never with "reduce motion", and without JavaScript the
+       hero is simply shown as it is). Everything moves with opacity and transform-type properties only, so it stays
+       smooth; the separate translate/rotate/scale properties are used so they combine with the card's own floating. */
+    .hx-on .hx-badge { animation: hx-drop .6s cubic-bezier(.22,1,.36,1) .05s both; }
+    .hx-on .hx-badge .hx-ping { position: relative; }
+    .hx-on .hx-badge .hx-ping::after { content: ""; position: absolute; inset: -4px; border-radius: 9999px; border: 1px solid #38bdf8; animation: hx-ping 1.6s ease-out .5s 2 both; }
+    .hx-on .hx-word { display: inline-block; animation: hx-rise .8s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(.15s + var(--i) * .1s); }
+    .hx-on .hx-reveal { animation: hx-wipe .9s cubic-bezier(.65,0,.35,1) .55s both; }
+    .hx-on .hx-reveal .hx-shine { background: linear-gradient(100deg, #38bdf8 0%, #38bdf8 40%, #e0f2fe 50%, #38bdf8 60%, #38bdf8 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: hx-shine 1.4s ease-out 1.3s both; }
+    .hx-on .hx-fade { animation: hx-up .7s cubic-bezier(.22,1,.36,1) .85s both; }
+    .hx-on .hx-btns > * { animation: hx-up .6s cubic-bezier(.22,1,.36,1) both; }
+    .hx-on .hx-btns > :nth-child(1) { animation-delay: 1s; }
+    .hx-on .hx-btns > :nth-child(2) { animation-delay: 1.1s; }
+
+    .hx-on .rpt-scene { animation: hx-card 1s cubic-bezier(.22,1,.36,1) .3s both; }
+    .hx-on .rpt-badge { animation: hx-pop .55s cubic-bezier(.34,1.56,.64,1) 2.1s both; }
+    .hx-on .rpt-gauge .rpt-arc { animation-delay: 1.35s; animation-duration: 1.3s; }
+    .hx-on .rpt-verdict { animation: hx-up .6s cubic-bezier(.22,1,.36,1) 1.5s both; }
+    .hx-on .rpt-row { animation: hx-slide .55s cubic-bezier(.22,1,.36,1) both; }
+    .hx-on .rpt-row:nth-of-type(1) { animation-delay: 1.65s; }
+    .hx-on .rpt-row:nth-of-type(2) { animation-delay: 1.8s; }
+    .hx-on .rpt-row:nth-of-type(3) { animation-delay: 1.95s; }
+    .hx-on .rpt-foot { animation: hx-up .5s ease 2.2s both; }
+    .hx-on .rpt-field.hx-typing::after { content: ""; width: 2px; height: 1em; margin-left: 1px; background: #7dd3fc; animation: hx-caret .7s steps(1) infinite; }
+
+    /* The floating chips pop in with transitions, so their own bobbing animation keeps running untouched */
+    .hx-on .rpt-sat, .hx-on .rpt-orb { opacity: 0; scale: .6; transition: opacity .45s ease, scale .55s cubic-bezier(.34,1.56,.64,1); }
+    .hx-on.hx-go .rpt-sat, .hx-on.hx-go .rpt-orb { opacity: 1; scale: 1; }
+    .hx-on .rpt-sat--tile { transition-delay: 2s; }
+    .hx-on .rpt-sat--left { transition-delay: 2.15s; }
+    .hx-on .rpt-sat--scan { transition-delay: 2.3s; }
+    .hx-on .rpt-sat--flag { transition-delay: 2.45s; }
+    .hx-on .rpt-orb { transition-delay: 2.5s; }
+
+    /* The scan beam: sweeps down the card once at the start, then again every few seconds */
+    .hx-beam { position: absolute !important; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 3; }
+    .hx-beam::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 38%; opacity: 0;
+        background: linear-gradient(180deg, transparent, rgba(56,189,248,.14) 70%, rgba(125,211,252,.55) 98%, transparent);
+        transform: translateY(-100%); }
+    .hx-on .hx-beam::before { animation: hx-beam 7s cubic-bezier(.45,0,.25,1) 1.1s infinite; }
+
+    @keyframes hx-drop { from { opacity: 0; translate: 0 -14px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes hx-rise { from { opacity: 0; translate: 0 .6em; scale: .96; } to { opacity: 1; translate: 0 0; scale: 1; } }
+    @keyframes hx-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes hx-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+    @keyframes hx-up { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes hx-card { from { opacity: 0; translate: 48px 10px; rotate: y -16deg; scale: .94; } to { opacity: 1; translate: 0 0; rotate: y 0deg; scale: 1; } }
+    @keyframes hx-pop { 0% { opacity: 0; scale: .5; } 70% { opacity: 1; scale: 1.15; } 100% { opacity: 1; scale: 1; } }
+    @keyframes hx-slide { from { opacity: 0; translate: 22px 0; } to { opacity: 1; translate: 0 0; } }
+    @keyframes hx-ping { from { opacity: .9; scale: 1; } to { opacity: 0; scale: 2.4; } }
+    @keyframes hx-caret { 50% { opacity: 0; } }
+    @keyframes hx-beam { 0% { opacity: 0; transform: translateY(-100%); } 2% { opacity: 1; } 15% { opacity: 1; transform: translateY(265%); } 17%, 100% { opacity: 0; transform: translateY(265%); } }
+    @media (prefers-reduced-motion: reduce) { .hx-beam { display: none; } }
 </style>
+{{-- Turn the hero intro on before the hero is drawn, so nothing flashes; skipped for "reduce motion". --}}
+<script>
+    try { if (! window.matchMedia('(prefers-reduced-motion: reduce)').matches) { document.documentElement.classList.add('hx-on'); } } catch (e) {}
+</script>
 
 {{-- HERO --}}
 <section id="home" class="hero-fit scroll-mt-28 overflow-x-clip max-w-7xl mx-auto px-6 pt-6 pb-8 md:py-14 lg:py-16 grid gap-8 md:gap-10 md:max-lg:landscape:grid-cols-2 lg:grid-cols-[1.1fr_.9fr] xl:grid-cols-[1.15fr_.85fr] lg:gap-12 items-center">
     <div>
-        <span class="inline-flex items-center gap-2 font-mono text-[10px] min-[360px]:text-[11px] font-medium uppercase tracking-[0.1em] min-[360px]:tracking-[0.14em] px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4 md:mb-6">
-            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> AI-Powered Phishing Protection
+        <span class="hx-badge inline-flex items-center gap-2 font-mono text-[10px] min-[360px]:text-[11px] font-medium uppercase tracking-[0.1em] min-[360px]:tracking-[0.14em] px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4 md:mb-6">
+            <span class="hx-ping w-1.5 h-1.5 rounded-full bg-sky-400"></span> AI-Powered Phishing Protection
         </span>
-        <h1 class="text-[2.15rem] sm:text-5xl md:text-5xl lg:text-[2.4rem] xl:text-5xl font-extrabold text-white leading-[1.1] mb-1 md:mb-2">Detect Phishing Threats</h1>
-        <h2 class="text-[2.15rem] sm:text-5xl md:text-5xl lg:text-[2.4rem] xl:text-5xl font-extrabold text-sky-400 leading-[1.1] mb-4 md:mb-6">
-            Before They Cause Harm.
+        <h1 class="text-[2.15rem] sm:text-5xl md:text-5xl lg:text-[2.4rem] xl:text-5xl font-extrabold text-white leading-[1.1] mb-1 md:mb-2"><span class="hx-word" style="--i:0">Detect</span> <span class="hx-word" style="--i:1">Phishing</span> <span class="hx-word" style="--i:2">Threats</span></h1>
+        <h2 class="hx-reveal text-[2.15rem] sm:text-5xl md:text-5xl lg:text-[2.4rem] xl:text-5xl font-extrabold text-sky-400 leading-[1.1] mb-4 md:mb-6">
+            <span class="hx-shine">Before They Cause Harm.</span>
         </h2>
-        <p class="text-slate-400 text-[15px] md:text-base mb-6 md:mb-8 max-w-lg">
+        <p class="hx-fade text-slate-400 text-[15px] md:text-base mb-6 md:mb-8 max-w-lg">
             PhishCore helps anyone analyse suspicious links, emails, phone numbers, screenshots and files &mdash; identifying phishing threats and protecting sensitive information.
         </p>
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <div class="hx-btns flex flex-col sm:flex-row gap-3 sm:gap-4">
             <a href="{{ route('register') }}" class="btn-liquid btn-liquid--primary">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
                 Start Scanning
@@ -51,6 +110,7 @@
         <div class="rpt-stage">
             <div class="rpt-float">
                 <div class="rpt-card">
+                    <span class="hx-beam" aria-hidden="true"></span>
                     <div class="rpt-head">
                         <div class="rpt-head-title">
                             <span class="rpt-title">Scan report</span>
@@ -61,7 +121,7 @@
 
                     <div class="rpt-field">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
-                        <span>https://suspicious-example.com</span>
+                        <span data-hx-type>https://suspicious-example.com</span>
                     </div>
 
                     <div class="rpt-score">
@@ -69,7 +129,7 @@
                             <defs><linearGradient id="rptGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#f43f5e"/></linearGradient></defs>
                             <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="14" stroke-linecap="round"/>
                             <path class="rpt-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#rptGrad)" stroke-width="14" stroke-linecap="round"/>
-                            <text x="100" y="90" text-anchor="middle" font-size="46" font-weight="800" fill="#fb7185">92</text>
+                            <text data-hx-count="92" x="100" y="90" text-anchor="middle" font-size="46" font-weight="800" fill="#fb7185">92</text>
                             <text class="rpt-gsub" x="100" y="112" text-anchor="middle" font-size="12" font-weight="600" fill="#94a3b8">out of 100</text>
                         </svg>
                         <div class="rpt-verdict">
@@ -84,17 +144,17 @@
                         <div class="rpt-row">
                             <div class="rpt-ico rpt-ico--rose"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg></div>
                             <div class="rpt-txt"><span class="rpt-name">SSL certificate invalid</span><span class="rpt-sub">The connection is not safely encrypted</span></div>
-                            <span class="rpt-pts rpt-pts--rose">+22</span>
+                            <span class="rpt-pts rpt-pts--rose" data-hx-count="22" data-hx-at="1.65" data-hx-plus>+22</span>
                         </div>
                         <div class="rpt-row">
                             <div class="rpt-ico rpt-ico--amber"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
                             <div class="rpt-txt"><span class="rpt-name">Domain under 7 days old</span><span class="rpt-sub">Brand new sites are a common scam sign</span></div>
-                            <span class="rpt-pts rpt-pts--amber">+30</span>
+                            <span class="rpt-pts rpt-pts--amber" data-hx-count="30" data-hx-at="1.8" data-hx-plus>+30</span>
                         </div>
                         <div class="rpt-row">
                             <div class="rpt-ico rpt-ico--rose"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div>
                             <div class="rpt-txt"><span class="rpt-name">Found on a blacklist</span><span class="rpt-sub">Reported by security companies</span></div>
-                            <span class="rpt-pts rpt-pts--rose">+40</span>
+                            <span class="rpt-pts rpt-pts--rose" data-hx-count="40" data-hx-at="1.95" data-hx-plus>+40</span>
                         </div>
                     </div>
 
@@ -966,6 +1026,40 @@
             }, { threshold: 0.6 });
             counter.observe(el);
         });
+
+        // Hero intro: type the address, count the score and the points up, then pop the floating chips in.
+        // The text is already in the page, so without this script (or with "reduce motion") nothing is missing.
+        if (document.documentElement.classList.contains('hx-on')) {
+            const typed = document.querySelector('[data-hx-type]');
+            if (typed) {
+                const full = typed.textContent;
+                const field = typed.closest('.rpt-field');
+                typed.textContent = '';
+                field && field.classList.add('hx-typing');
+                let i = 0;
+                setTimeout(function step() {
+                    typed.textContent = full.slice(0, ++i);
+                    if (i < full.length) { setTimeout(step, 26); } else { field && setTimeout(() => field.classList.remove('hx-typing'), 500); }
+                }, 750);
+            }
+            document.querySelectorAll('[data-hx-count]').forEach((el) => {
+                const target = parseInt(el.dataset.hxCount, 10) || 0;
+                const plus = el.hasAttribute('data-hx-plus') ? '+' : '';
+                const at = parseFloat(el.dataset.hxAt || '1.35') * 1000;
+                const dur = plus ? 600 : 1300;
+                el.textContent = plus + '0';
+                setTimeout(() => {
+                    const start = performance.now();
+                    const tick = (now) => {
+                        const p = Math.min((now - start) / dur, 1);
+                        el.textContent = plus + Math.round(target * (1 - Math.pow(1 - p, 3)));
+                        if (p < 1) requestAnimationFrame(tick);
+                    };
+                    requestAnimationFrame(tick);
+                }, at);
+            });
+            requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add('hx-go')));
+        }
 
         // Hero scan report: the card turns to face the pointer while it is over the card (mouse only, skipped for reduced motion)
         const rptScene = document.querySelector('.rpt-scene');

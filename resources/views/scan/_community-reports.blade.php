@@ -6,6 +6,12 @@
 @php
     $community = \App\Services\CommunityReports::for($report);
     $isShared = $shared ?? false;
+    // "You" only fits the person who made this scan. On the public pages, or when a team member or admin opens
+    // someone else's scan, the reader did not scan it, so the wording stays neutral. A guest can only open a
+    // non-shared result they made themselves.
+    $isOwnScan = ! $isShared && ($report->user_id === null
+        ? ! auth()->check()
+        : (int) auth()->id() === (int) $report->user_id);
 @endphp
 
 @if ($community['subject'] !== null)
@@ -65,13 +71,18 @@
                 <p class="text-xs text-slate-400 mt-3">Most often reported as: <span class="text-slate-200 font-semibold">{{ $community['top_category'] }}</span></p>
             @endif
 
-            @if ($community['yours_before'])
+            @if ($community['yours_before'] && $isOwnScan)
                 <p class="text-xs text-slate-400 mt-1.5">You have checked this before too. Your own earlier scans are in the results above but are not counted as other people.</p>
             @endif
         @else
             <div class="r-well px-4 py-3.5">
-                <p class="text-sm text-slate-200">You are the first to check {{ $community['subject_label'] }} on PhishCore.</p>
-                <p class="text-xs text-slate-400 mt-1">No one else has scanned or reported it yet. A first sighting is not proof either way, so go by the checks below.</p>
+                @if ($isOwnScan)
+                    <p class="text-sm text-slate-200">You are the first to check {{ $community['subject_label'] }} on PhishCore.</p>
+                    <p class="text-xs text-slate-400 mt-1">No one else has scanned or reported it yet. A first sighting is not proof either way, so go by the checks below.</p>
+                @else
+                    <p class="text-sm text-slate-200">This is the only PhishCore scan of {{ $community['subject_label'] }} so far.</p>
+                    <p class="text-xs text-slate-400 mt-1">No one else has checked it on PhishCore yet. That alone is not proof either way, so go by the checks below.</p>
+                @endif
             </div>
         @endif
 

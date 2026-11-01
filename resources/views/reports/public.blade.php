@@ -62,15 +62,23 @@
          page lagged while scrolling. The glow is soft, so they look the same; the smaller boxes keep their blur. --}}
     <style>
         .pr-flat { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+        /* Page intro: each part rises in after the one before (the navbar's script turns .hx-on on; never with
+           "reduce motion", and without JavaScript the page is simply shown). Opacity and position only. */
+        .hx-on .pr-in { animation: pr-up .65s cubic-bezier(.22,1,.36,1) both; animation-delay: var(--d, 0s); }
+        .hx-on .pr-row { animation: pr-up .5s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(1s + var(--i, 0) * .05s); }
+        .hx-on .pr-live { animation: pr-ping 1.6s ease-out .6s 2 both; }
+        @keyframes pr-up { from { opacity: 0; translate: 0 16px; } to { opacity: 1; translate: 0 0; } }
+        @keyframes pr-ping { 0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, .7); } 100% { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); } }
     </style>
 
     <section class="max-w-6xl mx-auto px-6 pt-8 md:pt-10 pb-16 md:pb-20">
 
         {{-- Header --}}
-        <div class="mb-6 md:mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+        <div class="pr-in mb-6 md:mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-5" style="--d: .15s">
             <div>
                 <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-4">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Community Transparency Feed
+                    <span class="pr-live w-1.5 h-1.5 rounded-full bg-sky-400"></span> Community Transparency Feed
                 </span>
                 <h1 class="text-[1.7rem] md:text-3xl font-bold text-white mb-2">Public Threat Reports</h1>
                 <p class="text-slate-400 text-sm max-w-2xl leading-relaxed">Confirmed suspicious and phishing submissions across the PhishCore community. Safe results are not shown here.</p>
@@ -94,7 +102,7 @@
 
         {{-- Stats --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+            <div class="pr-in glass-card p-4 md:p-5 flex flex-col gap-3 md:block" style="--d: 0.30s">
                 <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
                     <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Total flagged</p>
                     <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg></div>
@@ -103,7 +111,7 @@
                 <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $totalFlagged }}">{{ $totalFlagged }}</p>
             </div>
 
-            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+            <div class="pr-in glass-card p-4 md:p-5 flex flex-col gap-3 md:block" style="--d: 0.37s">
                 <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
                     <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Suspicious</p>
                     <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-amber-400/10 !border-amber-300/20 !text-amber-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></div>
@@ -111,7 +119,7 @@
                 <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['suspicious'] }}">{{ $stats['suspicious'] }}</p>
             </div>
 
-            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+            <div class="pr-in glass-card p-4 md:p-5 flex flex-col gap-3 md:block" style="--d: 0.44s">
                 <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
                     <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Phishing</p>
                     <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-rose-400/10 !border-rose-300/20 !text-rose-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg></div>
@@ -119,7 +127,7 @@
                 <p class="text-2xl md:text-3xl whitespace-nowrap leading-none font-bold text-white tabular-nums" data-count="{{ $stats['phishing'] }}">{{ $stats['phishing'] }}</p>
             </div>
 
-            <div class="glass-card p-4 md:p-5 flex flex-col gap-3 md:block">
+            <div class="pr-in glass-card p-4 md:p-5 flex flex-col gap-3 md:block" style="--d: 0.51s">
                 <div class="flex flex-col-reverse items-start gap-2 md:flex-row md:items-center md:justify-between md:mb-4">
                     <p class="text-xs md:text-[11px] font-medium md:font-normal md:uppercase md:tracking-[0.14em] leading-tight text-slate-400">Most recent</p>
                     <div class="icon-tile !w-10 !h-10 md:!w-9 md:!h-9 !bg-emerald-400/10 !border-emerald-300/20 !text-emerald-300"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
@@ -129,7 +137,7 @@
         </div>
 
         {{-- BruCERT takedowns: PhishCore reports and tracks, BruCERT takes sites down --}}
-        <div class="glass-card px-5 py-4 mb-6 md:mb-8 grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:flex-wrap sm:items-center sm:gap-x-8" data-brucert-stats>
+        <div style="--d: .6s" class="pr-in glass-card px-5 py-4 mb-6 md:mb-8 grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:flex-wrap sm:items-center sm:gap-x-8" data-brucert-stats>
             <p class="col-span-2 text-[10px] md:text-[11px] tracking-[0.14em] text-slate-400">BRUCERT TAKEDOWNS</p>
             <p class="text-sm text-slate-300"><span class="block sm:inline text-2xl sm:text-xl font-bold text-white tabular-nums sm:mr-1.5" data-brucert-reported>{{ $stats['reported_to_brucert'] }}</span>reported to BruCERT</p>
             <p class="text-sm text-slate-300"><span class="block sm:inline text-2xl sm:text-xl font-bold text-white tabular-nums sm:mr-1.5" data-brucert-taken-down>{{ $stats['taken_down'] }}</span>confirmed taken down</p>
@@ -142,7 +150,7 @@
             $domainMax = max(1, collect($trends['topDomains'])->max('count') ?? 1);
         @endphp
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-            <div class="glass-panel pr-flat rounded-2xl p-5 md:p-6 lg:col-span-2 flex flex-col min-w-0">
+            <div class="pr-in glass-panel pr-flat rounded-2xl p-5 md:p-6 lg:col-span-2 flex flex-col min-w-0" style="--d: .68s">
                 <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
                         <h2 class="text-white font-semibold">Flagged reports per day</h2>
@@ -168,7 +176,7 @@
             </div>
 
             <div class="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-1 min-w-0">
-                <div class="glass-panel rounded-2xl p-5 md:p-6">
+                <div class="pr-in glass-panel rounded-2xl p-5 md:p-6" style="--d: .76s">
                     <h2 class="text-white font-semibold mb-4">By scan type</h2>
                     <div class="space-y-3">
                         @foreach ($trends['byType'] as $row)
@@ -185,7 +193,7 @@
                     </div>
                 </div>
 
-                <div class="glass-panel rounded-2xl p-5 md:p-6">
+                <div class="pr-in glass-panel rounded-2xl p-5 md:p-6" style="--d: .84s">
                     <h2 class="text-white font-semibold mb-4">Most reported domains</h2>
                     @if (count($trends['topDomains']))
                         <ol class="space-y-3">
@@ -209,7 +217,7 @@
         </div>
 
         {{-- Most reported phone numbers (people press "Report as scam" on a phone scan) --}}
-        <div class="glass-panel pr-flat rounded-2xl p-5 md:p-6 mb-6 md:mb-8">
+        <div class="pr-in glass-panel pr-flat rounded-2xl p-5 md:p-6 mb-6 md:mb-8" style="--d: .9s">
             <h2 class="text-white font-semibold">Most reported phone numbers</h2>
             <p class="text-xs text-slate-400 mt-0.5 mb-4">Reported as scams by two or more different people in the last year</p>
             @if (count($topNumbers))
@@ -235,7 +243,7 @@
         </div>
 
         {{-- Filters --}}
-        <form method="GET" action="{{ route('reports.public') }}" class="glass-panel rounded-2xl p-4 md:p-5 mb-5 md:mb-6">
+        <form method="GET" action="{{ route('reports.public') }}" class="pr-in glass-panel rounded-2xl p-4 md:p-5 mb-5 md:mb-6" style="--d: .95s">
             <div class="flex flex-wrap gap-3 mb-4">
                 <div class="relative w-full md:w-auto md:flex-1 md:min-w-[240px]">
                     <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" /></svg>
@@ -276,7 +284,7 @@
 
         @if (count($rows))
             {{-- Desktop table --}}
-            <div class="hidden md:block glass-panel pr-flat rounded-2xl overflow-hidden">
+            <div class="pr-in hidden md:block glass-panel pr-flat rounded-2xl overflow-hidden" style="--d: .98s">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-white/10 text-left text-[11px] tracking-[0.14em] text-slate-500 bg-white/[0.02]">
@@ -288,7 +296,7 @@
                     </thead>
                     <tbody class="divide-y divide-white/[0.06]">
                         @foreach ($rows as $r)
-                            <tr class="hover:bg-white/[0.035] transition-colors @if ($r['href']) cursor-pointer @endif" @if ($r['href']) data-href="{{ $r['href'] }}" onclick="window.location.href = this.dataset.href" @endif>
+                            <tr style="--i: {{ $loop->index }}" class="pr-row hover:bg-white/[0.035] transition-colors @if ($r['href']) cursor-pointer @endif" @if ($r['href']) data-href="{{ $r['href'] }}" onclick="window.location.href = this.dataset.href" @endif>
                                 <td class="px-4 xl:px-6 py-4 max-w-[16rem] lg:max-w-md">
                                     <p title="{{ $r['label'] }}" class="text-slate-200 truncate flex items-center gap-3">
                                         <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>
@@ -317,9 +325,9 @@
             <div class="md:hidden space-y-3">
                 @foreach ($rows as $r)
                     @if ($r['href'])
-                        <a href="{{ $r['href'] }}" class="glass-card block p-4" aria-label="View the evidence for this report">
+                        <a href="{{ $r['href'] }}" class="pr-row glass-card block p-4" style="--i: {{ $loop->index }}" aria-label="View the evidence for this report">
                     @else
-                        <div class="glass-card p-4">
+                        <div class="pr-row glass-card p-4" style="--i: {{ $loop->index }}">
                     @endif
                         <p title="{{ $r['label'] }}" class="text-slate-200 flex items-center gap-2.5 mb-3">
                             <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $r['icon'] }}" /></svg>

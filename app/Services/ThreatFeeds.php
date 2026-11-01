@@ -158,7 +158,18 @@ class ThreatFeeds
     {
         $at = Cache::get(self::TRANCO_KEY);
 
-        return ! $at || Carbon::parse($at)->diffInDays(now()) >= (int) config('threatfeeds.tranco.refresh_days', 7);
+        // Saved as text. An older version saved a date object, which the cache now refuses to read back (it comes
+        // back as an unreadable placeholder) and which crashed every scheduled update: anything that is not text
+        // or a number simply counts as "due".
+        if (! is_string($at) && ! is_int($at)) {
+            return true;
+        }
+
+        try {
+            return Carbon::parse($at)->diffInDays(now()) >= (int) config('threatfeeds.tranco.refresh_days', 7);
+        } catch (Throwable) {
+            return true;
+        }
     }
 
     /** @return array{name: string, ok: bool, count: int, error: string|null} */
@@ -180,7 +191,7 @@ class ThreatFeeds
             }
 
             $count = $this->replacePopular($domains);
-            Cache::forever(self::TRANCO_KEY, now());
+            Cache::forever(self::TRANCO_KEY, now()->toIso8601String());
 
             return ['name' => $name, 'ok' => true, 'count' => $count, 'error' => null];
         } catch (Throwable $e) {

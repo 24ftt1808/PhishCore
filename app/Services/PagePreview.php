@@ -286,11 +286,20 @@ class PagePreview
         $deleted = 0;
 
         foreach ($disk->files(self::DIRECTORY) as $file) {
-            if ($disk->lastModified($file) >= $cutoff) {
+            // A picture that cannot be read (removed a moment ago, or owned by another user on the server) is
+            // skipped instead of stopping the whole clean-up.
+            try {
+                if ($disk->lastModified($file) >= $cutoff) {
+                    continue;
+                }
+
+                $disk->delete($file);
+            } catch (Throwable $e) {
+                Log::warning('Page preview picture could not be cleaned up', ['file' => $file, 'error' => mb_substr($e->getMessage(), 0, 160)]);
+
                 continue;
             }
 
-            $disk->delete($file);
             Report::where('type', 'url')->where('screenshot_path', 'like', '%/storage/'.$file)->update(['screenshot_path' => null, 'preview_note' => null]);
             Report::where('preview_path', 'like', '%/storage/'.$file)->update(['preview_path' => null, 'preview_note' => null]);
             $deleted++;

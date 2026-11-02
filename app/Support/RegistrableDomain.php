@@ -34,6 +34,9 @@ final class RegistrableDomain
         'byethost10.com', 'byethost11.com', 'byethost12.com', 'byethost13.com', 'byethost14.com', 'byethost15.com',
         'byethost16.com', 'byethost17.com', 'byethost18.com', 'freewebhostmost.com', 'weeblysite.com', 'framer.app',
         'framer.website', 'godaddysites.com', 'mystrikingly.com', 'bio.site', 'gitbook.io', 'bolt.host',
+        // Cloud storage and script hosts that anyone can publish a page on. Real phishing PDFs (fake bank, tax and
+        // Amazon notices) were found linking to these: Microsoft Azure static sites and storage, and Google Apps Script.
+        'web.core.windows.net', 'blob.core.windows.net', 'azurewebsites.net', 'script.google.com',
     ];
 
     /**

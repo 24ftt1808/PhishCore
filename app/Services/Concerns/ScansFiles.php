@@ -394,10 +394,14 @@ trait ScansFiles
         $worstReasons = [];
         foreach ($links as $link) {
             $syntax = $this->checkUrlSyntax($link);
-            if ($syntax['points'] > $worstPoints) {
-                $worstPoints = $syntax['points'];
+            // A link from a document to a page on a free hosting or cloud storage platform (an Azure static site, a
+            // Google Apps Script) is how real phishing PDFs reach their fake login pages.
+            $hosting = $this->checkFreeHostingPlatform($link);
+            $linkPoints = $syntax['points'] + $hosting['points'];
+            if ($linkPoints > $worstPoints) {
+                $worstPoints = $linkPoints;
                 $worstLink = $link;
-                $worstReasons = $syntax['reasons'];
+                $worstReasons = array_merge($hosting['flagged'] ? ["it is a page on {$hosting['platform']}, where anyone can publish a page"] : [], array_filter($syntax['reasons'], fn ($r) => $syntax['points'] > 0));
             }
         }
 
@@ -464,6 +468,11 @@ trait ScansFiles
                 : 'No links, QR codes or hidden actions were found in the PDF';
         }
 
+        // Below 15 points nothing is added, so a small sign is not called "suspicious".
+        if ($points < 15) {
+            $reasons = array_map(fn (string $reason) => str_replace(', which looks suspicious: ', ', which has one small warning sign, not enough on its own: ', $reason), $reasons);
+        }
+
         return [
             'flagged' => $points >= 15,
             'points' => $points >= 15 ? $points : 0,
@@ -481,15 +490,12 @@ trait ScansFiles
      */
     private function checkPdfText(string $path, array $pages = []): array
     {
-        $content = (string) file_get_contents($path, false, null, 0, self::PDF_READ_BYTES);
-        $text = $this->extractPdfText($content);
         $fromPicture = false;
 
         // Word, LibreOffice and most PDF makers store letters by font position, not as plain text, so the built-in reader
-        // often finds nothing. pdftotext (the PDF tools) reads those properly.
-        if (mb_strlen(trim($text)) < 20) {
-            $text = $this->pdfToText($path) ?? $text;
-        }
+        // often finds nothing or only part of the words. pdftotext (the PDF tools) reads those properly, so it goes first.
+        $text = $this->pdfToText($path)
+            ?? $this->extractPdfText((string) file_get_contents($path, false, null, 0, self::PDF_READ_BYTES));
 
         // A PDF that is only a picture of text (a scanned or photographed letter): read the pictures of its pages.
         if (mb_strlen(trim($text)) < 20 && $pages !== []) {
@@ -518,10 +524,23 @@ trait ScansFiles
         }
 
         $content = $this->checkContentPatterns($text);
+        $categories = $content['categories'] ?? [];
 
-        // Real invoices, offer letters and notices mention deadlines, payments and bank details, so two
-        // kinds of wording are normal in a PDF. A scam stacks several (threat, deadline, code request).
-        if (($content['matched_categories'] ?? 0) < 3) {
+        // Fake tax refund notices ("you are eligible for a tax refund... Claim My Payment") are one of the most common
+        // phishing PDFs. A real tax office does not send a refund claim button in an attachment.
+        if (preg_match('/(eligible for an? (tax )?refund|tax refund (request|form|is ready|ready)|economic impact payment|claim (my|your) (payment|refund)|refund (of|is) \S{0,12}\s?(ready|available|pending|approved)|(overpayment|refund) .{0,40}(deposit|claim|request form))/iu', $text)) {
+            $categories[] = 'refund_lure';
+            $content['points'] += 25;
+            $content['reasons'][] = 'Tax or payment refund offer that asks you to claim it, the wording of fake tax office notices';
+        }
+
+        // Real invoices, offer letters and notices mention deadlines, payments and bank details, so two everyday kinds of
+        // wording are normal in a PDF. It counts as scam wording when three kinds stack up, or when two do and one of
+        // them is a strong sign on its own: a threat to the account, a prize, a job fee, or a refund to claim. A request
+        // for details is not strong on its own: a real offer letter asks for bank details for payroll.
+        $strong = array_intersect($categories, ['account_threat', 'secret_ask', 'code_callback', 'prize_scam', 'job_fee', 'money_ask', 'sim_reregister', 'statement_forward', 'refund_lure']);
+        $kinds = count(array_unique($categories));
+        if ($kinds < 3 && ! ($kinds >= 2 && $strong !== [])) {
             return [
                 'flagged' => false,
                 'points' => 0,

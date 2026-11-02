@@ -154,6 +154,36 @@ test('a link that is on a phishing list makes the PDF phishing', function () {
         ->and(collect($result['checks'])->firstWhere('name', 'PDF Contents')['message'])->toContain('already reported');
 });
 
+test('a fake tax refund notice (real phishing PDF wording) is flagged', function () {
+    $text = 'BT (Third Round of Economic Impact Payment Status Available.) Tj (After the last annual calculations of your fiscal activity, we have determined that you are eligible for a tax refund.) Tj (Please submit the tax refund request form and allow us 3-9 days to process it.) Tj (Claim My Payment) Tj ET';
+    $result = fileScanRun(fileScanPdf("4 0 obj << /Length ".strlen($text)." >>\nstream\n{$text}\nendstream endobj"), 'refund.pdf');
+
+    expect($result['risk_score'])->toBeGreaterThanOrEqual(25)
+        ->and(collect($result['checks'])->firstWhere('name', 'PDF Text')['message'])->toContain('refund');
+});
+
+test('an Amazon-style account notice with a threat and a card request is flagged (two kinds, one strong)', function () {
+    $text = 'BT (We detected unusual activity, so your account has been suspended.) Tj (Please confirm your details to restore access.) Tj ET';
+    $result = fileScanRun(fileScanPdf("4 0 obj << /Length ".strlen($text)." >>\nstream\n{$text}\nendstream endobj"), 'notice.pdf');
+
+    expect(collect($result['checks'])->firstWhere('name', 'PDF Text')['points'])->toBeGreaterThan(0);
+});
+
+test('a link to a page on Azure storage counts as free hosting, but alone is only a small sign', function () {
+    $result = fileScanRun(fileScanPdf('1 0 obj << /URI (https://seguroconta.blob.core.windows.net/x/index.html) >>'), 'a.pdf');
+    $contents = collect($result['checks'])->firstWhere('name', 'PDF Contents');
+
+    expect($contents['message'])->toContain('blob.core.windows.net')
+        ->and($contents['message'])->not->toContain('looks suspicious');
+});
+
+test('a normal invoice with a payment line is still clean', function () {
+    $text = 'BT (Invoice No. 2026-114) Tj (Item: Website hosting 12 months B$240.00) Tj (Payment due within 30 days to the account below.) Tj (Thank you for your business.) Tj ET';
+    $result = fileScanRun(fileScanPdf("4 0 obj << /Length ".strlen($text)." >>\nstream\n{$text}\nendstream endobj"), 'invoice.pdf');
+
+    expect($result['verdict'])->toBe('clean');
+});
+
 test('scam wording in text packed with ASCII85 and Flate (common in PDF makers) is read', function () {
     $content = 'BT (Your account has been suspended due to unusual activity.) Tj (Verify your account within 24 hours or it will be blocked.) Tj (Enter your login details and OTP code.) Tj ET';
     $packed = gzcompress($content);

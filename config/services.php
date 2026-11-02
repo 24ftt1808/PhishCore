@@ -95,6 +95,15 @@ return [
         'languages' => env('OCR_BACKUP_LANGUAGES', 'eng'),
     ],
 
+    // PDF tools (poppler-utils) for the file scan: pdftotext reads the words of PDFs made in Word and most other
+    // programs, and pdftoppm draws the first pages as pictures so QR codes (zbar) and scanned text (Tesseract) can
+    // be read. Off unless PDF_TOOLS_ENABLED=true. Install on Ubuntu with: sudo apt install poppler-utils
+    'pdf_tools' => [
+        'enabled' => (bool) env('PDF_TOOLS_ENABLED', false),
+        'pdftotext' => env('PDF_TOTEXT_BINARY', 'pdftotext'),
+        'pdftoppm' => env('PDF_TOPPM_BINARY', 'pdftoppm'),
+    ],
+
     // Reads QR codes in screenshots with zbar, which finds small QR codes inside posters and photos. Off unless
     // QR_READER_ENABLED=true (install it on Ubuntu with "sudo apt install zbar-tools"). When off or missing, the
     // built-in PHP reader is used, which only reads a clean QR code that fills the image.

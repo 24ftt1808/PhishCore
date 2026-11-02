@@ -35,6 +35,10 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <!-- The QR and backup text readers are switched on per test, so a developer's .env does not change the results. -->
         <env name="QR_READER_ENABLED" value="false"/>
+        <env name="PDF_TOOLS_ENABLED" value="false"/>
+        <env name="PDF_TOTEXT_BINARY" value="pdftotext"/>
+        <env name="PDF_TOPPM_BINARY" value="pdftoppm"/>
+        <env name="OCR_BACKUP_BINARY" value="tesseract"/>
         <env name="OCR_BACKUP_ENABLED" value="false"/>
     </php>
 </phpunit>

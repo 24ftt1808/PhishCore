@@ -304,7 +304,48 @@ class ScanController extends Controller
             // Only PDF files are accepted. The type of the file is still judged by its contents during the scan, so an app
             // renamed to .pdf is flagged as a disguised file.
             'file' => ['file' => ['required', 'file', 'max:20480', 'extensions:pdf']], // 20MB max, PDF only (apps are not accepted)
-            default => ['url' => ['required', 'url', 'max:2048']],
+            default => ['url' => ['required', 'url', 'max:2048', function (string $attribute, mixed $value, \Closure $fail) {
+                if (! self::looksLikeWebAddress((string) $value)) {
+                    $fail('This does not look like a real web address. Check it and try again, for example: example.com');
+                }
+            }]],
         };
+    }
+
+    /**
+     * "https://" in front of anything passes the plain URL rule ("https://hello", "https://asdf-qwer"). A real web
+     * address has a name with at least one dot and an ending made of letters (".com", ".bn", ".xn--…" for other
+     * scripts), or is an IP address. Whether the address actually leads to a website is checked during the scan.
+     */
+    public static function looksLikeWebAddress(string $url): bool
+    {
+        $host = rtrim(strtolower((string) parse_url($url, PHP_URL_HOST)), '.');
+
+        if ($host === '') {
+            return false;
+        }
+
+        if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP)) {
+            return true;
+        }
+
+        // Names in other scripts ("bücher.de") are checked in their ASCII form.
+        if (preg_match('/[^\x00-\x7F]/', $host) && function_exists('idn_to_ascii')) {
+            $host = (string) idn_to_ascii($host, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+        }
+
+        $labels = explode('.', $host);
+
+        if (count($labels) < 2 || strlen($host) > 253) {
+            return false;
+        }
+
+        foreach ($labels as $label) {
+            if (! preg_match('/^(?!-)[a-z0-9-]{1,63}(?<!-)$/', $label)) {
+                return false;
+            }
+        }
+
+        return (bool) preg_match('/^([a-z]{2,63}|xn--[a-z0-9-]{1,59})$/', end($labels));
     }
 }

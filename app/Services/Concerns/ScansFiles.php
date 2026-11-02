@@ -5,6 +5,8 @@ namespace App\Services\Concerns;
 use App\Models\Report;
 use App\Models\TrustedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Throwable;
 use ZipArchive;
 
@@ -69,6 +71,11 @@ trait ScansFiles
 
     private const PDF_STREAM_MAX_BYTES = 2 * 1024 * 1024;
 
+    /** How many pages pdftotext reads, and how many are drawn as pictures for QR codes and scanned text. */
+    private const PDF_PAGES_READ = 5;
+
+    private const PDF_PAGES_RENDERED = 2;
+
     /** Earlier scans only count for this long, so a mistake fades out once the rules improve. */
     private const FILE_HISTORY_DAYS = 90;
 
@@ -116,14 +123,23 @@ trait ScansFiles
             $checks[] = $this->buildCheck('App Permissions', $apkResult, $apkResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
             $points += $apkResult['points'];
         } elseif ($kind === 'pdf') {
-            $pdfResult = $this->checkPdfContents($path);
-            $checks[] = $this->buildCheck('PDF Contents', $pdfResult, $pdfResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
-            $points += $pdfResult['points'];
-            $extractedUrl = $pdfResult['worst_link'] ?? null;
+            // The first pages as pictures (only with the PDF tools installed), for QR codes and scanned text.
+            $pages = $this->renderPdfPages($path);
 
-            $textResult = $this->checkPdfText($path);
-            $checks[] = $this->buildCheck('PDF Text', $textResult, $textResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
-            $points += $textResult['points'];
+            try {
+                $pdfResult = $this->checkPdfContents($path, $pages);
+                $checks[] = $this->buildCheck('PDF Contents', $pdfResult, $pdfResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
+                $points += $pdfResult['points'];
+                $extractedUrl = $pdfResult['worst_link'] ?? null;
+
+                $textResult = $this->checkPdfText($path, $pages);
+                $checks[] = $this->buildCheck('PDF Text', $textResult, $textResult['points'] >= 40 ? 'HIGH RISK' : 'SUSPICIOUS');
+                $points += $textResult['points'];
+            } finally {
+                foreach ($pages as $page) {
+                    @unlink($page);
+                }
+            }
         }
 
         $riskScore = min(100, $points);
@@ -353,16 +369,29 @@ trait ScansFiles
         ];
     }
 
-    private function checkPdfContents(string $path): array
+    /**
+     * @param  array<int, string>  $pages  the first pages as pictures (see renderPdfPages), read for QR codes
+     */
+    private function checkPdfContents(string $path, array $pages = []): array
     {
-        $content = (string) file_get_contents($path, false, null, 0, self::PDF_READ_BYTES);
+        // Modern PDFs pack their links and actions inside compressed parts ("object streams"), so those are unpacked
+        // and read too. Without this a link made in Word or a browser's "Save as PDF" could not be seen.
+        $content = $this->expandPdf((string) file_get_contents($path, false, null, 0, self::PDF_READ_BYTES));
         $reasons = [];
         $points = 0;
         $worstLink = null;
 
-        $links = $this->extractPdfLinks($content);
+        // A QR code printed on the page is a link too ("scan to claim"), and the favourite trick of scam PDFs,
+        // because a QR code hides where it goes.
+        $qrLinks = [];
+        foreach ($pages as $page) {
+            $qrLinks = array_merge($qrLinks, $this->decodeQrCodes($page));
+        }
+        $qrLinks = array_values(array_unique($qrLinks));
+        $links = array_values(array_unique(array_merge($qrLinks, $this->extractPdfLinks($content))));
 
         $worstPoints = -1;
+        $worstReasons = [];
         foreach ($links as $link) {
             $syntax = $this->checkUrlSyntax($link);
             if ($syntax['points'] > $worstPoints) {
@@ -372,14 +401,41 @@ trait ScansFiles
             }
         }
 
-        if ($worstLink !== null) {
+        // The links themselves against the phishing lists and Google Safe Browsing (at most three, so the scan stays
+        // quick). A link that is already reported is the strongest sign a PDF can carry.
+        $listed = null;
+        foreach (array_slice($links, 0, 3) as $link) {
+            $blacklist = $this->checkBlacklist($link);
+            if (($blacklist['flagged'] ?? false) && ! ($blacklist['unavailable'] ?? false) && ($listed === null || $blacklist['points'] > $listed['points'])) {
+                $listed = ['link' => $link, 'points' => (int) $blacklist['points'], 'reasons' => $blacklist['reasons']];
+            }
+        }
+
+        if ($listed !== null) {
+            $host = parse_url($listed['link'], PHP_URL_HOST) ?: $listed['link'];
+            $points += $listed['points'];
+            $worstLink = $listed['link'];
+            $reasons[] = "The PDF links to \"{$host}\", which is already reported: ".implode('; ', array_slice($listed['reasons'], 0, 2));
+        }
+
+        if ($worstLink !== null && ($listed === null || $listed['link'] !== $worstLink || $worstPoints > 0)) {
             $host = parse_url($worstLink, PHP_URL_HOST) ?: $worstLink;
             if ($worstPoints > 0) {
                 $points += min(40, $worstPoints);
                 $reasons[] = "The PDF links to \"{$host}\", which looks suspicious: ".implode('; ', array_slice($worstReasons, 0, 2));
-            } else {
+            } elseif ($listed === null) {
                 $reasons[] = "The PDF contains a link to \"{$host}\", and nothing about the address looks wrong";
             }
+        }
+
+        if ($qrLinks !== []) {
+            $qrHost = parse_url($qrLinks[0], PHP_URL_HOST) ?: $qrLinks[0];
+            $reasons[] = "A QR code on the page opens \"{$qrHost}\"";
+        }
+
+        if ($this->pdfActsByItself($content)) {
+            $points += 20;
+            $reasons[] = 'The PDF is set to open a website, a script or a program by itself as soon as it is opened, which real documents almost never do';
         }
 
         if (preg_match('~/Launch\b~', $content)) {
@@ -403,7 +459,9 @@ trait ScansFiles
         }
 
         if ($reasons === []) {
-            $reasons[] = 'No links or hidden actions were found in the start of the PDF. Content packed inside compressed parts of a PDF cannot be seen by this check';
+            $reasons[] = $pages === []
+                ? 'No links or hidden actions were found in the PDF'
+                : 'No links, QR codes or hidden actions were found in the PDF';
         }
 
         return [
@@ -418,12 +476,39 @@ trait ScansFiles
      * Reads the words inside the PDF and looks for scam wording, the same way a pasted message is
      * checked. Only rules are used here: the text of an uploaded file is never sent to an AI service.
      */
-    private function checkPdfText(string $path): array
+    /**
+     * @param  array<int, string>  $pages  the first pages as pictures (see renderPdfPages), read when the PDF has no text
+     */
+    private function checkPdfText(string $path, array $pages = []): array
     {
         $content = (string) file_get_contents($path, false, null, 0, self::PDF_READ_BYTES);
-        $text = mb_substr($this->extractPdfText($content), 0, self::PDF_TEXT_MAX_CHARS);
+        $text = $this->extractPdfText($content);
+        $fromPicture = false;
 
+        // Word, LibreOffice and most PDF makers store letters by font position, not as plain text, so the built-in reader
+        // often finds nothing. pdftotext (the PDF tools) reads those properly.
         if (mb_strlen(trim($text)) < 20) {
+            $text = $this->pdfToText($path) ?? $text;
+        }
+
+        // A PDF that is only a picture of text (a scanned or photographed letter): read the pictures of its pages.
+        if (mb_strlen(trim($text)) < 20 && $pages !== []) {
+            $read = [];
+            foreach ($pages as $page) {
+                $ocr = $this->readWithBackupOcr($page);
+                if ($ocr !== null) {
+                    $read[] = $ocr['text'];
+                }
+            }
+            if ($read !== []) {
+                $text = implode("\n", $read);
+                $fromPicture = true;
+            }
+        }
+
+        $text = mb_substr(trim($text), 0, self::PDF_TEXT_MAX_CHARS);
+
+        if (mb_strlen($text) < 20) {
             return [
                 'flagged' => false,
                 'points' => 0,
@@ -440,15 +525,209 @@ trait ScansFiles
             return [
                 'flagged' => false,
                 'points' => 0,
-                'reasons' => ['No scam wording was found in the text of the PDF'],
+                'reasons' => [$fromPicture ? 'No scam wording was found in the text read from the pictures of the pages' : 'No scam wording was found in the text of the PDF'],
             ];
         }
 
         return [
             'flagged' => $content['points'] > 0,
             'points' => $content['points'],
-            'reasons' => $content['reasons'],
+            'reasons' => $fromPicture
+                ? array_merge(['The PDF is a picture of text, so its pages were read as images'], $content['reasons'])
+                : $content['reasons'],
         ];
+    }
+
+    /** True when the PDF tools (poppler-utils) may be used: PDF_TOOLS_ENABLED=true, installed with "sudo apt install poppler-utils". */
+    private function pdfToolsEnabled(): bool
+    {
+        return (bool) config('services.pdf_tools.enabled');
+    }
+
+    /** The text of the first pages read by pdftotext, or null when the tools are off, missing or find nothing. */
+    private function pdfToText(string $path): ?string
+    {
+        if (! $this->pdfToolsEnabled()) {
+            return null;
+        }
+
+        try {
+            $result = Process::timeout(20)->run([
+                (string) config('services.pdf_tools.pdftotext', 'pdftotext'),
+                '-l', (string) self::PDF_PAGES_READ, '-enc', 'UTF-8', '-q', $path, '-',
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('pdftotext could not run', ['error' => mb_substr($e->getMessage(), 0, 200)]);
+
+            return null;
+        }
+
+        $text = trim((string) preg_replace('/\s+/u', ' ', mb_scrub($result->output())));
+
+        return $result->successful() && $text !== '' ? $text : null;
+    }
+
+    /**
+     * The first pages of the PDF as PNG pictures in the temp folder (the caller deletes them), for QR codes and
+     * scanned text. Empty when the PDF tools are off or missing. Pages are drawn at 150 dpi, enough for both.
+     *
+     * @return array<int, string>
+     */
+    private function renderPdfPages(string $path): array
+    {
+        if (! $this->pdfToolsEnabled()) {
+            return [];
+        }
+
+        $prefix = sys_get_temp_dir().DIRECTORY_SEPARATOR.'phishcore-pdf-'.bin2hex(random_bytes(6));
+
+        try {
+            Process::timeout(30)->run([
+                (string) config('services.pdf_tools.pdftoppm', 'pdftoppm'),
+                '-png', '-r', '150', '-f', '1', '-l', (string) self::PDF_PAGES_RENDERED, $path, $prefix,
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('pdftoppm could not run', ['error' => mb_substr($e->getMessage(), 0, 200)]);
+        }
+
+        $pages = glob($prefix.'*.png') ?: [];
+        sort($pages);
+
+        return $pages;
+    }
+
+    /**
+     * Whether the PDF does something by itself when it is opened: an /OpenAction or an /AA (additional action) that
+     * opens a website, runs a script or starts a program. Opening at a page or zoom level is normal and not counted.
+     */
+    private function pdfActsByItself(string $content): bool
+    {
+        $risky = '~/S\s*/(URI|Launch|JavaScript|SubmitForm|ImportData)\b~';
+
+        if (preg_match_all('~/(?:OpenAction|AA)\s*(<<.*?>>|\d+\s+\d+\s+R)~s', $content, $matches)) {
+            foreach ($matches[1] as $target) {
+                if (preg_match('~^(\d+)\s+(\d+)\s+R$~', trim($target), $ref)) {
+                    // A reference to another object: read that object's dictionary.
+                    if (preg_match('~(?<![0-9])'.$ref[1].'\s+'.$ref[2].'\s+obj\s*(<<.*?>>)~s', $content, $object)) {
+                        $target = $object[1];
+                    } else {
+                        continue;
+                    }
+                }
+                if (preg_match($risky, $target)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The PDF's own bytes followed by the unpacked contents of its compressed object streams (/ObjStm). Links,
+     * scripts and actions stored inside those can then be found with the same simple searches.
+     */
+    private function expandPdf(string $content): string
+    {
+        if (! preg_match_all('~<<((?:(?!>>\s*stream).)*?/ObjStm(?:(?!>>\s*stream).)*?)>>\s*stream\r?\n(.*?)endstream~s', $content, $streams, PREG_SET_ORDER)) {
+            return $content;
+        }
+
+        $unpacked = '';
+        foreach (array_slice($streams, 0, 200) as [, $dictionary, $data]) {
+            $decoded = $this->decodePdfStream($dictionary, $data);
+            if ($decoded !== null) {
+                $unpacked .= "\n".$decoded;
+            }
+            if (strlen($unpacked) > self::PDF_READ_BYTES) {
+                break;
+            }
+        }
+
+        return $content.$unpacked;
+    }
+
+    /**
+     * One stream's data with its filters undone: FlateDecode (zlib) and ASCII85Decode, alone or chained, the two
+     * that PDF makers use for text and structure. Null when it uses anything else or cannot be decoded.
+     */
+    private function decodePdfStream(string $dictionary, string $data): ?string
+    {
+        preg_match('~/Filter\s*(\[[^\]]*\]|/\w+)~', $dictionary, $filter);
+        preg_match_all('~/(\w+)~', $filter[1] ?? '', $names);
+        $filters = $names[1] ?? [];
+
+        $data = rtrim($data, "\r\n");
+
+        foreach ($filters as $name) {
+            if ($name === 'ASCII85Decode' || $name === 'A85') {
+                $data = $this->decodeAscii85($data);
+            } elseif ($name === 'FlateDecode' || $name === 'Fl') {
+                $inflated = @gzuncompress($data, self::PDF_STREAM_MAX_BYTES);
+                if ($inflated === false) {
+                    $inflated = @gzinflate(substr($data, 2), self::PDF_STREAM_MAX_BYTES);
+                }
+                $data = $inflated === false ? null : $inflated;
+            } else {
+                return null;
+            }
+
+            if ($data === null) {
+                return null;
+            }
+        }
+
+        return $data;
+    }
+
+    /** ASCII85 ("<~ ... ~>") back to bytes, or null when it is not valid ASCII85. */
+    private function decodeAscii85(string $data): ?string
+    {
+        $data = (string) preg_replace('/\s+/', '', $data);
+        if (str_starts_with($data, '<~')) {
+            $data = substr($data, 2);
+        }
+        $end = strpos($data, '~>');
+        if ($end !== false) {
+            $data = substr($data, 0, $end);
+        }
+
+        $out = '';
+        $group = [];
+        $length = strlen($data);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $data[$i];
+            if ($char === 'z' && $group === []) {
+                $out .= "\0\0\0\0";
+
+                continue;
+            }
+            $code = ord($char) - 33;
+            if ($code < 0 || $code > 84) {
+                return null;
+            }
+            $group[] = $code;
+            if (count($group) === 5) {
+                $value = 0;
+                foreach ($group as $digit) {
+                    $value = $value * 85 + $digit;
+                }
+                $out .= pack('N', $value & 0xFFFFFFFF);
+                $group = [];
+            }
+        }
+
+        if ($group !== []) {
+            $missing = 5 - count($group);
+            $group = array_merge($group, array_fill(0, $missing, 84));
+            $value = 0;
+            foreach ($group as $digit) {
+                $value = $value * 85 + $digit;
+            }
+            $out .= substr(pack('N', $value & 0xFFFFFFFF), 0, 4 - $missing);
+        }
+
+        return $out;
     }
 
     /** The plain text shown on a PDF's pages, or an empty string when it cannot be read. */
@@ -461,13 +740,9 @@ trait ScansFiles
 
         $text = '';
         foreach (array_slice($objects, 0, 300) as [, $dictionary, $data]) {
-            if (stripos($dictionary, '/FlateDecode') !== false) {
-                $data = rtrim($data, "\r\n");
-                $decoded = @gzuncompress($data, self::PDF_STREAM_MAX_BYTES);
-                if ($decoded === false) {
-                    $decoded = @gzinflate(substr($data, 2), self::PDF_STREAM_MAX_BYTES);
-                }
-                if ($decoded === false) {
+            if (str_contains($dictionary, '/Filter')) {
+                $decoded = $this->decodePdfStream($dictionary, $data);
+                if ($decoded === null) {
                     continue;
                 }
                 $data = $decoded;

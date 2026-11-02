@@ -44,10 +44,13 @@
 
 @php
     $shownVerdict = $shownVerdict ?? $analysis->verdict;
+    // A link to an address that leads nowhere: nothing could be checked, so it is not called safe.
+    $siteNotFound = $report->type === 'url' && $shownVerdict === 'review'
+        && collect($analysis->flags ?? [])->contains(fn ($check) => is_array($check) && ($check['name'] ?? null) === 'Website Not Found');
     $headline = match ($shownVerdict) {
         'phishing' => 'Phishing detected',
         'suspicious' => 'This looks suspicious',
-        'review' => 'Needs a manual review',
+        'review' => $siteNotFound ? 'Website not found' : 'Needs a manual review',
         default => match ($report->type) {
             'url' => 'This appears safe',
             'phone' => 'No reports found',
@@ -100,6 +103,10 @@
 
             @if ($cleanCaveat)
                 <p class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">{{ $cleanCaveat }}</p>
+            @endif
+
+            @if ($siteNotFound)
+                <p data-site-not-found class="mt-5 text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">This address does not lead to any website on the internet right now, so there was nothing to check and PhishCore cannot say it is safe. Check it for a typo. If it came in a message, do not trust it: a scam site that was already taken down looks the same.</p>
             @endif
 
             @if ($aiDisagrees)
@@ -628,6 +635,8 @@
                 </div>
             @endforeach
         </div>
+    @elseif ($siteNotFound)
+        <p class="text-sm text-slate-300">Nothing pushed the score up because the website could not be found, so almost every check had nothing to look at. A low score here does not mean the link is safe.</p>
     @elseif ($analysis->verdict === 'review')
         <p class="text-sm text-slate-300">No automatic score was generated for this report &mdash; it needs a human to review the extracted content above.</p>
     @else

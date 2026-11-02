@@ -12,7 +12,8 @@ use Illuminate\Support\Sleep;
  */
 beforeEach(function () {
     Sleep::fake();
-    config(['services.ocr_space.key' => 'test-key', 'services.ai_text.enabled' => false]);
+    // The binary is set here too, so a full path in a developer's own .env (C:/msys64/.../tesseract.exe) cannot change it.
+    config(['services.ocr_space.key' => 'test-key', 'services.ai_text.enabled' => false, 'services.ocr_backup.binary' => 'tesseract']);
 
     $this->image = tempnam(sys_get_temp_dir(), 'shot').'.png';
     file_put_contents($this->image, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));

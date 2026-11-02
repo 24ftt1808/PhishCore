@@ -118,7 +118,61 @@ test('a PDF with a normal link, or no link, stays clean', function () {
 test('a PDF that launches another program is flagged', function () {
     $result = fileScanRun(fileScanPdf('<< /OpenAction << /S /Launch /F (cmd.exe) >> >>'), 'a.pdf');
 
-    expect($result['risk_score'])->toBe(25);
+    // 25 for being able to start a program, plus 20 because it does so by itself the moment the PDF is opened.
+    expect($result['risk_score'])->toBe(45)
+        ->and($result['verdict'])->toBe('suspicious');
+});
+
+test('a PDF that opens a website by itself is flagged, but opening at a page is normal', function () {
+    $auto = fileScanRun(fileScanPdf('1 0 obj << /Type /Catalog /OpenAction 5 0 R >> endobj 5 0 obj << /S /URI /URI (https://www.example.com/a) >> endobj'), 'a.pdf');
+    $page = fileScanRun(fileScanPdf('1 0 obj << /Type /Catalog /OpenAction [3 0 R /Fit] >> endobj'), 'b.pdf');
+
+    expect($auto['risk_score'])->toBe(20)
+        ->and($page['risk_score'])->toBe(0);
+});
+
+test('a link hidden inside a compressed object stream is found', function () {
+    $packed = gzcompress('<< /Type /Annot /Subtype /Link /A << /S /URI /URI (https://bibd-secure-verify.top/login) >> >>');
+    $pdf = fileScanPdf("7 0 obj << /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode /Length ".strlen($packed)." >>\nstream\n{$packed}\nendstream endobj");
+
+    $result = fileScanRun($pdf, 'notice.pdf');
+
+    expect($result['extracted_url'])->toBe('https://bibd-secure-verify.top/login')
+        ->and($result['risk_score'])->toBeGreaterThanOrEqual(25);
+});
+
+test('a link that is on a phishing list makes the PDF phishing', function () {
+    $url = 'https://cloud-docs-viewer.com/view/8812';
+    \App\Models\ThreatUrl::create([
+        'source' => 'openphish', 'url_hash' => sha1(\App\Services\ThreatFeeds::normalizeUrl($url)), 'url' => $url,
+        'host' => 'cloud-docs-viewer.com', 'registrable' => 'cloud-docs-viewer.com', 'seen_at' => now(),
+    ]);
+
+    $result = fileScanRun(fileScanPdf("1 0 obj << /URI ({$url}) >>"), 'shared.pdf');
+
+    expect($result['verdict'])->toBe('phishing')
+        ->and(collect($result['checks'])->firstWhere('name', 'PDF Contents')['message'])->toContain('already reported');
+});
+
+test('scam wording in text packed with ASCII85 and Flate (common in PDF makers) is read', function () {
+    $content = 'BT (Your account has been suspended due to unusual activity.) Tj (Verify your account within 24 hours or it will be blocked.) Tj (Enter your login details and OTP code.) Tj ET';
+    $packed = gzcompress($content);
+    $a85 = '';
+    foreach (str_split($packed, 4) as $chunk) {
+        $pad = 4 - strlen($chunk);
+        $value = unpack('N', str_pad($chunk, 4, "\0"))[1];
+        $digits = '';
+        for ($i = 0; $i < 5; $i++) {
+            $digits = chr($value % 85 + 33).$digits;
+            $value = intdiv($value, 85);
+        }
+        $a85 .= substr($digits, 0, 5 - $pad);
+    }
+    $pdf = fileScanPdf("4 0 obj << /Filter [/ASCII85Decode /FlateDecode] /Length ".strlen($a85)." >>\nstream\n{$a85}~>\nendstream endobj");
+
+    $result = fileScanRun($pdf, 'notice.pdf');
+
+    expect(collect($result['checks'])->firstWhere('name', 'PDF Text')['points'])->toBeGreaterThan(0);
 });
 
 test('VirusTotal flags change the score, and only the fingerprint is sent', function () {

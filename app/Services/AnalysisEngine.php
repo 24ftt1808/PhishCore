@@ -1161,6 +1161,10 @@ class AnalysisEngine
 
             if ($isHosting && $this->isTrustedPublicHost((string) $host)) {
                 $reasons[] = 'Runs on a rented server, as most websites do, including this government, school or brand website';
+            } elseif ($isHosting && ThreatLookup::isPopular((string) $host)) {
+                // One of the most visited sites in the world (Reddit's image server, for example): of course it runs on
+                // rented servers, so this says nothing and is not shown as a warning.
+                $reasons[] = 'Runs on a rented server, as most websites do, including well-known sites like this one';
             } elseif ($isHosting) {
                 // Reduced from 15: datacenter/cloud hosting is now the norm
                 // for the vast majority of legitimate websites too (AWS,
@@ -2598,6 +2602,10 @@ class AnalysisEngine
         $text = $forPage ? $text : preg_replace([
             '/\b(never|do not|don\'t|dont|jangan|usah|tidak (?:boleh|perlu)|supaya tidak|not to)\s+(?:\S+\s+){0,2}?(share|give|send|disclose|reveal|forward|kongsi|berkongsi|beri|berikan|bagi|hantar|dedahkan)\s+(?:\S+\s+){0,4}?(otp|tac|pin|password|passcode|kata laluan|code|codes|kod|card|kad|bank|banking|perbankan|details|maklumat|personal|ic|this code)\b[^.!?\n]*/u',
             '/\b(will never|would never|never|tidak akan|tidak pernah|takkan|tak akan)\s+(?:\S+\s+){0,2}?(ask|request|call|meminta|minta|bertanya|menghubungi|menelefon)\b[^.!?\n]*/u',
+            // "Do not click the link", "jangan klik pautan": advice, not a request to click.
+            '/\b(never|do not|don\'t|dont|jangan|usah)\s+(?:\S+\s+){0,1}?(click|tap|open|reply to|respond to|klik|tekan|buka|balas)\b[^.!?\n]*/u',
+            // "If you receive a message asking you to verify your account urgently, ...": describing a scam message.
+            '/\b(if|when|jika|kalau|sekiranya)\s+(you|anda|kamu)\s+(receive|get|see|menerima|terima|dapat)\s+(?:\S+\s+){0,2}?(message|sms|text|email|e-mail|call|link|mesej|panggilan|pautan)\b[^.!?\n]*/u',
             '/\b(not|tidak|tak|bukan)\s+(guaranteed|dijamin)\b/u',
             // A code being delivered ("Your verification code is 482913") is what every sign-in and sign-up email does.
             // Asking someone to hand a code over is a different thing and is still caught (see secret_ask).
@@ -3648,6 +3656,18 @@ class AnalysisEngine
                 preg_match('/[A-Za-z][\-\/#]?$/', $before) === 1
                 || preg_match('/\b(tracking|track|ref|reference|order|invoice|receipt|awb|waybill|consignment|parcel|account|acct|a\/c|token|meter|serial|transaction|txn|trx|booking|ticket|case|id|no\.?|number|nombor|rujukan|resit|akaun)\b[\s:#.\-]*(no\.?|number|#)?[\s:#.\-]*$/i', $before) === 1
             );
+            // Dates and form codes are written in digit groups too: "2026-01-01", "01-2026-01-01", and
+            // "FORM/12(01-2026-01-01)" at the bottom of an official notice. A group that is a year (19xx/20xx)
+            // with only one- or two-digit groups beside it is a date, and a group in brackets straight after a
+            // code ("12(", "FORM(") is part of that code. Neither is a phone number.
+            if (! $isReference && ! str_starts_with($match, '+')) {
+                $groups = preg_split('/\D+/', $match, -1, PREG_SPLIT_NO_EMPTY);
+                $years = array_filter($groups, fn ($g) => preg_match('/^(19|20)\d{2}$/', $g) === 1);
+                $isDate = count($years) === 1
+                    && collect($groups)->reject(fn ($g) => in_array($g, $years, true))->every(fn ($g) => strlen($g) <= 2);
+                $isCode = preg_match('/[\w\/]\($/', $before) === 1;
+                $isReference = $isDate || $isCode;
+            }
             if (! $isReference) {
                 $candidates[] = trim(preg_replace('/\s{2,}/', ' ', $match));
             }
@@ -4019,6 +4039,20 @@ class AnalysisEngine
 
         if ($watched = $this->lookalikeWatchNote($url)) {
             $checks[] = $watched;
+        }
+
+        // An address that leads nowhere (no DNS record: mistyped, made up, or already taken down) has no page, server or
+        // registration to check, so almost every check comes back "unavailable" and nothing adds points. That is not the
+        // same as safe, so it is shown as "Website not found" (verdict review) instead of "This appears safe". A missing
+        // site that is still on a phishing list or flagged by security companies keeps its suspicious or phishing result.
+        if ($verdict === 'clean' && ($availabilityResult['status_label'] ?? null) === 'OFFLINE') {
+            $verdict = 'review';
+            array_unshift($checks, [
+                'name' => 'Website Not Found',
+                'status' => 'INFO',
+                'message' => "This address (\"{$host}\") does not lead to any website on the internet right now, so there was nothing to check and PhishCore cannot say it is safe. Check it for a typo. If it came in a message, do not trust it: a scam site that was already taken down looks the same.",
+                'points' => 0,
+            ]);
         }
 
         $result = [
